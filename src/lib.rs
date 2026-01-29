@@ -29,10 +29,11 @@
 //! - [`signal`] - Signal processing (convolution, correlation, STFT, spectrogram)
 //! - [`window`] - Window functions (Hann, Hamming, Blackman, Kaiser)
 //! - [`interpolate`] - Interpolation methods (linear, cubic, splines)
+//! - [`optimize`] - Root finding and minimization (scalar methods)
 //!
 //! # Planned Modules
 //!
-//! - `optimize` - Minimization, root finding, least squares, linear programming
+//! - `optimize` (expand) - Multivariate minimization, least squares, linear programming
 //! - `integrate` - ODE/PDE solvers, numerical quadrature
 //! - `stats` - Distributions, hypothesis tests, regression
 //! - `spatial` - KDTree, distance metrics, geometric algorithms
@@ -92,6 +93,7 @@
 //! ```
 
 pub mod interpolate;
+pub mod optimize;
 pub mod signal;
 pub mod window;
 
@@ -100,6 +102,7 @@ pub use interpolate::{
     Akima1DInterpolator, CubicSpline, ExtrapolateMode, Interp1d, InterpMethod, InterpNdMethod,
     PchipInterpolator, RegularGridInterpolator, SplineBoundary,
 };
+pub use optimize::{OptimizeError, OptimizeResult, scalar::*};
 pub use signal::{ConvMode, SignalProcessingAlgorithms};
 pub use window::WindowFunctions;
 
