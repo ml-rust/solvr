@@ -1,0 +1,27 @@
+[package]
+name = "solvr"
+version = "0.0.0"
+edition = "2024"
+description = "Advanced computing library for real-world problem solving - optimization, differential equations, interpolation, statistics, and more"
+license = "Apache-2.0"
+repository = "https://github.com/ml-rust/solvr"
+keywords = ["solver", "optimization", "ode", "interpolation", "statistics"]
+categories = ["algorithms", "mathematics", "science"]
+
+[dependencies]
+numr = { path = "../numr" }
+
+[dev-dependencies]
+
+[features]
+default = ["cpu"]
+
+# Backend features (passed through to numr)
+cpu = []
+cuda = ["numr/cuda"]
+wgpu = ["numr/wgpu"]
+# rocm = ["numr/rocm"]  # Future: when numr adds ROCm support
+
+# Precision features
+f16 = ["numr/f16"]
+fp8 = ["numr/fp8"]

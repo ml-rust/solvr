@@ -1,0 +1,86 @@
+# Rust
+/target
+**/target
+Cargo.lock
+*.pdb
+
+# Dioxus
+/dxflow-preview/dist
+/dxflow-preview/.dioxus
+**/dist
+**/.dioxus
+dx.log
+
+# Build artifacts
+*.wasm
+*.wasm.map
+*.js.map
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.iml
+.vs/
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Development
+.env
+.env.local
+.envrc
+*.log
+AGENTS.md
+CLAUDE.md
+
+# Documentation build
+/book
+/docs/_build
+
+# Benchmarks
+/benchmarks/results/*.json
+/benchmarks/results/*.html
+
+# Testing
+coverage/
+*.profraw
+*.profdata
+
+# Resources (reference materials, not for version control)
+resources/
+
+# Node modules (if using any JS tooling)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Python (for PyO3 bindings)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*~
