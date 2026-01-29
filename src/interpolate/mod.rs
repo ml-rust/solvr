@@ -6,8 +6,20 @@
 //!
 //! # Module Organization
 //!
-//! - [`interp1d`] - 1D interpolation (linear, nearest, cubic)
-//! - [`cubic_spline`] - Cubic spline interpolation with various boundary conditions
+//! - [`Interp1d`] - 1D interpolation (linear, nearest, cubic)
+//! - [`CubicSpline`] - Cubic spline interpolation with various boundary conditions
+//! - [`PchipInterpolator`] - Monotonicity-preserving PCHIP interpolation
+//! - [`Akima1DInterpolator`] - Outlier-robust Akima spline interpolation
+//!
+//! # Choosing an Interpolator
+//!
+//! | Interpolator         | Continuity | Monotonicity | Outlier Robust | Best For                  |
+//! |----------------------|------------|--------------|----------------|---------------------------|
+//! | `Interp1d::Linear`   | C0         | Preserved    | Yes            | Simple interpolation      |
+//! | `Interp1d::Cubic`    | C1         | No           | No             | Smooth curves             |
+//! | `CubicSpline`        | C2         | No           | No             | Very smooth curves        |
+//! | `PchipInterpolator`  | C1         | Preserved    | Moderate       | Monotonic data            |
+//! | `Akima1DInterpolator`| C1         | No           | Yes            | Data with outliers        |
 //!
 //! # Example
 //!
@@ -30,10 +42,15 @@
 //! let y_new = interp.evaluate(&client, &x_new)?;
 //! ```
 
-mod error;
-mod interp1d;
+mod akima;
 mod cubic_spline;
+mod error;
+mod hermite_core;
+mod interp1d;
+mod pchip;
 
+pub use akima::Akima1DInterpolator;
+pub use cubic_spline::{CubicSpline, SplineBoundary};
 pub use error::{InterpolateError, InterpolateResult};
 pub use interp1d::{Interp1d, InterpMethod};
-pub use cubic_spline::{CubicSpline, SplineBoundary};
+pub use pchip::PchipInterpolator;
