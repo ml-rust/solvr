@@ -1,8 +1,8 @@
 //! Poisson distribution.
 
+use crate::stats::continuous::special;
 use crate::stats::distribution::{DiscreteDistribution, Distribution};
 use crate::stats::error::{StatsError, StatsResult};
-use crate::stats::continuous::special;
 
 /// Poisson distribution.
 ///

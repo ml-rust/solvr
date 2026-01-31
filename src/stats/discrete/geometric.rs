@@ -227,7 +227,10 @@ mod tests {
             assert!(
                 g.cdf(result) >= prob,
                 "k={}, prob={}, result={}, cdf={}",
-                k, prob, result, g.cdf(result)
+                k,
+                prob,
+                result,
+                g.cdf(result)
             );
         }
     }

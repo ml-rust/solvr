@@ -1,8 +1,8 @@
 //! Student's t distribution.
 
+use super::special;
 use crate::stats::distribution::{ContinuousDistribution, Distribution};
 use crate::stats::error::{StatsError, StatsResult};
-use super::special;
 use std::f64::consts::PI;
 
 /// Student's t distribution.
@@ -60,9 +60,8 @@ impl StudentT {
         }
 
         // log_norm = ln(Γ((ν+1)/2)) - ln(√(νπ)) - ln(Γ(ν/2))
-        let log_norm = special::lgamma((nu + 1.0) / 2.0)
-            - 0.5 * (nu * PI).ln()
-            - special::lgamma(nu / 2.0);
+        let log_norm =
+            special::lgamma((nu + 1.0) / 2.0) - 0.5 * (nu * PI).ln() - special::lgamma(nu / 2.0);
 
         Ok(Self { nu, log_norm })
     }
@@ -75,11 +74,7 @@ impl StudentT {
 
 impl Distribution for StudentT {
     fn mean(&self) -> f64 {
-        if self.nu > 1.0 {
-            0.0
-        } else {
-            f64::NAN
-        }
+        if self.nu > 1.0 { 0.0 } else { f64::NAN }
     }
 
     fn var(&self) -> f64 {
@@ -109,11 +104,7 @@ impl Distribution for StudentT {
     }
 
     fn skewness(&self) -> f64 {
-        if self.nu > 3.0 {
-            0.0
-        } else {
-            f64::NAN
-        }
+        if self.nu > 3.0 { 0.0 } else { f64::NAN }
     }
 
     fn kurtosis(&self) -> f64 {

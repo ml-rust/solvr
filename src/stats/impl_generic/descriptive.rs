@@ -1,7 +1,7 @@
 //! Generic descriptive statistics implementations.
 
 use crate::stats::helpers::extract_scalar;
-use crate::stats::{validate_stats_dtype, TensorDescriptiveStats};
+use crate::stats::{TensorDescriptiveStats, validate_stats_dtype};
 use numr::error::{Error, Result};
 use numr::ops::TensorOps;
 use numr::runtime::{Runtime, RuntimeClient};
@@ -63,10 +63,8 @@ where
         0.0
     };
 
-    let skewness_tensor =
-        Tensor::<R>::full_scalar(&[], x.dtype(), skewness_val, client.device());
-    let kurtosis_tensor =
-        Tensor::<R>::full_scalar(&[], x.dtype(), kurtosis_val, client.device());
+    let skewness_tensor = Tensor::<R>::full_scalar(&[], x.dtype(), skewness_val, client.device());
+    let kurtosis_tensor = Tensor::<R>::full_scalar(&[], x.dtype(), kurtosis_val, client.device());
 
     Ok(TensorDescriptiveStats {
         nobs: n,
@@ -149,7 +147,12 @@ where
         0.0
     };
 
-    Ok(Tensor::<R>::full_scalar(&[], x.dtype(), skew, client.device()))
+    Ok(Tensor::<R>::full_scalar(
+        &[],
+        x.dtype(),
+        skew,
+        client.device(),
+    ))
 }
 
 /// Generic implementation of `kurtosis` for any Runtime.
@@ -192,7 +195,12 @@ where
         0.0
     };
 
-    Ok(Tensor::<R>::full_scalar(&[], x.dtype(), kurt, client.device()))
+    Ok(Tensor::<R>::full_scalar(
+        &[],
+        x.dtype(),
+        kurt,
+        client.device(),
+    ))
 }
 
 /// Generic implementation of `zscore` for any Runtime.
@@ -210,7 +218,11 @@ where
     let std_val = extract_scalar(&client.std(&x_contig, &all_dims, false, 1)?)?;
 
     if std_val == 0.0 {
-        return Ok(Tensor::<R>::zeros(x_contig.shape(), x.dtype(), client.device()));
+        return Ok(Tensor::<R>::zeros(
+            x_contig.shape(),
+            x.dtype(),
+            client.device(),
+        ));
     }
 
     let mean_broadcast =
@@ -237,5 +249,10 @@ where
     let std_val = extract_scalar(&client.std(&x_contig, &all_dims, false, 1)?)?;
     let sem_val = std_val / n.sqrt();
 
-    Ok(Tensor::<R>::full_scalar(&[], x.dtype(), sem_val, client.device()))
+    Ok(Tensor::<R>::full_scalar(
+        &[],
+        x.dtype(),
+        sem_val,
+        client.device(),
+    ))
 }

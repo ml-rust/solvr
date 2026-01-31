@@ -94,11 +94,7 @@ impl Hypergeometric {
         // min(k) = max(0, n - (N - K)) = max(0, n + K - N)
         let n = self.num_draws;
         let n_minus_k = self.pop_size - self.num_success;
-        if n > n_minus_k {
-            n - n_minus_k
-        } else {
-            0
-        }
+        n.saturating_sub(n_minus_k)
     }
 
     /// Get the maximum possible value.
@@ -183,9 +179,10 @@ impl Distribution for Hypergeometric {
         }
 
         // Complex formula for excess kurtosis
-        let a = (big_n - 1.0) * big_n * big_n * (big_n * (big_n + 1.0)
-            - 6.0 * k * (big_n - k)
-            - 6.0 * n * (big_n - n))
+        let a = (big_n - 1.0)
+            * big_n
+            * big_n
+            * (big_n * (big_n + 1.0) - 6.0 * k * (big_n - k) - 6.0 * n * (big_n - n))
             + 6.0 * n * k * (big_n - k) * (big_n - n) * (5.0 * big_n - 6.0);
 
         let b = n * k * (big_n - k) * (big_n - n) * (big_n - 2.0) * (big_n - 3.0);
@@ -201,11 +198,7 @@ impl Distribution for Hypergeometric {
 impl DiscreteDistribution for Hypergeometric {
     fn pmf(&self, k: u64) -> f64 {
         let log_p = self.log_pmf(k);
-        if log_p.is_finite() {
-            log_p.exp()
-        } else {
-            0.0
-        }
+        if log_p.is_finite() { log_p.exp() } else { 0.0 }
     }
 
     fn log_pmf(&self, k: u64) -> f64 {

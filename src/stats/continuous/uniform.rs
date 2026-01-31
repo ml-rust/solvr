@@ -66,7 +66,11 @@ impl Uniform {
 
     /// Create a standard uniform distribution U(0, 1).
     pub fn standard() -> Self {
-        Self { a: 0.0, b: 1.0, range: 1.0 }
+        Self {
+            a: 0.0,
+            b: 1.0,
+            range: 1.0,
+        }
     }
 
     /// Get the lower bound.

@@ -1,8 +1,8 @@
 //! Chi-squared distribution.
 
+use super::Gamma;
 use crate::stats::distribution::{ContinuousDistribution, Distribution};
 use crate::stats::error::{StatsError, StatsResult};
-use super::Gamma;
 
 /// Chi-squared distribution.
 ///
@@ -90,11 +90,7 @@ impl Distribution for ChiSquared {
     }
 
     fn mode(&self) -> f64 {
-        if self.k >= 2.0 {
-            self.k - 2.0
-        } else {
-            0.0
-        }
+        if self.k >= 2.0 { self.k - 2.0 } else { 0.0 }
     }
 
     fn skewness(&self) -> f64 {

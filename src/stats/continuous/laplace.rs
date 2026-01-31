@@ -53,7 +53,10 @@ impl Laplace {
 
     /// Create the standard Laplace distribution (loc=0, scale=1).
     pub fn standard() -> Self {
-        Self { loc: 0.0, scale: 1.0 }
+        Self {
+            loc: 0.0,
+            scale: 1.0,
+        }
     }
 
     /// Get the location parameter.
@@ -217,7 +220,7 @@ mod tests {
         let l = Laplace::new(5.0, 2.0).unwrap();
 
         assert!((l.mean() - 5.0).abs() < 1e-10);
-        assert!((l.var() - 8.0).abs() < 1e-10);  // 2 * 2^2 = 8
+        assert!((l.var() - 8.0).abs() < 1e-10); // 2 * 2^2 = 8
         assert!((l.skewness() - 0.0).abs() < 1e-10);
         assert!((l.kurtosis() - 3.0).abs() < 1e-10);
     }

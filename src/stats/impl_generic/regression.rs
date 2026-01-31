@@ -68,18 +68,14 @@
 //! Violations may require robust regression methods (not implemented here).
 
 use crate::stats::helpers::extract_scalar;
-use crate::stats::{validate_stats_dtype, ContinuousDistribution, LinregressResult, StudentT};
+use crate::stats::{ContinuousDistribution, LinregressResult, StudentT, validate_stats_dtype};
 use numr::error::{Error, Result};
 use numr::ops::TensorOps;
 use numr::runtime::{Runtime, RuntimeClient};
 use numr::tensor::Tensor;
 
 /// Generic implementation of linear regression.
-pub fn linregress_impl<R, C>(
-    client: &C,
-    x: &Tensor<R>,
-    y: &Tensor<R>,
-) -> Result<LinregressResult>
+pub fn linregress_impl<R, C>(client: &C, x: &Tensor<R>, y: &Tensor<R>) -> Result<LinregressResult>
 where
     R: Runtime,
     C: TensorOps<R> + RuntimeClient<R>,
@@ -110,10 +106,8 @@ where
     let mean_x = extract_scalar(&client.mean(&x_contig, &all_dims, false)?)?;
     let mean_y = extract_scalar(&client.mean(&y_contig, &all_dims, false)?)?;
 
-    let mean_x_b =
-        Tensor::<R>::full_scalar(x_contig.shape(), x.dtype(), mean_x, client.device());
-    let mean_y_b =
-        Tensor::<R>::full_scalar(y_contig.shape(), y.dtype(), mean_y, client.device());
+    let mean_x_b = Tensor::<R>::full_scalar(x_contig.shape(), x.dtype(), mean_x, client.device());
+    let mean_y_b = Tensor::<R>::full_scalar(y_contig.shape(), y.dtype(), mean_y, client.device());
 
     let dx = client.sub(&x_contig, &mean_x_b)?;
     let dy = client.sub(&y_contig, &mean_y_b)?;

@@ -1,8 +1,8 @@
 //! Log-normal distribution.
 
+use super::special::{self, LN_SQRT_2PI};
 use crate::stats::distribution::{ContinuousDistribution, Distribution};
 use crate::stats::error::{StatsError, StatsResult};
-use super::special::{self, LN_SQRT_2PI};
 
 /// Log-normal distribution.
 ///
@@ -64,7 +64,10 @@ impl LogNormal {
 
     /// Create a standard log-normal distribution (μ=0, σ=1).
     pub fn standard() -> Self {
-        Self { mu: 0.0, sigma: 1.0 }
+        Self {
+            mu: 0.0,
+            sigma: 1.0,
+        }
     }
 
     /// Create a log-normal distribution from desired mean and variance.

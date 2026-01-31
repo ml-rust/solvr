@@ -80,7 +80,10 @@ impl Weibull {
 
 impl Distribution for Weibull {
     fn mean(&self) -> f64 {
-        self.scale * (1.0 + 1.0 / self.shape).exp().powf(lgamma(1.0 + 1.0 / self.shape).exp().ln())
+        self.scale
+            * (1.0 + 1.0 / self.shape)
+                .exp()
+                .powf(lgamma(1.0 + 1.0 / self.shape).exp().ln())
     }
 
     fn var(&self) -> f64 {

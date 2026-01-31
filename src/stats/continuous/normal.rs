@@ -1,8 +1,8 @@
 //! Normal (Gaussian) distribution.
 
+use super::special::{self, INV_SQRT_2PI, LN_SQRT_2PI};
 use crate::stats::distribution::{ContinuousDistribution, Distribution};
 use crate::stats::error::{StatsError, StatsResult};
-use super::special::{self, INV_SQRT_2PI, LN_SQRT_2PI};
 use std::f64::consts::PI;
 
 /// Normal (Gaussian) distribution.
@@ -65,7 +65,10 @@ impl Normal {
 
     /// Create a standard normal distribution N(0, 1).
     pub fn standard() -> Self {
-        Self { mu: 0.0, sigma: 1.0 }
+        Self {
+            mu: 0.0,
+            sigma: 1.0,
+        }
     }
 
     /// Get the mean parameter.

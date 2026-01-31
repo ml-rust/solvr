@@ -1,34 +1,34 @@
 //! Continuous probability distributions.
 
-mod normal;
-mod uniform;
-mod exponential;
-mod gamma;
 mod beta;
-mod chi_squared;
-mod student_t;
-mod f_distribution;
-mod lognormal;
-mod weibull;
 mod cauchy;
-mod laplace;
-mod pareto;
+mod chi_squared;
+mod exponential;
+mod f_distribution;
+mod gamma;
 mod gumbel;
+mod laplace;
+mod lognormal;
+mod normal;
+mod pareto;
+mod student_t;
+mod uniform;
+mod weibull;
 
-pub use normal::Normal;
-pub use uniform::Uniform;
-pub use exponential::Exponential;
-pub use gamma::Gamma;
 pub use beta::Beta;
-pub use chi_squared::ChiSquared;
-pub use student_t::StudentT;
-pub use f_distribution::FDistribution;
-pub use lognormal::LogNormal;
-pub use weibull::Weibull;
 pub use cauchy::Cauchy;
-pub use laplace::Laplace;
-pub use pareto::Pareto;
+pub use chi_squared::ChiSquared;
+pub use exponential::Exponential;
+pub use f_distribution::FDistribution;
+pub use gamma::Gamma;
 pub use gumbel::{Gumbel, GumbelMin};
+pub use laplace::Laplace;
+pub use lognormal::LogNormal;
+pub use normal::Normal;
+pub use pareto::Pareto;
+pub use student_t::StudentT;
+pub use uniform::Uniform;
+pub use weibull::Weibull;
 
 /// Helper module for special functions used in distributions.
 pub(crate) mod special {

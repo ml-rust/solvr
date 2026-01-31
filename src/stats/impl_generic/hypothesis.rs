@@ -65,7 +65,7 @@
 //! - **Spearman**: Non-parametric, no distributional assumptions on data.
 
 use crate::stats::helpers::{compute_ranks, extract_scalar};
-use crate::stats::{validate_stats_dtype, ContinuousDistribution, StudentT, TensorTestResult};
+use crate::stats::{ContinuousDistribution, StudentT, TensorTestResult, validate_stats_dtype};
 use numr::error::{Error, Result};
 use numr::ops::TensorOps;
 use numr::runtime::{Runtime, RuntimeClient};
@@ -115,11 +115,7 @@ where
 }
 
 /// Generic implementation of independent two-sample t-test (Welch's).
-pub fn ttest_ind_impl<R, C>(
-    client: &C,
-    a: &Tensor<R>,
-    b: &Tensor<R>,
-) -> Result<TensorTestResult<R>>
+pub fn ttest_ind_impl<R, C>(client: &C, a: &Tensor<R>, b: &Tensor<R>) -> Result<TensorTestResult<R>>
 where
     R: Runtime,
     C: TensorOps<R> + RuntimeClient<R>,
@@ -174,11 +170,7 @@ where
 }
 
 /// Generic implementation of paired t-test.
-pub fn ttest_rel_impl<R, C>(
-    client: &C,
-    a: &Tensor<R>,
-    b: &Tensor<R>,
-) -> Result<TensorTestResult<R>>
+pub fn ttest_rel_impl<R, C>(client: &C, a: &Tensor<R>, b: &Tensor<R>) -> Result<TensorTestResult<R>>
 where
     R: Runtime,
     C: TensorOps<R> + RuntimeClient<R>,
@@ -198,11 +190,7 @@ where
 }
 
 /// Generic implementation of Pearson correlation.
-pub fn pearsonr_impl<R, C>(
-    client: &C,
-    x: &Tensor<R>,
-    y: &Tensor<R>,
-) -> Result<TensorTestResult<R>>
+pub fn pearsonr_impl<R, C>(client: &C, x: &Tensor<R>, y: &Tensor<R>) -> Result<TensorTestResult<R>>
 where
     R: Runtime,
     C: TensorOps<R> + RuntimeClient<R>,
@@ -233,10 +221,8 @@ where
     let mean_x = extract_scalar(&client.mean(&x_contig, &all_dims, false)?)?;
     let mean_y = extract_scalar(&client.mean(&y_contig, &all_dims, false)?)?;
 
-    let mean_x_b =
-        Tensor::<R>::full_scalar(x_contig.shape(), x.dtype(), mean_x, client.device());
-    let mean_y_b =
-        Tensor::<R>::full_scalar(y_contig.shape(), y.dtype(), mean_y, client.device());
+    let mean_x_b = Tensor::<R>::full_scalar(x_contig.shape(), x.dtype(), mean_x, client.device());
+    let mean_y_b = Tensor::<R>::full_scalar(y_contig.shape(), y.dtype(), mean_y, client.device());
 
     let dx = client.sub(&x_contig, &mean_x_b)?;
     let dy = client.sub(&y_contig, &mean_y_b)?;
@@ -273,11 +259,7 @@ where
 }
 
 /// Generic implementation of Spearman rank correlation.
-pub fn spearmanr_impl<R, C>(
-    client: &C,
-    x: &Tensor<R>,
-    y: &Tensor<R>,
-) -> Result<TensorTestResult<R>>
+pub fn spearmanr_impl<R, C>(client: &C, x: &Tensor<R>, y: &Tensor<R>) -> Result<TensorTestResult<R>>
 where
     R: Runtime,
     C: TensorOps<R> + RuntimeClient<R>,

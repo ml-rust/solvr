@@ -62,7 +62,10 @@ impl Gumbel {
 
     /// Create the standard Gumbel distribution (loc=0, scale=1).
     pub fn standard() -> Self {
-        Self { loc: 0.0, scale: 1.0 }
+        Self {
+            loc: 0.0,
+            scale: 1.0,
+        }
     }
 
     /// Get the location parameter.
@@ -186,7 +189,10 @@ impl GumbelMin {
 
     /// Create the standard left-skewed Gumbel distribution.
     pub fn standard() -> Self {
-        Self { loc: 0.0, scale: 1.0 }
+        Self {
+            loc: 0.0,
+            scale: 1.0,
+        }
     }
 
     /// Get the location parameter.

@@ -15,10 +15,7 @@ pub fn extract_scalar<R: Runtime>(t: &Tensor<R>) -> Result<f64> {
     if t.numel() != 1 {
         return Err(Error::InvalidArgument {
             arg: "tensor",
-            reason: format!(
-                "expected scalar (1 element), got {} elements",
-                t.numel()
-            ),
+            reason: format!("expected scalar (1 element), got {} elements", t.numel()),
         });
     }
 

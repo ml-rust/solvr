@@ -1,18 +1,18 @@
 //! Discrete probability distributions.
 
 mod binomial;
-mod poisson;
-mod geometric;
-mod negative_binomial;
-mod hypergeometric;
 mod discrete_uniform;
+mod geometric;
+mod hypergeometric;
+mod negative_binomial;
+mod poisson;
 
 pub use binomial::Binomial;
-pub use poisson::Poisson;
-pub use geometric::Geometric;
-pub use negative_binomial::NegativeBinomial;
-pub use hypergeometric::Hypergeometric;
 pub use discrete_uniform::DiscreteUniform;
+pub use geometric::Geometric;
+pub use hypergeometric::Hypergeometric;
+pub use negative_binomial::NegativeBinomial;
+pub use poisson::Poisson;
 
 /// Helper for computing log-binomial coefficients.
 pub(crate) fn log_binom(n: u64, k: u64) -> f64 {

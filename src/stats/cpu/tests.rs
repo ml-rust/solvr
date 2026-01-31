@@ -1,7 +1,7 @@
 //! Tests for CPU statistics implementation.
 
-use crate::stats::helpers::extract_scalar;
 use crate::stats::StatisticsAlgorithms;
+use crate::stats::helpers::extract_scalar;
 use numr::runtime::cpu::{CpuClient, CpuDevice, CpuRuntime};
 use numr::tensor::Tensor;
 

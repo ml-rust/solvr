@@ -1,8 +1,8 @@
 //! Gamma distribution.
 
+use super::special;
 use crate::stats::distribution::{ContinuousDistribution, Distribution};
 use crate::stats::error::{StatsError, StatsResult};
-use super::special;
 
 /// Gamma distribution.
 ///
@@ -72,7 +72,11 @@ impl Gamma {
         }
 
         let log_norm = alpha * beta.ln() - special::lgamma(alpha);
-        Ok(Self { alpha, beta, log_norm })
+        Ok(Self {
+            alpha,
+            beta,
+            log_norm,
+        })
     }
 
     /// Create a gamma distribution from shape α and scale θ = 1/β.
@@ -114,7 +118,8 @@ impl Distribution for Gamma {
 
     fn entropy(&self) -> f64 {
         // H = α - ln(β) + ln(Γ(α)) + (1-α)ψ(α)
-        self.alpha - self.beta.ln() + special::lgamma(self.alpha)
+        self.alpha - self.beta.ln()
+            + special::lgamma(self.alpha)
             + (1.0 - self.alpha) * special::digamma(self.alpha)
     }
 

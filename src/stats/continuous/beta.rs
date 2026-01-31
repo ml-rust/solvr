@@ -1,8 +1,8 @@
 //! Beta distribution.
 
+use super::special;
 use crate::stats::distribution::{ContinuousDistribution, Distribution};
 use crate::stats::error::{StatsError, StatsResult};
-use super::special;
 
 /// Beta distribution on [0, 1].
 ///
@@ -69,7 +69,11 @@ impl Beta {
         }
 
         let log_norm = -special::lbeta(alpha, beta);
-        Ok(Self { alpha, beta, log_norm })
+        Ok(Self {
+            alpha,
+            beta,
+            log_norm,
+        })
     }
 
     /// Get the first shape parameter α.

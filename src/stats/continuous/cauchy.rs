@@ -57,7 +57,10 @@ impl Cauchy {
 
     /// Create the standard Cauchy distribution (loc=0, scale=1).
     pub fn standard() -> Self {
-        Self { loc: 0.0, scale: 1.0 }
+        Self {
+            loc: 0.0,
+            scale: 1.0,
+        }
     }
 
     /// Get the location parameter.

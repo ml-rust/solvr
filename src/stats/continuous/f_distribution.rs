@@ -1,8 +1,8 @@
 //! F distribution (Fisher-Snedecor).
 
+use super::special;
 use crate::stats::distribution::{ContinuousDistribution, Distribution};
 use crate::stats::error::{StatsError, StatsResult};
-use super::special;
 
 /// F distribution (Fisher-Snedecor distribution).
 ///
@@ -68,7 +68,8 @@ impl FDistribution {
         }
 
         // log_norm = (d1/2)*ln(d1) + (d2/2)*ln(d2) - ln(B(d1/2, d2/2))
-        let log_norm = (d1 / 2.0) * d1.ln() + (d2 / 2.0) * d2.ln() - special::lbeta(d1 / 2.0, d2 / 2.0);
+        let log_norm =
+            (d1 / 2.0) * d1.ln() + (d2 / 2.0) * d2.ln() - special::lbeta(d1 / 2.0, d2 / 2.0);
 
         Ok(Self { d1, d2, log_norm })
     }

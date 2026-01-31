@@ -66,7 +66,6 @@ mod discrete;
 mod distribution;
 mod error;
 
-
 use numr::dtype::DType;
 use numr::error::Result;
 use numr::ops::TensorOps;

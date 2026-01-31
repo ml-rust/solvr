@@ -1,9 +1,9 @@
 //! Binomial distribution.
 
+use super::log_binom;
+use crate::stats::continuous::special;
 use crate::stats::distribution::{DiscreteDistribution, Distribution};
 use crate::stats::error::{StatsError, StatsResult};
-use crate::stats::continuous::special;
-use super::log_binom;
 
 /// Binomial distribution.
 ///

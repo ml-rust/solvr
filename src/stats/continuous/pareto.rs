@@ -267,7 +267,7 @@ mod tests {
     fn test_pareto_variance() {
         // Variance is xₘ²α/((α-1)²(α-2)) for α > 2
         let p = Pareto::new(3.0, 1.0).unwrap();
-        let expected = 3.0 / (4.0 * 1.0);  // 3 / ((3-1)^2 * (3-2)) = 3/4
+        let expected = 3.0 / (4.0 * 1.0); // 3 / ((3-1)^2 * (3-2)) = 3/4
         assert!((p.var() - expected).abs() < 1e-10);
 
         // Variance is infinite for α ≤ 2
