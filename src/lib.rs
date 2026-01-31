@@ -111,19 +111,42 @@ pub use interpolate::{
 pub use optimize::{OptimizeError, OptimizeResult, scalar::*};
 pub use signal::{ConvMode, SignalProcessingAlgorithms};
 pub use stats::{
+    // Continuous distributions
+    Beta,
+    // Discrete distributions
+    Binomial,
+    Cauchy,
+    ChiSquared,
+    // Distribution traits
+    ContinuousDistribution,
+    DiscreteDistribution,
+    DiscreteUniform,
+    Distribution,
+    Exponential,
+    FDistribution,
+    Gamma,
+    Geometric,
+    Gumbel,
+    GumbelMin,
+    Hypergeometric,
+    Laplace,
+    LinregressResult,
+    LogNormal,
+    NegativeBinomial,
+    Normal,
+    Pareto,
+    Poisson,
     // Runtime-generic trait for statistics operations
     StatisticsAlgorithms,
-    // Result types for tensor operations
-    TensorDescriptiveStats, TensorTestResult, LinregressResult,
-    // Distribution traits
-    ContinuousDistribution, DiscreteDistribution, Distribution,
-    // Continuous distributions
-    Beta, Cauchy, ChiSquared, Exponential, FDistribution, Gamma, Gumbel, GumbelMin, Laplace,
-    LogNormal, Normal, Pareto, StudentT, Uniform, Weibull,
-    // Discrete distributions
-    Binomial, DiscreteUniform, Geometric, Hypergeometric, NegativeBinomial, Poisson,
     // Errors
-    StatsError, StatsResult,
+    StatsError,
+    StatsResult,
+    StudentT,
+    // Result types for tensor operations
+    TensorDescriptiveStats,
+    TensorTestResult,
+    Uniform,
+    Weibull,
 };
 pub use window::WindowFunctions;
 
