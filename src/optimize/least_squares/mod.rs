@@ -4,14 +4,36 @@
 //! minimize ||f(x)||^2 = sum(f_i(x)^2)
 //!
 //! where f: R^n -> R^m is a vector-valued function (residuals).
+//!
+//! # Runtime-Generic Architecture
+//!
+//! All operations are implemented generically over numr's `Runtime` trait.
+//! The same code works on CPU, CUDA, and WebGPU backends with **zero duplication**.
+//!
+//! ```text
+//! least_squares/
+//! ├── mod.rs    # Trait definition + types (exports only)
+//! ├── cpu.rs    # CPU impl + scalar convenience functions
+//! ├── cuda.rs   # CUDA impl (pure delegation)
+//! └── wgpu.rs   # WebGPU impl (pure delegation)
+//! ```
+//!
+//! Generic implementations live in `optimize/impl_generic/least_squares/`.
 
-mod bounded;
-mod leastsq;
+mod cpu;
 
-pub use bounded::least_squares;
-pub use leastsq::leastsq;
+#[cfg(feature = "cuda")]
+mod cuda;
 
-use crate::optimize::error::{OptimizeError, OptimizeResult};
+#[cfg(feature = "wgpu")]
+mod wgpu;
+
+use numr::error::Result;
+use numr::runtime::Runtime;
+use numr::tensor::Tensor;
+
+// Re-export CPU implementation for convenience
+pub use cpu::*;
 
 /// Options for least squares optimization.
 #[derive(Debug, Clone)]
@@ -40,7 +62,7 @@ impl Default for LeastSquaresOptions {
     }
 }
 
-/// Result from least squares optimization.
+/// Result from least squares optimization (scalar API).
 #[derive(Debug, Clone)]
 pub struct LeastSquaresResult {
     /// The optimal parameters found
@@ -57,55 +79,69 @@ pub struct LeastSquaresResult {
     pub converged: bool,
 }
 
-/// Fit a model function to data using nonlinear least squares.
+/// Algorithmic contract for least squares optimization.
 ///
-/// # Arguments
-/// * `model` - Model function: f(x, params) -> y
-/// * `x_data` - Independent variable data points
-/// * `y_data` - Dependent variable data points
-/// * `p0` - Initial parameter guess
-/// * `options` - Solver options
-///
-/// # Returns
-/// Optimal parameters fitting the model to data
-///
-/// # Example
-/// ```ignore
-/// // Fit y = a * exp(-b * x)
-/// let model = |x: f64, p: &[f64]| p[0] * (-p[1] * x).exp();
-/// let result = curve_fit(model, &x_data, &y_data, &[1.0, 1.0], &options)?;
-/// ```
-pub fn curve_fit<F>(
-    model: F,
-    x_data: &[f64],
-    y_data: &[f64],
-    p0: &[f64],
-    options: &LeastSquaresOptions,
-) -> OptimizeResult<LeastSquaresResult>
-where
-    F: Fn(f64, &[f64]) -> f64,
-{
-    if x_data.len() != y_data.len() {
-        return Err(OptimizeError::InvalidInput {
-            context: "curve_fit: x_data and y_data must have same length".to_string(),
-        });
-    }
+/// All backends implementing least squares MUST implement this trait using
+/// the EXACT SAME ALGORITHMS to ensure numerical parity.
+pub trait LeastSquaresAlgorithms<R: Runtime> {
+    /// Levenberg-Marquardt algorithm for nonlinear least squares.
+    ///
+    /// Minimizes ||f(x)||^2 where f: R^n -> R^m.
+    ///
+    /// # Arguments
+    ///
+    /// * `f` - Residual function returning tensor of residuals
+    /// * `x0` - Initial parameter guess
+    /// * `options` - Solver options
+    ///
+    /// # Returns
+    ///
+    /// Tensor result with optimal parameters
+    fn leastsq<F>(
+        &self,
+        f: F,
+        x0: &Tensor<R>,
+        options: &LeastSquaresOptions,
+    ) -> Result<LeastSquaresTensorResult<R>>
+    where
+        F: Fn(&Tensor<R>) -> Result<Tensor<R>>;
 
-    if x_data.is_empty() {
-        return Err(OptimizeError::InvalidInput {
-            context: "curve_fit: data arrays are empty".to_string(),
-        });
-    }
+    /// Bounded Levenberg-Marquardt algorithm.
+    ///
+    /// Minimizes ||f(x)||^2 subject to lower <= x <= upper.
+    ///
+    /// # Arguments
+    ///
+    /// * `f` - Residual function
+    /// * `x0` - Initial parameter guess
+    /// * `bounds` - Optional (lower, upper) bounds tensors
+    /// * `options` - Solver options
+    fn least_squares<F>(
+        &self,
+        f: F,
+        x0: &Tensor<R>,
+        bounds: Option<(&Tensor<R>, &Tensor<R>)>,
+        options: &LeastSquaresOptions,
+    ) -> Result<LeastSquaresTensorResult<R>>
+    where
+        F: Fn(&Tensor<R>) -> Result<Tensor<R>>;
+}
 
-    let residual_fn = |params: &[f64]| -> Vec<f64> {
-        x_data
-            .iter()
-            .zip(y_data.iter())
-            .map(|(&x, &y)| model(x, params) - y)
-            .collect()
-    };
-
-    leastsq(residual_fn, p0, options)
+/// Result from tensor-based least squares optimization.
+#[derive(Debug, Clone)]
+pub struct LeastSquaresTensorResult<R: Runtime> {
+    /// The optimal parameters found
+    pub x: Tensor<R>,
+    /// Residual vector at solution
+    pub residuals: Tensor<R>,
+    /// Sum of squared residuals (cost)
+    pub cost: f64,
+    /// Number of iterations
+    pub iterations: usize,
+    /// Number of function evaluations
+    pub nfev: usize,
+    /// Whether the method converged
+    pub converged: bool,
 }
 
 #[cfg(test)]
@@ -113,63 +149,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_curve_fit_exponential() {
-        let x_data: Vec<f64> = (0..10).map(|i| i as f64 * 0.5).collect();
-        let y_data: Vec<f64> = x_data.iter().map(|&x| 2.0 * (-0.5 * x).exp()).collect();
-
-        let model = |x: f64, p: &[f64]| p[0] * (-p[1] * x).exp();
-
-        let result = curve_fit(
-            model,
-            &x_data,
-            &y_data,
-            &[1.0, 1.0],
-            &LeastSquaresOptions::default(),
-        )
-        .expect("curve_fit failed");
-
-        assert!(result.converged);
-        assert!((result.x[0] - 2.0).abs() < 1e-4);
-        assert!((result.x[1] - 0.5).abs() < 1e-4);
-    }
-
-    #[test]
-    fn test_curve_fit_gaussian() {
-        let x_data: Vec<f64> = (-20..=20).map(|i| i as f64 * 0.25).collect();
-        let y_data: Vec<f64> = x_data
-            .iter()
-            .map(|&x| 3.0 * (-(x - 1.0).powi(2) / (2.0 * 2.0 * 2.0)).exp())
-            .collect();
-
-        let model = |x: f64, p: &[f64]| p[0] * (-(x - p[1]).powi(2) / (2.0 * p[2] * p[2])).exp();
-
-        let result = curve_fit(
-            model,
-            &x_data,
-            &y_data,
-            &[1.0, 0.0, 1.0],
-            &LeastSquaresOptions::default(),
-        )
-        .expect("curve_fit failed");
-
-        assert!(result.converged);
-        assert!((result.x[0] - 3.0).abs() < 0.1);
-        assert!((result.x[1] - 1.0).abs() < 0.1);
-        assert!((result.x[2].abs() - 2.0).abs() < 0.1);
-    }
-
-    #[test]
-    fn test_curve_fit_mismatched_data() {
-        let result = curve_fit(
-            |_, _| 0.0,
-            &[1.0, 2.0, 3.0],
-            &[1.0, 2.0],
-            &[1.0],
-            &LeastSquaresOptions::default(),
-        );
-        assert!(matches!(
-            result,
-            Err(crate::optimize::error::OptimizeError::InvalidInput { .. })
-        ));
+    fn test_default_options() {
+        let opts = LeastSquaresOptions::default();
+        assert_eq!(opts.max_iter, 100);
+        assert!((opts.f_tol - 1e-8).abs() < 1e-12);
     }
 }
