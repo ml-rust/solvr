@@ -54,16 +54,29 @@ use numr::error::Result;
 use numr::runtime::Runtime;
 use numr::tensor::Tensor;
 
-use minimize::MinimizeOptions;
 use scalar::{MinimizeResult, RootResult, ScalarOptions};
 
 // Re-export error types
 pub use error::{OptimizeError, OptimizeResult};
 
-// Re-export result types
+// Re-export result types and options
 pub use impl_generic::TensorMinimizeResult;
+pub use minimize::MinimizeOptions;
 
-// Re-export legacy function-based APIs for backwards compatibility
+// Re-export scalar optimization (1D) - these are inherently scalar, not tensor
+pub use scalar::{
+    MinimizeResult as ScalarMinResult, RootResult as ScalarRootResult,
+    ScalarOptions as ScalarOpts, bisect, brentq, minimize_scalar_bounded, minimize_scalar_brent,
+    minimize_scalar_golden, newton, ridder, secant,
+};
+
+// TODO: These modules still use scalar &[f64] APIs and need tensor migration:
+// - global: differential_evolution, simulated_annealing, dual_annealing, basinhopping
+// - roots: newton_system, broyden1, levenberg_marquardt
+// - least_squares: leastsq, least_squares, curve_fit
+// - linprog: linprog, milp
+//
+// For now, re-export them but they should be rewritten with tensor operations.
 pub use global::{
     GlobalOptions, GlobalResult, basinhopping, differential_evolution, dual_annealing,
     simulated_annealing,
@@ -74,15 +87,7 @@ pub use least_squares::{
 pub use linprog::{
     LinProgOptions, LinProgResult, LinearConstraints, MilpOptions, MilpResult, linprog, milp,
 };
-pub use minimize::{
-    MinimizeOptions as MinOpts, MultiMinimizeResult, bfgs, conjugate_gradient, nelder_mead, powell,
-};
 pub use roots::{MultiRootResult, RootOptions, broyden1, levenberg_marquardt, newton_system};
-pub use scalar::{
-    MinimizeResult as ScalarMinResult, RootResult as ScalarRootResult, ScalarOptions as ScalarOpts,
-    bisect, brentq, minimize_scalar_bounded, minimize_scalar_brent, minimize_scalar_golden, newton,
-    ridder, secant,
-};
 
 /// Trait for optimization algorithms that work across all Runtime backends.
 ///
