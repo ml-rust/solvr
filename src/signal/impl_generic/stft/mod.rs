@@ -15,6 +15,7 @@ use crate::window::WindowFunctions;
 use numr::algorithm::fft::{FftAlgorithms, FftNormalization};
 use numr::dtype::{Complex64, Complex128, DType};
 use numr::error::{Error, Result};
+use numr::ops::{ScalarOps, TensorOps};
 use numr::runtime::{Runtime, RuntimeClient};
 use numr::tensor::Tensor;
 
@@ -30,7 +31,7 @@ pub fn stft_impl<R, C>(
 ) -> Result<Tensor<R>>
 where
     R: Runtime,
-    C: FftAlgorithms<R> + WindowFunctions<R> + RuntimeClient<R>,
+    C: FftAlgorithms<R> + WindowFunctions<R> + TensorOps<R> + RuntimeClient<R>,
 {
     let dtype = signal.dtype();
     validate_signal_dtype(dtype, "stft")?;
@@ -251,7 +252,7 @@ pub fn spectrogram_impl<R, C>(
 ) -> Result<Tensor<R>>
 where
     R: Runtime,
-    C: FftAlgorithms<R> + WindowFunctions<R> + RuntimeClient<R>,
+    C: FftAlgorithms<R> + WindowFunctions<R> + TensorOps<R> + ScalarOps<R> + RuntimeClient<R>,
 {
     let stft_result = stft_impl(client, signal, n_fft, hop_length, window, true, false)?;
     let dtype = signal.dtype();
