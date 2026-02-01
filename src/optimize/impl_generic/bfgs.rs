@@ -1,5 +1,6 @@
 //! BFGS quasi-Newton method for multivariate minimization.
 
+use numr::dtype::DType;
 use numr::error::Result;
 use numr::ops::{ScalarOps, TensorOps};
 use numr::runtime::{Runtime, RuntimeClient};
@@ -264,19 +265,17 @@ where
     })
 }
 
-/// Create an n x n identity matrix as a tensor.
+/// Create an n x n identity matrix using tensor ops.
 fn create_identity_matrix<R, C>(client: &C, n: usize) -> OptimizeResult<Tensor<R>>
 where
     R: Runtime,
-    C: RuntimeClient<R>,
+    C: TensorOps<R> + RuntimeClient<R>,
 {
-    // Create identity matrix data
-    // Note: This is one-time initialization, not in a loop
-    let mut data = vec![0.0f64; n * n];
-    for i in 0..n {
-        data[i * n + i] = 1.0;
-    }
-    Ok(Tensor::<R>::from_slice(&data, &[n, n], client.device()))
+    client
+        .eye(n, None, DType::F64)
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("bfgs: create identity - {}", e),
+        })
 }
 
 /// Compute inner product of two vectors: sum(a * b)
