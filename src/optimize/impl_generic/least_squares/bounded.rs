@@ -8,7 +8,10 @@ use numr::runtime::{Runtime, RuntimeClient};
 use numr::tensor::Tensor;
 
 use crate::optimize::error::{OptimizeError, OptimizeResult};
-use crate::optimize::impl_generic::utils::SINGULAR_THRESHOLD;
+use crate::optimize::impl_generic::utils::{
+    compute_cost as utils_compute_cost, finite_difference_jacobian as utils_finite_difference_jacobian,
+    tensor_norm as utils_tensor_norm, SINGULAR_THRESHOLD,
+};
 use crate::optimize::least_squares::LeastSquaresOptions;
 
 use super::leastsq::leastsq_impl;
@@ -236,44 +239,33 @@ where
         })
 }
 
-/// Compute cost = ||f||^2 = sum(f_i^2)
+/// Wrappers for shared utility functions with OptimizeError mapping.
 fn compute_cost<R, C>(client: &C, fx: &Tensor<R>) -> OptimizeResult<f64>
 where
     R: Runtime,
     C: TensorOps<R> + RuntimeClient<R>,
 {
-    let fx_sq = client
-        .mul(fx, fx)
-        .map_err(|e| OptimizeError::NumericalError {
-            message: format!("compute_cost: mul - {}", e),
-        })?;
-    let sum = client
-        .sum(&fx_sq, &[0], false)
-        .map_err(|e| OptimizeError::NumericalError {
-            message: format!("compute_cost: sum - {}", e),
-        })?;
-    let vals: Vec<f64> = sum.to_vec();
-    Ok(vals[0])
+    utils_compute_cost(client, fx).map_err(|e| OptimizeError::NumericalError {
+        message: format!("compute_cost: {}", e),
+    })
 }
 
-/// Compute L2 norm of a vector tensor.
 fn tensor_norm<R, C>(client: &C, v: &Tensor<R>) -> OptimizeResult<f64>
 where
     R: Runtime,
     C: TensorOps<R> + RuntimeClient<R>,
 {
-    let cost = compute_cost(client, v)?;
-    Ok(cost.sqrt())
+    utils_tensor_norm(client, v).map_err(|e| OptimizeError::NumericalError {
+        message: format!("tensor_norm: {}", e),
+    })
 }
 
-/// Compute Jacobian matrix using forward finite differences.
-/// All operations stay on device - no to_vec()/from_slice().
 fn finite_difference_jacobian<R, C, F>(
     client: &C,
     f: &F,
     x: &Tensor<R>,
     fx: &Tensor<R>,
-    _m: usize,
+    m: usize,
     n: usize,
     eps: f64,
 ) -> OptimizeResult<Tensor<R>>
@@ -282,74 +274,11 @@ where
     C: TensorOps<R> + ScalarOps<R> + RuntimeClient<R>,
     F: Fn(&Tensor<R>) -> Result<Tensor<R>>,
 {
-    // Create identity matrix [n, n] scaled by eps
-    let identity = client
-        .eye(n, None, DType::F64)
-        .map_err(|e| OptimizeError::NumericalError {
-            message: format!("jacobian: eye - {}", e),
-        })?;
-    let eps_identity = client
-        .mul_scalar(&identity, eps)
-        .map_err(|e| OptimizeError::NumericalError {
-            message: format!("jacobian: scale identity - {}", e),
-        })?;
-
-    // Compute each column of the Jacobian
-    let mut jac_columns: Vec<Tensor<R>> = Vec::with_capacity(n);
-
-    for j in 0..n {
-        // Extract row j as delta vector
-        let delta = eps_identity
-            .narrow(0, j, 1)
-            .map_err(|e| OptimizeError::NumericalError {
-                message: format!("jacobian: narrow row - {}", e),
-            })?
-            .contiguous()
-            .reshape(&[n])
-            .map_err(|e| OptimizeError::NumericalError {
-                message: format!("jacobian: reshape delta - {}", e),
-            })?;
-
-        // x_plus = x + delta
-        let x_plus = client
-            .add(x, &delta)
-            .map_err(|e| OptimizeError::NumericalError {
-                message: format!("jacobian: x + delta - {}", e),
-            })?;
-
-        // f(x_plus)
-        let fx_plus = f(&x_plus).map_err(|e| OptimizeError::NumericalError {
-            message: format!("jacobian: f(x+delta) - {}", e),
-        })?;
-
-        // jac_col = (fx_plus - fx) / eps, shape [m]
-        let diff = client
-            .sub(&fx_plus, fx)
-            .map_err(|e| OptimizeError::NumericalError {
-                message: format!("jacobian: fx_plus - fx - {}", e),
-            })?;
-        let jac_col = client
-            .mul_scalar(&diff, 1.0 / eps)
-            .map_err(|e| OptimizeError::NumericalError {
-                message: format!("jacobian: scale diff - {}", e),
-            })?;
-
-        // Reshape to [m, 1] for concatenation
-        let jac_col_2d = jac_col
-            .unsqueeze(1)
-            .map_err(|e| OptimizeError::NumericalError {
-                message: format!("jacobian: unsqueeze col - {}", e),
-            })?;
-        jac_columns.push(jac_col_2d);
-    }
-
-    // Concatenate columns: [m, 1] * n -> [m, n]
-    let refs: Vec<&Tensor<R>> = jac_columns.iter().collect();
-    client
-        .cat(&refs, 1)
-        .map_err(|e| OptimizeError::NumericalError {
-            message: format!("jacobian: cat columns - {}", e),
-        })
+    utils_finite_difference_jacobian(client, f, x, fx, m, n, eps).map_err(|e| {
+        OptimizeError::NumericalError {
+            message: format!("finite_difference_jacobian: {}", e),
+        }
+    })
 }
 
 /// Add lambda * max(|diag(A)|, threshold) to diagonal of A.
