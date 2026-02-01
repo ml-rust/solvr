@@ -5,16 +5,9 @@
 //!
 //! # Architecture
 //!
-//! Unlike the stats module which can use TensorOps directly for all computations,
-//! signal processing requires several operations not available as TensorOps:
-//! - Complex element-wise multiplication
-//! - Tensor reversal/flip
-//! - Arbitrary padding
-//! - Arbitrary slicing
-//!
-//! These are implemented using `tensor.to_vec()` and `Tensor::from_slice()` as
-//! a universal fallback. This means data transfers occur for these operations,
-//! but the FFT computations (the expensive part) stay on device.
+//! All signal processing operations are fully tensor-based - data stays on device
+//! with no GPU->CPU->GPU roundtrips in algorithm loops. Operations use numr's
+//! tensor ops: `narrow`, `pad`, `mul`, `add`, `cat`, `rfft`, `irfft`, etc.
 //!
 //! The key benefit: **zero code duplication** across backends. CPU, CUDA, and
 //! WebGPU all use these same implementations.

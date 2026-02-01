@@ -1,6 +1,7 @@
 //! Generic STFT/ISTFT implementations.
 //!
 //! Short-Time Fourier Transform and inverse for spectral analysis.
+//! All computation stays on device - no GPU->CPU->GPU roundtrips.
 
 #![allow(clippy::too_many_arguments)]
 
@@ -13,13 +14,14 @@ use super::padding::pad_1d_reflect_impl;
 use crate::signal::{stft_num_frames, validate_signal_dtype, validate_stft_params};
 use crate::window::WindowFunctions;
 use numr::algorithm::fft::{FftAlgorithms, FftNormalization};
-use numr::dtype::{Complex64, Complex128, DType};
 use numr::error::{Error, Result};
 use numr::ops::{ScalarOps, TensorOps};
 use numr::runtime::{Runtime, RuntimeClient};
 use numr::tensor::Tensor;
 
 /// Generic implementation of STFT.
+///
+/// All computation stays on device - no to_vec() calls in the algorithm loop.
 pub fn stft_impl<R, C>(
     client: &C,
     signal: &Tensor<R>,
@@ -31,7 +33,7 @@ pub fn stft_impl<R, C>(
 ) -> Result<Tensor<R>>
 where
     R: Runtime,
-    C: FftAlgorithms<R> + WindowFunctions<R> + TensorOps<R> + RuntimeClient<R>,
+    C: FftAlgorithms<R> + WindowFunctions<R> + TensorOps<R> + ScalarOps<R> + RuntimeClient<R>,
 {
     let dtype = signal.dtype();
     validate_signal_dtype(dtype, "stft")?;
@@ -92,153 +94,147 @@ where
     };
 
     let freq_bins = n_fft / 2 + 1;
-    let padded_len = padded_signal.shape()[padded_signal.ndim() - 1];
 
-    // Output shape: [..., n_frames, freq_bins]
-    let mut out_shape: Vec<usize> = signal_contig.shape()[..ndim - 1].to_vec();
-    out_shape.push(n_frames);
-    out_shape.push(freq_bins);
-
-    // Process using generic to_vec/from_slice pattern
-    // Note: normalization is handled inside the FFT call
-    match dtype {
-        DType::F32 => stft_process_f32(
+    // Process based on batch size
+    if batch_size == 1 {
+        stft_single(client, &padded_signal, win, n_fft, hop, n_frames, freq_bins)
+    } else {
+        stft_batched(
             client,
             &padded_signal,
             win,
-            &out_shape,
             n_fft,
             hop,
             n_frames,
             batch_size,
             freq_bins,
-            padded_len,
-        ),
-        DType::F64 => stft_process_f64(
-            client,
-            &padded_signal,
-            win,
-            &out_shape,
-            n_fft,
-            hop,
-            n_frames,
-            batch_size,
-            freq_bins,
-            padded_len,
-        ),
-        _ => Err(Error::UnsupportedDType { dtype, op: "stft" }),
+        )
     }
 }
 
-fn stft_process_f32<R, C>(
+/// STFT for a single signal (no batch dimension).
+///
+/// All operations stay on device.
+fn stft_single<R, C>(
     client: &C,
     signal: &Tensor<R>,
     window: &Tensor<R>,
-    out_shape: &[usize],
+    n_fft: usize,
+    hop: usize,
+    n_frames: usize,
+    freq_bins: usize,
+) -> Result<Tensor<R>>
+where
+    R: Runtime,
+    C: FftAlgorithms<R> + TensorOps<R> + RuntimeClient<R>,
+{
+    let signal_len = signal.shape()[0];
+
+    // Collect all frame spectra
+    let mut frame_spectra: Vec<Tensor<R>> = Vec::with_capacity(n_frames);
+
+    for f in 0..n_frames {
+        let frame_start = f * hop;
+
+        // Extract frame using narrow (stays on device)
+        // Handle case where frame might extend past signal end
+        let available = signal_len.saturating_sub(frame_start);
+        let frame_len = n_fft.min(available);
+
+        let frame = if frame_len == n_fft && frame_start + n_fft <= signal_len {
+            // Normal case: full frame available
+            signal.narrow(0, frame_start, n_fft)?.contiguous()
+        } else {
+            // Edge case: need to pad with zeros
+            // Extract what we can and pad the rest
+            if frame_len > 0 {
+                let partial = signal.narrow(0, frame_start, frame_len)?.contiguous();
+                let pad_amount = n_fft - frame_len;
+                client.pad(&partial, &[0, pad_amount], 0.0)?
+            } else {
+                // No signal left, create zeros
+                Tensor::<R>::zeros(&[n_fft], signal.dtype(), client.device())
+            }
+        };
+
+        // Apply window (stays on device)
+        let windowed = client.mul(&frame, window)?;
+
+        // RFFT to get spectrum (stays on device)
+        let spectrum = client.rfft(&windowed, FftNormalization::None)?;
+
+        // Reshape to [1, freq_bins] for stacking
+        let spectrum_2d = spectrum.reshape(&[1, freq_bins])?;
+        frame_spectra.push(spectrum_2d);
+    }
+
+    // Stack all frames along dimension 0 to get [n_frames, freq_bins]
+    let refs: Vec<&Tensor<R>> = frame_spectra.iter().collect();
+    client.cat(&refs, 0)
+}
+
+/// STFT for batched signals.
+///
+/// All operations stay on device.
+fn stft_batched<R, C>(
+    client: &C,
+    signal: &Tensor<R>,
+    window: &Tensor<R>,
     n_fft: usize,
     hop: usize,
     n_frames: usize,
     batch_size: usize,
     freq_bins: usize,
-    signal_len: usize,
 ) -> Result<Tensor<R>>
 where
     R: Runtime,
-    C: FftAlgorithms<R> + RuntimeClient<R>,
+    C: FftAlgorithms<R> + TensorOps<R> + RuntimeClient<R>,
 {
-    let signal_data: Vec<f32> = signal.to_vec();
-    let window_data: Vec<f32> = window.to_vec();
-    let mut output_data = vec![Complex64::new(0.0, 0.0); batch_size * n_frames * freq_bins];
+    // Reshape signal to [batch_size, signal_len]
+    let signal_len = signal.numel() / batch_size;
+    let signal_2d = signal.reshape(&[batch_size, signal_len])?;
 
-    for b in 0..batch_size {
-        let sig_offset = b * signal_len;
+    // Broadcast window to [1, n_fft] for batch multiplication
+    let window_2d = window.reshape(&[1, n_fft])?;
 
-        for f in 0..n_frames {
-            let frame_start = f * hop;
+    // Collect all frame spectra
+    let mut frame_spectra: Vec<Tensor<R>> = Vec::with_capacity(n_frames);
 
-            // Extract and window frame
-            let mut frame = vec![0.0f32; n_fft];
-            for i in 0..n_fft {
-                let sig_idx = frame_start + i;
-                let sig_val = if sig_idx < signal_len {
-                    signal_data[sig_offset + sig_idx]
-                } else {
-                    0.0
-                };
-                frame[i] = sig_val * window_data[i];
+    for f in 0..n_frames {
+        let frame_start = f * hop;
+
+        // Extract frame for all batches: [batch_size, n_fft]
+        let available = signal_len.saturating_sub(frame_start);
+        let frame_len = n_fft.min(available);
+
+        let frames = if frame_len == n_fft && frame_start + n_fft <= signal_len {
+            // Normal case: full frame available
+            signal_2d.narrow(1, frame_start, n_fft)?.contiguous()
+        } else {
+            // Edge case: need to pad with zeros
+            if frame_len > 0 {
+                let partial = signal_2d.narrow(1, frame_start, frame_len)?.contiguous();
+                let pad_amount = n_fft - frame_len;
+                client.pad(&partial, &[0, pad_amount], 0.0)?
+            } else {
+                Tensor::<R>::zeros(&[batch_size, n_fft], signal.dtype(), client.device())
             }
+        };
 
-            // Create tensor and compute rfft
-            let frame_tensor = Tensor::<R>::from_slice(&frame, &[n_fft], client.device());
-            let spectrum = client.rfft(&frame_tensor, FftNormalization::None)?;
-            let spec_data: Vec<Complex64> = spectrum.to_vec();
+        // Apply window (broadcasts [1, n_fft] to [batch_size, n_fft])
+        let windowed = client.mul(&frames, &window_2d)?;
 
-            // Copy to output
-            let out_offset = b * n_frames * freq_bins + f * freq_bins;
-            output_data[out_offset..out_offset + freq_bins]
-                .copy_from_slice(&spec_data[..freq_bins]);
-        }
+        // RFFT to get spectrum: [batch_size, freq_bins]
+        let spectrum = client.rfft(&windowed, FftNormalization::None)?;
+
+        // Reshape to [batch_size, 1, freq_bins] for stacking
+        let spectrum_3d = spectrum.reshape(&[batch_size, 1, freq_bins])?;
+        frame_spectra.push(spectrum_3d);
     }
 
-    Ok(Tensor::<R>::from_slice(
-        &output_data,
-        out_shape,
-        client.device(),
-    ))
-}
-
-fn stft_process_f64<R, C>(
-    client: &C,
-    signal: &Tensor<R>,
-    window: &Tensor<R>,
-    out_shape: &[usize],
-    n_fft: usize,
-    hop: usize,
-    n_frames: usize,
-    batch_size: usize,
-    freq_bins: usize,
-    signal_len: usize,
-) -> Result<Tensor<R>>
-where
-    R: Runtime,
-    C: FftAlgorithms<R> + RuntimeClient<R>,
-{
-    let signal_data: Vec<f64> = signal.to_vec();
-    let window_data: Vec<f64> = window.to_vec();
-    let mut output_data = vec![Complex128::new(0.0, 0.0); batch_size * n_frames * freq_bins];
-
-    for b in 0..batch_size {
-        let sig_offset = b * signal_len;
-
-        for f in 0..n_frames {
-            let frame_start = f * hop;
-
-            let mut frame = vec![0.0f64; n_fft];
-            for i in 0..n_fft {
-                let sig_idx = frame_start + i;
-                let sig_val = if sig_idx < signal_len {
-                    signal_data[sig_offset + sig_idx]
-                } else {
-                    0.0
-                };
-                frame[i] = sig_val * window_data[i];
-            }
-
-            let frame_tensor = Tensor::<R>::from_slice(&frame, &[n_fft], client.device());
-            let spectrum = client.rfft(&frame_tensor, FftNormalization::None)?;
-            let spec_data: Vec<Complex128> = spectrum.to_vec();
-
-            let out_offset = b * n_frames * freq_bins + f * freq_bins;
-            output_data[out_offset..out_offset + freq_bins]
-                .copy_from_slice(&spec_data[..freq_bins]);
-        }
-    }
-
-    Ok(Tensor::<R>::from_slice(
-        &output_data,
-        out_shape,
-        client.device(),
-    ))
+    // Stack all frames along dimension 1 to get [batch_size, n_frames, freq_bins]
+    let refs: Vec<&Tensor<R>> = frame_spectra.iter().collect();
+    client.cat(&refs, 1)
 }
 
 /// Generic implementation of spectrogram.

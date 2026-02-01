@@ -1,16 +1,22 @@
 //! Generic ISTFT (Inverse Short-Time Fourier Transform) implementation.
+//!
+//! This implementation keeps all data on device using tensor operations.
+//! No GPU->CPU->GPU roundtrips in the algorithm loop.
 
 #![allow(clippy::too_many_arguments)]
 
 use crate::signal::validate_stft_params;
 use crate::window::WindowFunctions;
 use numr::algorithm::fft::{FftAlgorithms, FftNormalization};
-use numr::dtype::{Complex64, Complex128, DType};
+use numr::dtype::DType;
 use numr::error::{Error, Result};
+use numr::ops::{ScalarOps, TensorOps};
 use numr::runtime::{Runtime, RuntimeClient};
 use numr::tensor::Tensor;
 
 /// Generic implementation of ISTFT.
+///
+/// All computation stays on device - no to_vec() calls in the algorithm loop.
 pub fn istft_impl<R, C>(
     client: &C,
     stft_matrix: &Tensor<R>,
@@ -22,7 +28,7 @@ pub fn istft_impl<R, C>(
 ) -> Result<Tensor<R>>
 where
     R: Runtime,
-    C: FftAlgorithms<R> + WindowFunctions<R> + RuntimeClient<R>,
+    C: FftAlgorithms<R> + WindowFunctions<R> + TensorOps<R> + ScalarOps<R> + RuntimeClient<R>,
 {
     let dtype = stft_matrix.dtype();
 
@@ -75,17 +81,14 @@ where
     };
 
     // Calculate output length
-    let expected_len = n_fft + (n_frames - 1) * hop;
+    let full_len = n_fft + (n_frames - 1) * hop;
+    let pad_left = if center { n_fft / 2 } else { 0 };
     let output_len = if center {
-        expected_len - n_fft // Remove padding
+        full_len - n_fft // Remove padding
     } else {
-        expected_len
+        full_len
     };
     let final_len = length.unwrap_or(output_len);
-
-    // Output shape: [..., final_len]
-    let mut out_shape: Vec<usize> = stft_contig.shape()[..ndim - 2].to_vec();
-    out_shape.push(final_len);
 
     let norm = if normalized {
         FftNormalization::Ortho
@@ -93,185 +96,207 @@ where
         FftNormalization::Backward
     };
 
-    match real_dtype {
-        DType::F32 => istft_process_f32(
+    // Compute window squared for normalization (stays on device)
+    let window_sq = client.mul(win, win)?;
+
+    // Process based on batch size
+    if batch_size == 1 {
+        // Single signal case - simpler code path
+        istft_single(
             client,
             &stft_contig,
             win,
-            &out_shape,
+            &window_sq,
+            real_dtype,
+            n_fft,
+            hop,
+            n_frames,
+            freq_bins,
+            full_len,
+            pad_left,
+            final_len,
+            norm,
+        )
+    } else {
+        // Batched case
+        istft_batched(
+            client,
+            &stft_contig,
+            win,
+            &window_sq,
+            real_dtype,
             n_fft,
             hop,
             n_frames,
             batch_size,
             freq_bins,
-            center,
+            full_len,
+            pad_left,
             final_len,
             norm,
-        ),
-        DType::F64 => istft_process_f64(
-            client,
-            &stft_contig,
-            win,
-            &out_shape,
-            n_fft,
-            hop,
-            n_frames,
-            batch_size,
-            freq_bins,
-            center,
-            final_len,
-            norm,
-        ),
-        _ => Err(Error::UnsupportedDType {
-            dtype: real_dtype,
-            op: "istft",
-        }),
+        )
     }
 }
 
-fn istft_process_f32<R, C>(
+/// ISTFT for a single signal (no batch dimension).
+///
+/// All operations stay on device.
+fn istft_single<R, C>(
     client: &C,
     stft_matrix: &Tensor<R>,
     window: &Tensor<R>,
-    out_shape: &[usize],
+    window_sq: &Tensor<R>,
+    real_dtype: DType,
     n_fft: usize,
     hop: usize,
     n_frames: usize,
-    batch_size: usize,
     freq_bins: usize,
-    center: bool,
+    full_len: usize,
+    pad_left: usize,
     final_len: usize,
     norm: FftNormalization,
 ) -> Result<Tensor<R>>
 where
     R: Runtime,
-    C: FftAlgorithms<R> + RuntimeClient<R>,
+    C: FftAlgorithms<R> + TensorOps<R> + ScalarOps<R> + RuntimeClient<R>,
 {
-    let stft_data: Vec<Complex64> = stft_matrix.to_vec();
-    let window_data: Vec<f32> = window.to_vec();
+    let device = client.device();
 
-    let full_len = n_fft + (n_frames - 1) * hop;
-    let pad_left = if center { n_fft / 2 } else { 0 };
+    // Initialize output and window sum tensors (on device)
+    let mut output = Tensor::<R>::zeros(&[full_len], real_dtype, device);
+    let mut window_sum = Tensor::<R>::zeros(&[full_len], real_dtype, device);
 
-    let mut output_data = vec![0.0f32; batch_size * final_len];
+    // Process each frame - all operations stay on device
+    for f in 0..n_frames {
+        // Extract frame spectrum using narrow (stays on device)
+        // stft_matrix shape: [n_frames, freq_bins]
+        // narrow returns a view; make contiguous before reshape
+        let spectrum = stft_matrix
+            .narrow(0, f, 1)?
+            .contiguous()
+            .reshape(&[freq_bins])?;
 
-    for b in 0..batch_size {
-        let stft_offset = b * n_frames * freq_bins;
-        let out_offset = b * final_len;
+        // IRFFT to get time-domain frame (stays on device)
+        let frame = client.irfft(&spectrum, Some(n_fft), norm)?;
 
-        let mut reconstruction = vec![0.0f32; full_len];
-        let mut window_sum = vec![0.0f32; full_len];
+        // Apply window (stays on device)
+        let windowed_frame = client.mul(&frame, window)?;
 
-        for f in 0..n_frames {
-            let frame_spectrum: Vec<Complex64> =
-                stft_data[stft_offset + f * freq_bins..stft_offset + (f + 1) * freq_bins].to_vec();
+        // Pad frame to full length at the correct position
+        let frame_start = f * hop;
+        let right_pad = full_len.saturating_sub(frame_start + n_fft);
 
-            let spectrum_tensor =
-                Tensor::<R>::from_slice(&frame_spectrum, &[freq_bins], client.device());
-            let frame = client.irfft(&spectrum_tensor, Some(n_fft), norm)?;
-            let frame_data: Vec<f32> = frame.to_vec();
+        // Pad: [frame_start zeros] [frame] [right_pad zeros]
+        let padded_frame = client.pad(&windowed_frame, &[frame_start, right_pad], 0.0)?;
 
-            let frame_start = f * hop;
-            for i in 0..n_fft {
-                let out_idx = frame_start + i;
-                if out_idx < full_len {
-                    let win_val = window_data[i];
-                    reconstruction[out_idx] += frame_data[i] * win_val;
-                    window_sum[out_idx] += win_val * win_val;
-                }
-            }
-        }
+        // Accumulate into output (stays on device)
+        output = client.add(&output, &padded_frame)?;
 
-        // Normalize and copy to output
-        for i in 0..final_len {
-            let src_idx = pad_left + i;
-            if src_idx < full_len {
-                let norm_factor = if window_sum[src_idx] > 1e-8 {
-                    window_sum[src_idx]
-                } else {
-                    1.0
-                };
-                output_data[out_offset + i] = reconstruction[src_idx] / norm_factor;
-            }
-        }
+        // Same for window normalization
+        let padded_window_sq = client.pad(window_sq, &[frame_start, right_pad], 0.0)?;
+        window_sum = client.add(&window_sum, &padded_window_sq)?;
     }
 
-    Ok(Tensor::<R>::from_slice(
-        &output_data,
-        out_shape,
-        client.device(),
-    ))
+    // Avoid division by zero: clamp window_sum to minimum value
+    let eps = Tensor::<R>::full_scalar(&[full_len], real_dtype, 1e-8, device);
+    let safe_window_sum = client.maximum(&window_sum, &eps)?;
+
+    // Normalize by window sum (stays on device)
+    let normalized_output = client.div(&output, &safe_window_sum)?;
+
+    // Extract the final output region
+    if pad_left == 0 && final_len == full_len {
+        Ok(normalized_output)
+    } else {
+        // Extract [pad_left : pad_left + final_len]
+        let extracted =
+            normalized_output.narrow(0, pad_left, final_len.min(full_len - pad_left))?;
+        Ok(extracted.contiguous())
+    }
 }
 
-fn istft_process_f64<R, C>(
+/// ISTFT for batched signals.
+///
+/// All operations stay on device.
+fn istft_batched<R, C>(
     client: &C,
     stft_matrix: &Tensor<R>,
     window: &Tensor<R>,
-    out_shape: &[usize],
+    window_sq: &Tensor<R>,
+    real_dtype: DType,
     n_fft: usize,
     hop: usize,
     n_frames: usize,
     batch_size: usize,
     freq_bins: usize,
-    center: bool,
+    full_len: usize,
+    pad_left: usize,
     final_len: usize,
     norm: FftNormalization,
 ) -> Result<Tensor<R>>
 where
     R: Runtime,
-    C: FftAlgorithms<R> + RuntimeClient<R>,
+    C: FftAlgorithms<R> + TensorOps<R> + ScalarOps<R> + RuntimeClient<R>,
 {
-    let stft_data: Vec<Complex128> = stft_matrix.to_vec();
-    let window_data: Vec<f64> = window.to_vec();
+    let device = client.device();
 
-    let full_len = n_fft + (n_frames - 1) * hop;
-    let pad_left = if center { n_fft / 2 } else { 0 };
+    // Initialize output and window sum tensors (on device)
+    // Shape: [batch_size, full_len]
+    let mut output = Tensor::<R>::zeros(&[batch_size, full_len], real_dtype, device);
+    let mut window_sum = Tensor::<R>::zeros(&[batch_size, full_len], real_dtype, device);
 
-    let mut output_data = vec![0.0f64; batch_size * final_len];
+    // Reshape stft to [batch_size, n_frames, freq_bins]
+    let stft_batched = stft_matrix.reshape(&[batch_size, n_frames, freq_bins])?;
 
-    for b in 0..batch_size {
-        let stft_offset = b * n_frames * freq_bins;
-        let out_offset = b * final_len;
+    // Process each frame - all operations stay on device
+    for f in 0..n_frames {
+        // Extract frame spectrum for all batches: [batch_size, freq_bins]
+        // narrow returns a view; make contiguous before reshape
+        let spectrum = stft_batched
+            .narrow(1, f, 1)?
+            .contiguous()
+            .reshape(&[batch_size, freq_bins])?;
 
-        let mut reconstruction = vec![0.0f64; full_len];
-        let mut window_sum = vec![0.0f64; full_len];
+        // IRFFT to get time-domain frames: [batch_size, n_fft]
+        let frames = client.irfft(&spectrum, Some(n_fft), norm)?;
 
-        for f in 0..n_frames {
-            let frame_spectrum: Vec<Complex128> =
-                stft_data[stft_offset + f * freq_bins..stft_offset + (f + 1) * freq_bins].to_vec();
+        // Broadcast window to batch: [1, n_fft] -> broadcasts with [batch_size, n_fft]
+        let window_broadcast = window.reshape(&[1, n_fft])?;
+        let window_sq_broadcast = window_sq.reshape(&[1, n_fft])?;
 
-            let spectrum_tensor =
-                Tensor::<R>::from_slice(&frame_spectrum, &[freq_bins], client.device());
-            let frame = client.irfft(&spectrum_tensor, Some(n_fft), norm)?;
-            let frame_data: Vec<f64> = frame.to_vec();
+        // Apply window (stays on device)
+        let windowed_frames = client.mul(&frames, &window_broadcast)?;
 
-            let frame_start = f * hop;
-            for i in 0..n_fft {
-                let out_idx = frame_start + i;
-                if out_idx < full_len {
-                    let win_val = window_data[i];
-                    reconstruction[out_idx] += frame_data[i] * win_val;
-                    window_sum[out_idx] += win_val * win_val;
-                }
-            }
-        }
+        // Pad frames to full length at the correct position
+        let frame_start = f * hop;
+        let right_pad = full_len.saturating_sub(frame_start + n_fft);
 
-        for i in 0..final_len {
-            let src_idx = pad_left + i;
-            if src_idx < full_len {
-                let norm_factor = if window_sum[src_idx] > 1e-8 {
-                    window_sum[src_idx]
-                } else {
-                    1.0
-                };
-                output_data[out_offset + i] = reconstruction[src_idx] / norm_factor;
-            }
-        }
+        // Pad along last dimension: [batch_size, full_len]
+        let padded_frames = client.pad(&windowed_frames, &[frame_start, right_pad], 0.0)?;
+
+        // Accumulate into output (stays on device)
+        output = client.add(&output, &padded_frames)?;
+
+        // Same for window normalization
+        let padded_window_sq = client.pad(&window_sq_broadcast, &[frame_start, right_pad], 0.0)?;
+        // Broadcast padded_window_sq to batch
+        window_sum = client.add(&window_sum, &padded_window_sq)?;
     }
 
-    Ok(Tensor::<R>::from_slice(
-        &output_data,
-        out_shape,
-        client.device(),
-    ))
+    // Avoid division by zero: clamp window_sum to minimum value
+    let eps = Tensor::<R>::full_scalar(&[1, full_len], real_dtype, 1e-8, device);
+    let safe_window_sum = client.maximum(&window_sum, &eps)?;
+
+    // Normalize by window sum (stays on device)
+    let normalized_output = client.div(&output, &safe_window_sum)?;
+
+    // Extract the final output region
+    if pad_left == 0 && final_len == full_len {
+        Ok(normalized_output)
+    } else {
+        // Extract [pad_left : pad_left + final_len] along last dimension
+        let extracted =
+            normalized_output.narrow(1, pad_left, final_len.min(full_len - pad_left))?;
+        Ok(extracted.contiguous())
+    }
 }
