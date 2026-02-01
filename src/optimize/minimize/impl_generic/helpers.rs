@@ -1,4 +1,4 @@
-//! Shared helper functions and types for multivariate minimization.
+//! Shared helper functions for multivariate minimization.
 
 use numr::error::Result;
 use numr::ops::{ScalarOps, TensorOps};
@@ -9,24 +9,12 @@ use crate::optimize::error::{OptimizeError, OptimizeResult};
 
 use super::utils::tensor_dot;
 
-/// Result of tensor-based minimization.
-#[derive(Debug, Clone)]
-pub struct TensorMinimizeResult<R: Runtime> {
-    /// Solution vector.
-    pub x: Tensor<R>,
-    /// Function value at solution.
-    pub fun: f64,
-    /// Number of iterations.
-    pub iterations: usize,
-    /// Number of function evaluations.
-    pub nfev: usize,
-    /// Whether the algorithm converged.
-    pub converged: bool,
-}
+// Re-export TensorMinimizeResult from traits for backwards compatibility
+pub use crate::optimize::minimize::traits::TensorMinimizeResult;
 
 /// Backtracking line search with Armijo condition using tensor operations.
 ///
-/// All operations stay on device - no GPU→CPU transfers in the loop.
+/// All operations stay on device - no GPU->CPU transfers in the loop.
 pub fn backtracking_line_search_tensor<R, C, F>(
     client: &C,
     f: &F,
@@ -81,7 +69,7 @@ where
 /// Line search for Powell's method using tensor operations.
 ///
 /// Searches along the given direction to find a point with lower function value.
-/// All operations stay on device - no GPU→CPU transfers in the loop.
+/// All operations stay on device - no GPU->CPU transfers in the loop.
 pub fn line_search_tensor<R, C, F>(
     client: &C,
     f: &F,

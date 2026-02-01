@@ -3,7 +3,9 @@ use numr::runtime::Runtime;
 use numr::tensor::Tensor;
 
 use crate::integrate::error::IntegrateResult;
-use crate::integrate::{ODEOptions, ODEResultTensor, QuadOptions, QuadResult, RombergOptions};
+use crate::integrate::{ODEOptions, ODEResultTensor};
+
+use super::{QuadOptions, QuadResult, RombergOptions};
 
 /// Trait for integration algorithms that work across all Runtime backends.
 ///

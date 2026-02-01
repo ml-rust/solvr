@@ -1,3 +1,7 @@
-mod algorithms;
+//! Trait definitions and types for integration algorithms.
 
-pub use algorithms::*;
+mod algorithms;
+mod types;
+
+pub use algorithms::IntegrationAlgorithms;
+pub use types::{QuadOptions, QuadResult, RombergOptions};

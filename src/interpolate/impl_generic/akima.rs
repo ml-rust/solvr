@@ -2,7 +2,7 @@
 //!
 //! All computation uses tensor ops - data stays on device.
 
-use crate::interpolate::error::{InterpolateError, InterpolateResult};
+use crate::interpolate::error::InterpolateResult;
 use numr::ops::{CompareOps, ScalarOps, TensorOps};
 use numr::runtime::{Runtime, RuntimeClient};
 use numr::tensor::Tensor;

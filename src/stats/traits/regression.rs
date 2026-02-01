@@ -1,6 +1,6 @@
 //! Regression analysis algorithms.
 
-use crate::stats::LinregressResult;
+use super::LinregressResult;
 use numr::error::Result;
 use numr::ops::TensorOps;
 use numr::runtime::Runtime;

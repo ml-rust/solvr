@@ -1,6 +1,6 @@
 //! Hypothesis testing algorithms.
 
-use crate::stats::TensorTestResult;
+use super::TensorTestResult;
 use numr::error::Result;
 use numr::ops::TensorOps;
 use numr::runtime::Runtime;

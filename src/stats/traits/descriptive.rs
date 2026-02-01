@@ -1,6 +1,6 @@
 //! Descriptive statistics algorithms.
 
-use crate::stats::TensorDescriptiveStats;
+use super::TensorDescriptiveStats;
 use numr::error::Result;
 use numr::ops::TensorOps;
 use numr::runtime::Runtime;

@@ -6,7 +6,3 @@
 mod descriptive;
 mod hypothesis;
 mod regression;
-
-pub use descriptive::*;
-pub use hypothesis::*;
-pub use regression::*;

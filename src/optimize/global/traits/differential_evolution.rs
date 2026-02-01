@@ -1,6 +1,6 @@
 //! Differential evolution algorithm trait.
 
-use crate::optimize::global::GlobalOptions;
+use super::GlobalOptions;
 use numr::error::Result;
 use numr::runtime::Runtime;
 use numr::tensor::Tensor;

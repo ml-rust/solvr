@@ -2,8 +2,8 @@
 //!
 //! Uses tensor operations for GPU-accelerated computation.
 
-use crate::interpolate::error::{InterpolateError, InterpolateResult};
-use numr::ops::{CompareOps, ScalarOps, TensorOps};
+use crate::interpolate::error::InterpolateResult;
+use numr::ops::{ScalarOps, TensorOps};
 use numr::runtime::{Runtime, RuntimeClient};
 use numr::tensor::Tensor;
 
