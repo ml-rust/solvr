@@ -1,7 +1,6 @@
 //! Mixed-integer linear programming via branch-and-bound.
 
-use super::simplex::{LinProgOptions, LinearConstraints, linprog};
-use super::validate_constraints;
+use super::{linprog, validate_constraints, LinearConstraints, LinProgOptions};
 use crate::optimize::error::{OptimizeError, OptimizeResult};
 
 /// Options for mixed-integer linear programming.
