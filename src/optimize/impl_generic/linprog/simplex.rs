@@ -1,7 +1,28 @@
 //! Tensor-based simplex method for linear programming.
 //!
-//! The tableau is stored as a 2D Tensor<R> and pivot operations use
-//! tensor broadcasting for efficient row elimination.
+//! # Architecture
+//!
+//! The tableau is stored as a 2D `Tensor<R>` and the critical **pivot operations**
+//! use tensor broadcasting for efficient row elimination. This is where the main
+//! computational work happens (O(n_iterations * tableau_size)).
+//!
+//! ## Tensor Operations (GPU-accelerated):
+//! - `pivot_tensor`: Uses matmul for outer product, tensor subtraction for elimination
+//! - Tableau storage: Kept on device throughout iterations
+//!
+//! ## Acceptable CPU Operations:
+//! - **Initial setup** (one-time): Tableau construction from constraint data
+//! - **Control flow** (per iteration): Extracting single row/column for pivot selection
+//!   - argmin over objective row → O(n_vars) extract
+//!   - ratio test over pivot column → O(n_constraints) extract
+//!   These are small extracts for branching decisions, not bulk computation.
+//!
+//! ## Completed Optimizations:
+//! - Pivot column selection uses `argmin` over objective row
+//! - Pivot row selection uses `where_cond` + `argmin` for ratio test
+//!
+//! ## Future Improvements:
+//! - Build initial tableau using tensor concatenation instead of scalar loops
 
 use numr::ops::{CompareOps, ScalarOps, TensorOps};
 use numr::runtime::{Runtime, RuntimeClient};
@@ -285,10 +306,10 @@ fn build_tableau_data(
     (tableau, basis)
 }
 
-/// Find pivot column using tensor operations.
+/// Find pivot column using tensor argmin.
 /// Returns index of most negative reduced cost, or None if optimal.
 fn find_pivot_column_tensor<R, C>(
-    _client: &C,
+    client: &C,
     tableau: &Tensor<R>,
     n_constraints: usize,
     n_total: usize,
@@ -298,7 +319,8 @@ where
     R: Runtime,
     C: TensorOps<R> + ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
-    // Extract objective row (last row, excluding RHS)
+    // Extract objective row (last row, excluding RHS column)
+    // First narrow row dimension, then narrow column dimension to exclude RHS
     let obj_row = tableau
         .narrow(0, n_constraints, 1)
         .map_err(|e| OptimizeError::NumericalError {
@@ -309,27 +331,43 @@ where
         .map_err(|e| OptimizeError::NumericalError {
             message: format!("pivot_column: narrow cols - {}", e),
         })?
+        .contiguous()
+        .reshape(&[n_total])
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("pivot_column: reshape - {}", e),
+        })?;
+
+    // Use tensor argmin to find the minimum - stays on device
+    let min_idx_tensor = client
+        .argmin(&obj_row, 0, false)
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("pivot_column: argmin - {}", e),
+        })?;
+
+    // Extract scalar index (single value, acceptable for control flow)
+    let min_idx_data: Vec<i64> = min_idx_tensor.to_vec();
+    let min_idx = min_idx_data[0] as usize;
+
+    // Get the minimum value to check if it's negative enough
+    let min_val_tensor = obj_row
+        .narrow(0, min_idx, 1)
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("pivot_column: get min val - {}", e),
+        })?
         .contiguous();
+    let min_val_data: Vec<f64> = min_val_tensor.to_vec();
+    let min_val = min_val_data[0];
 
-    // Transfer single row to CPU for argmin (acceptable for control flow)
-    let obj_data: Vec<f64> = obj_row.to_vec();
-
-    // Find most negative value
-    let mut min_val = -tol;
-    let mut pivot_col = None;
-    for (j, &val) in obj_data.iter().enumerate() {
-        if val < min_val {
-            min_val = val;
-            pivot_col = Some(j);
-        }
+    if min_val < -tol {
+        Ok(Some(min_idx))
+    } else {
+        Ok(None) // Optimal
     }
-
-    Ok(pivot_col)
 }
 
-/// Find pivot row using minimum ratio test.
+/// Find pivot row using minimum ratio test with tensor operations.
 fn find_pivot_row_tensor<R, C>(
-    _client: &C,
+    client: &C,
     tableau: &Tensor<R>,
     pivot_col: usize,
     n_constraints: usize,
@@ -340,7 +378,7 @@ where
     R: Runtime,
     C: TensorOps<R> + ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
-    // Extract pivot column (constraint rows only)
+    // Extract pivot column (constraint rows only) as 1D tensor
     let col = tableau
         .narrow(0, 0, n_constraints)
         .map_err(|e| OptimizeError::NumericalError {
@@ -351,9 +389,13 @@ where
         .map_err(|e| OptimizeError::NumericalError {
             message: format!("pivot_row: narrow col - {}", e),
         })?
-        .contiguous();
+        .contiguous()
+        .reshape(&[n_constraints])
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("pivot_row: reshape col - {}", e),
+        })?;
 
-    // Extract RHS column
+    // Extract RHS column as 1D tensor
     let rhs = tableau
         .narrow(0, 0, n_constraints)
         .map_err(|e| OptimizeError::NumericalError {
@@ -364,27 +406,70 @@ where
         .map_err(|e| OptimizeError::NumericalError {
             message: format!("pivot_row: narrow rhs - {}", e),
         })?
-        .contiguous();
+        .contiguous()
+        .reshape(&[n_constraints])
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("pivot_row: reshape rhs - {}", e),
+        })?;
 
-    // Transfer single column each to CPU for ratio test (acceptable for control flow)
-    let col_data: Vec<f64> = col.to_vec();
-    let rhs_data: Vec<f64> = rhs.to_vec();
+    // Create threshold tensor for comparison: col > tol
+    let tol_tensor = client
+        .fill(&[n_constraints], tol, numr::dtype::DType::F64)
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("pivot_row: create tol tensor - {}", e),
+        })?;
 
-    // Minimum ratio test
-    let mut min_ratio = f64::INFINITY;
-    let mut pivot_row = None;
+    // Create mask: col > tol (positive pivot column elements)
+    let mask = client.gt(&col, &tol_tensor).map_err(|e| OptimizeError::NumericalError {
+        message: format!("pivot_row: gt comparison - {}", e),
+    })?;
 
-    for i in 0..n_constraints {
-        if col_data[i] > tol {
-            let ratio = rhs_data[i] / col_data[i];
-            if ratio < min_ratio {
-                min_ratio = ratio;
-                pivot_row = Some(i);
-            }
+    // Compute ratios: rhs / col (will have invalid values where col <= tol)
+    let ratios = client.div(&rhs, &col).map_err(|e| OptimizeError::NumericalError {
+        message: format!("pivot_row: compute ratios - {}", e),
+    })?;
+
+    // Create infinity tensor for invalid ratios
+    let infinity = client
+        .fill(&[n_constraints], f64::INFINITY, numr::dtype::DType::F64)
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("pivot_row: create infinity tensor - {}", e),
+        })?;
+
+    // Apply where_cond: valid_ratios = where(col > tol, ratio, infinity)
+    let valid_ratios =
+        client
+            .where_cond(&mask, &ratios, &infinity)
+            .map_err(|e| OptimizeError::NumericalError {
+                message: format!("pivot_row: where_cond - {}", e),
+            })?;
+
+    // Find argmin of valid_ratios
+    let min_idx_tensor = client.argmin(&valid_ratios, 0, false).map_err(|e| {
+        OptimizeError::NumericalError {
+            message: format!("pivot_row: argmin - {}", e),
         }
-    }
+    })?;
 
-    Ok(pivot_row)
+    // Extract scalar index for control flow
+    let min_idx_data: Vec<i64> = min_idx_tensor.to_vec();
+    let min_idx = min_idx_data[0] as usize;
+
+    // Check if the minimum ratio is finite (if all inf, problem is unbounded)
+    let min_val_tensor = valid_ratios
+        .narrow(0, min_idx, 1)
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("pivot_row: get min val - {}", e),
+        })?
+        .contiguous();
+    let min_val_data: Vec<f64> = min_val_tensor.to_vec();
+    let min_val = min_val_data[0];
+
+    if min_val.is_finite() {
+        Ok(Some(min_idx))
+    } else {
+        Ok(None) // All ratios are infinite - problem is unbounded
+    }
 }
 
 /// Perform pivot operation using tensor broadcasting.
