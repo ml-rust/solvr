@@ -14,16 +14,29 @@
 //!
 //! ```text
 //! signal/
-//! ├── mod.rs          # Trait definition + validation (exports only)
-//! ├── impl_generic/   # Generic implementations (written once)
+//! ├── mod.rs                # Exports + validation helpers
+//! ├── traits/               # Algorithm trait definitions
+//! │   ├── convolution.rs
+//! │   ├── stft.rs
+//! │   └── spectrogram.rs
+//! ├── impl_generic/         # Generic implementations (written once)
 //! │   ├── convolution.rs
 //! │   ├── stft.rs
 //! │   ├── helpers.rs
 //! │   ├── padding.rs
 //! │   └── slice.rs
-//! ├── cpu.rs          # CPU impl (pure delegation)
-//! ├── cuda.rs         # CUDA impl (pure delegation)
-//! └── wgpu.rs         # WebGPU impl (pure delegation)
+//! ├── cpu/                  # CPU trait impl (pure delegation)
+//! │   ├── convolution.rs
+//! │   ├── stft.rs
+//! │   └── spectrogram.rs
+//! ├── cuda/                 # CUDA trait impl (pure delegation)
+//! │   ├── convolution.rs
+//! │   ├── stft.rs
+//! │   └── spectrogram.rs
+//! └── wgpu/                 # WebGPU trait impl (pure delegation)
+//!     ├── convolution.rs
+//!     ├── stft.rs
+//!     └── spectrogram.rs
 //! ```
 //!
 //! # Backend Support
@@ -54,7 +67,8 @@
 //! ```
 
 mod cpu;
-mod impl_generic;
+pub mod impl_generic;
+pub mod traits;
 
 #[cfg(feature = "cuda")]
 mod cuda;
@@ -62,199 +76,11 @@ mod cuda;
 #[cfg(feature = "wgpu")]
 mod wgpu;
 
-use numr::algorithm::fft::FftAlgorithms;
 use numr::dtype::DType;
 use numr::error::{Error, Result};
-use numr::runtime::Runtime;
-use numr::tensor::Tensor;
 
-// ============================================================================
-// Convolution Mode
-// ============================================================================
-
-/// Convolution output mode.
-///
-/// Determines the size and alignment of the convolution output.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum ConvMode {
-    /// Full convolution output.
-    ///
-    /// Output length = N + M - 1, where N = signal length, M = kernel length.
-    /// Contains all points where the kernel and signal overlap.
-    #[default]
-    Full,
-
-    /// Same-size output.
-    ///
-    /// Output length = max(N, M).
-    /// Output is centered relative to the 'full' output.
-    /// Matches scipy.signal.convolve behavior.
-    Same,
-
-    /// Valid convolution output.
-    ///
-    /// Output length = max(N, M) - min(N, M) + 1.
-    /// Contains only points where the kernel fits entirely within the signal.
-    Valid,
-}
-
-impl ConvMode {
-    /// Calculate output length for 1D convolution.
-    pub fn output_len(&self, signal_len: usize, kernel_len: usize) -> usize {
-        match self {
-            ConvMode::Full => signal_len + kernel_len - 1,
-            ConvMode::Same => signal_len.max(kernel_len),
-            ConvMode::Valid => {
-                let min_len = signal_len.min(kernel_len);
-                let max_len = signal_len.max(kernel_len);
-                if min_len == 0 {
-                    0
-                } else {
-                    max_len - min_len + 1
-                }
-            }
-        }
-    }
-
-    /// Calculate start offset for slicing full convolution result.
-    pub fn slice_start(&self, signal_len: usize, kernel_len: usize) -> usize {
-        match self {
-            ConvMode::Full => 0,
-            ConvMode::Same => {
-                let full_len = signal_len + kernel_len - 1;
-                let out_len = signal_len.max(kernel_len);
-                (full_len - out_len) / 2
-            }
-            ConvMode::Valid => kernel_len - 1,
-        }
-    }
-
-    /// Calculate 2D output shape.
-    pub fn output_shape_2d(
-        &self,
-        signal_shape: (usize, usize),
-        kernel_shape: (usize, usize),
-    ) -> (usize, usize) {
-        (
-            self.output_len(signal_shape.0, kernel_shape.0),
-            self.output_len(signal_shape.1, kernel_shape.1),
-        )
-    }
-}
-
-// ============================================================================
-// Signal Processing Trait
-// ============================================================================
-
-/// Algorithmic contract for signal processing operations.
-///
-/// All backends implementing signal processing MUST implement this trait using
-/// the EXACT SAME ALGORITHMS to ensure numerical parity.
-pub trait SignalProcessingAlgorithms<R: Runtime>: FftAlgorithms<R> {
-    /// 1D convolution using FFT.
-    ///
-    /// # Arguments
-    ///
-    /// * `signal` - Input signal tensor of shape [..., N]
-    /// * `kernel` - Convolution kernel tensor of shape [M] (1D only)
-    /// * `mode` - Output mode (Full, Same, Valid)
-    ///
-    /// # Returns
-    ///
-    /// Convolved signal with shape [..., output_len] where output_len depends on mode.
-    fn convolve(&self, signal: &Tensor<R>, kernel: &Tensor<R>, mode: ConvMode)
-    -> Result<Tensor<R>>;
-
-    /// 2D convolution using FFT.
-    ///
-    /// # Arguments
-    ///
-    /// * `signal` - Input signal tensor of shape [..., H, W]
-    /// * `kernel` - Convolution kernel tensor of shape [Kh, Kw] (2D only)
-    /// * `mode` - Output mode (Full, Same, Valid)
-    fn convolve2d(
-        &self,
-        signal: &Tensor<R>,
-        kernel: &Tensor<R>,
-        mode: ConvMode,
-    ) -> Result<Tensor<R>>;
-
-    /// 1D cross-correlation.
-    ///
-    /// Cross-correlation is related to convolution by:
-    /// `correlate(x, y) = convolve(x, reverse(y))`
-    fn correlate(
-        &self,
-        signal: &Tensor<R>,
-        kernel: &Tensor<R>,
-        mode: ConvMode,
-    ) -> Result<Tensor<R>>;
-
-    /// 2D cross-correlation.
-    fn correlate2d(
-        &self,
-        signal: &Tensor<R>,
-        kernel: &Tensor<R>,
-        mode: ConvMode,
-    ) -> Result<Tensor<R>>;
-
-    /// Short-Time Fourier Transform.
-    ///
-    /// # Arguments
-    ///
-    /// * `signal` - Input signal tensor of shape [..., time]
-    /// * `n_fft` - FFT size (must be power of 2)
-    /// * `hop_length` - Number of samples between frames (default: n_fft / 4)
-    /// * `window` - Window function tensor of shape [n_fft] (default: Hann window)
-    /// * `center` - If true, pad signal so frame is centered at sample
-    /// * `normalized` - If true, normalize by 1/sqrt(n_fft)
-    ///
-    /// # Returns
-    ///
-    /// Complex tensor of shape [..., n_frames, n_fft/2 + 1]
-    fn stft(
-        &self,
-        signal: &Tensor<R>,
-        n_fft: usize,
-        hop_length: Option<usize>,
-        window: Option<&Tensor<R>>,
-        center: bool,
-        normalized: bool,
-    ) -> Result<Tensor<R>>;
-
-    /// Inverse Short-Time Fourier Transform.
-    ///
-    /// Reconstructs the time-domain signal from STFT output using overlap-add.
-    fn istft(
-        &self,
-        stft_matrix: &Tensor<R>,
-        hop_length: Option<usize>,
-        window: Option<&Tensor<R>>,
-        center: bool,
-        length: Option<usize>,
-        normalized: bool,
-    ) -> Result<Tensor<R>>;
-
-    /// Compute power spectrogram from signal.
-    ///
-    /// A spectrogram is the magnitude of the STFT raised to a power.
-    ///
-    /// # Arguments
-    ///
-    /// * `signal` - Input signal tensor
-    /// * `n_fft` - FFT size
-    /// * `hop_length` - Hop between frames
-    /// * `window` - Window function
-    /// * `power` - Exponent for magnitude (2.0 for power, 1.0 for amplitude)
-    fn spectrogram(
-        &self,
-        signal: &Tensor<R>,
-        n_fft: usize,
-        hop_length: Option<usize>,
-        window: Option<&Tensor<R>>,
-        power: f64,
-    ) -> Result<Tensor<R>>;
-}
+pub use traits::convolution::ConvMode;
+pub use traits::{ConvolutionAlgorithms, SpectrogramAlgorithms, StftAlgorithms};
 
 // ============================================================================
 // Validation Helpers
@@ -335,23 +161,6 @@ pub fn stft_num_frames(signal_len: usize, n_fft: usize, hop_length: usize, cente
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_conv_mode_output_len() {
-        assert_eq!(ConvMode::Full.output_len(10, 3), 12);
-        assert_eq!(ConvMode::Same.output_len(10, 3), 10);
-        assert_eq!(ConvMode::Valid.output_len(10, 3), 8);
-
-        // kernel longer than signal
-        assert_eq!(ConvMode::Same.output_len(3, 10), 10);
-    }
-
-    #[test]
-    fn test_conv_mode_slice_start() {
-        assert_eq!(ConvMode::Full.slice_start(10, 3), 0);
-        assert_eq!(ConvMode::Same.slice_start(10, 3), 1);
-        assert_eq!(ConvMode::Valid.slice_start(10, 3), 2);
-    }
 
     #[test]
     fn test_stft_num_frames() {

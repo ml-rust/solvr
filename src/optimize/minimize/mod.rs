@@ -1,7 +1,20 @@
-//! Multivariate unconstrained minimization options.
+//! Multivariate unconstrained minimization.
 //!
-//! This module provides configuration types for minimization algorithms.
-//! The actual implementations are in `impl_generic/` and use tensor operations.
+//! This module provides algorithms and configuration types for minimization.
+
+mod cpu;
+#[cfg(feature = "cuda")]
+mod cuda;
+pub mod impl_generic;
+#[cfg(feature = "wgpu")]
+mod wgpu;
+
+pub use cpu::*;
+#[cfg(feature = "cuda")]
+pub use cuda::*;
+pub use impl_generic::TensorMinimizeResult;
+#[cfg(feature = "wgpu")]
+pub use wgpu::*;
 
 /// Options for multivariate minimization.
 #[derive(Debug, Clone)]

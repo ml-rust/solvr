@@ -35,9 +35,6 @@
 //! let result = client.bfgs(|x| Ok(x.to_vec().iter().map(|xi| xi * xi).sum()), &x0, &opts)?;
 //! ```
 
-mod cpu;
-#[cfg(feature = "cuda")]
-mod cuda;
 pub mod error;
 pub mod global;
 pub mod impl_generic;
@@ -46,8 +43,6 @@ pub mod linprog;
 pub mod minimize;
 pub mod roots;
 pub mod scalar;
-#[cfg(feature = "wgpu")]
-mod wgpu;
 
 use numr::error::Result;
 use numr::runtime::Runtime;
@@ -59,8 +54,7 @@ use scalar::{MinimizeResult, RootResult, ScalarOptions};
 pub use error::{OptimizeError, OptimizeResult};
 
 // Re-export result types and options
-pub use impl_generic::TensorMinimizeResult;
-pub use minimize::MinimizeOptions;
+pub use minimize::{MinimizeOptions, TensorMinimizeResult};
 
 // Re-export scalar optimization (1D) - these are inherently scalar, not tensor
 pub use scalar::{

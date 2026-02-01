@@ -1,73 +1,67 @@
 //! Interpolation methods for solvr
 //!
-//! This module provides interpolation algorithms that work across all numr backends
+//! This module provides trait-based interpolation algorithms that work across all numr backends
 //! (CPU, CUDA, WebGPU). All methods use numr's `RuntimeClient` trait for backend-agnostic
 //! implementation.
 //!
 //! # Module Organization
 //!
+//! - `traits/` - Algorithm trait definitions (one file per algorithm)
+//! - `impl_generic/` - Generic algorithm implementations (one file per algorithm)
+//! - `cpu/`, `cuda/`, `wgpu/` - Backend trait implementations (one file per algorithm)
+//! - `error.rs` - Error types
+//! - `hermite_core.rs` - Shared Hermite interpolation utilities
+//!
+//! # Algorithms
+//!
 //! ## 1D Interpolation
 //!
-//! - [`Interp1d`] - 1D interpolation (linear, nearest, cubic)
-//! - [`CubicSpline`] - Cubic spline interpolation with various boundary conditions
-//! - [`PchipInterpolator`] - Monotonicity-preserving PCHIP interpolation
-//! - [`Akima1DInterpolator`] - Outlier-robust Akima spline interpolation
+//! - `Interp1dAlgorithms` - 1D interpolation (linear, nearest, cubic)
+//! - `CubicSplineAlgorithms` - Cubic spline interpolation with boundary conditions
+//! - `PchipAlgorithms` - Monotonicity-preserving PCHIP interpolation
+//! - `AkimaAlgorithms` - Outlier-robust Akima spline interpolation
 //!
 //! ## N-D Interpolation
 //!
-//! - [`RegularGridInterpolator`] - N-dimensional interpolation on rectilinear grids
+//! - `InterpNdAlgorithms` - N-dimensional interpolation on rectilinear grids
 //!
-//! # Choosing an Interpolator
+//! # Using the Traits
 //!
-//! ## 1D Interpolators
-//!
-//! | Interpolator         | Continuity | Monotonicity | Outlier Robust | Best For                  |
-//! |----------------------|------------|--------------|----------------|---------------------------|
-//! | `Interp1d::Linear`   | C0         | Preserved    | Yes            | Simple interpolation      |
-//! | `Interp1d::Cubic`    | C1         | No           | No             | Smooth curves             |
-//! | `CubicSpline`        | C2         | No           | No             | Very smooth curves        |
-//! | `PchipInterpolator`  | C1         | Preserved    | Moderate       | Monotonic data            |
-//! | `Akima1DInterpolator`| C1         | No           | Yes            | Data with outliers        |
-//!
-//! ## N-D Interpolators
-//!
-//! | Interpolator              | Method    | Grid Type    | Best For                      |
-//! |---------------------------|-----------|--------------|-------------------------------|
-//! | `RegularGridInterpolator` | Nearest   | Rectilinear  | Fast lookup, categorical data |
-//! | `RegularGridInterpolator` | Linear    | Rectilinear  | Smooth N-D surfaces           |
-//!
-//! # Example
+//! Import the trait and call its methods on your client:
 //!
 //! ```ignore
-//! use solvr::interpolate::{Interp1d, InterpMethod};
+//! use solvr::interpolate::traits::{Interp1dAlgorithms, InterpMethod};
 //! use numr::runtime::cpu::{CpuClient, CpuDevice};
 //!
 //! let device = CpuDevice::new();
 //! let client = CpuClient::new(device.clone());
 //!
-//! // Known data points
 //! let x = Tensor::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], &device);
 //! let y = Tensor::from_slice(&[0.0, 1.0, 4.0, 9.0], &[4], &device);
-//!
-//! // Create interpolator
-//! let interp = Interp1d::new(&client, &x, &y, InterpMethod::Linear)?;
-//!
-//! // Evaluate at new points
 //! let x_new = Tensor::from_slice(&[0.5, 1.5, 2.5], &[3], &device);
-//! let y_new = interp.evaluate(&client, &x_new)?;
+//!
+//! let y_new = client.interp1d(&x, &y, &x_new, InterpMethod::Linear)?;
 //! ```
 
-mod akima;
-mod cubic_spline;
 mod error;
 mod hermite_core;
-mod interp1d;
-mod interpnd;
-mod pchip;
 
-pub use akima::Akima1DInterpolator;
-pub use cubic_spline::{CubicSpline, SplineBoundary};
+// Backend modules
+mod cpu;
+#[cfg(feature = "cuda")]
+mod cuda;
+#[cfg(feature = "wgpu")]
+mod wgpu;
+
+// Public modules for internal access
+pub mod impl_generic;
+pub mod traits;
+
+// Public API: traits and types
 pub use error::{InterpolateError, InterpolateResult};
-pub use interp1d::{Interp1d, InterpMethod};
-pub use interpnd::{ExtrapolateMode, InterpNdMethod, RegularGridInterpolator};
-pub use pchip::PchipInterpolator;
+pub use traits::cubic_spline::SplineBoundary;
+pub use traits::interp1d::InterpMethod;
+pub use traits::interpnd::{ExtrapolateMode, InterpNdMethod};
+pub use traits::{
+    AkimaAlgorithms, CubicSplineAlgorithms, Interp1dAlgorithms, InterpNdAlgorithms, PchipAlgorithms,
+};

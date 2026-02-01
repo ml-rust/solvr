@@ -73,7 +73,7 @@
 //! # Example
 //!
 //! ```ignore
-//! use solvr::signal::{SignalProcessingAlgorithms, ConvMode};
+//! use solvr::signal::{ConvolutionAlgorithms, ConvMode};
 //! use solvr::window::WindowFunctions;
 //! use numr::runtime::cpu::{CpuClient, CpuDevice};
 //! use numr::runtime::RuntimeClient;
@@ -104,11 +104,11 @@ pub use integrate::{
     QuadOptions, QuadResult, RombergOptions, solve_ivp_impl,
 };
 pub use interpolate::{
-    Akima1DInterpolator, CubicSpline, ExtrapolateMode, Interp1d, InterpMethod, InterpNdMethod,
-    PchipInterpolator, RegularGridInterpolator, SplineBoundary,
+    AkimaAlgorithms, CubicSplineAlgorithms, ExtrapolateMode, Interp1dAlgorithms, InterpMethod,
+    InterpNdAlgorithms, InterpNdMethod, PchipAlgorithms, SplineBoundary,
 };
 pub use optimize::{OptimizeError, OptimizeResult, scalar::*};
-pub use signal::{ConvMode, SignalProcessingAlgorithms};
+pub use signal::{ConvMode, ConvolutionAlgorithms, SpectrogramAlgorithms, StftAlgorithms};
 pub use stats::{
     // Continuous distributions
     Beta,
@@ -118,6 +118,8 @@ pub use stats::{
     ChiSquared,
     // Distribution traits
     ContinuousDistribution,
+    // Runtime-generic traits for statistics operations (split into focused traits)
+    DescriptiveStatisticsAlgorithms,
     DiscreteDistribution,
     DiscreteUniform,
     Distribution,
@@ -128,6 +130,7 @@ pub use stats::{
     Gumbel,
     GumbelMin,
     Hypergeometric,
+    HypothesisTestingAlgorithms,
     Laplace,
     LinregressResult,
     LogNormal,
@@ -135,8 +138,7 @@ pub use stats::{
     Normal,
     Pareto,
     Poisson,
-    // Runtime-generic trait for statistics operations
-    StatisticsAlgorithms,
+    RegressionAlgorithms,
     // Errors
     StatsError,
     StatsResult,
