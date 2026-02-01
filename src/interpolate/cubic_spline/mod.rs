@@ -42,25 +42,22 @@ pub enum SplineBoundary {
 /// let y_new = spline.evaluate(&client, &x_new)?;
 /// ```
 pub struct CubicSpline<R: Runtime> {
-    /// X coordinates (knots). Kept for potential future GPU operations.
-    #[allow(dead_code)]
-    x: Tensor<R>,
-    /// Polynomial coefficients a_i (= y_i).
-    pub(crate) a: Vec<f64>,
-    /// Polynomial coefficients b_i.
-    pub(crate) b: Vec<f64>,
-    /// Polynomial coefficients c_i.
-    pub(crate) c: Vec<f64>,
-    /// Polynomial coefficients d_i.
-    pub(crate) d: Vec<f64>,
+    /// X coordinates (knots).
+    pub(crate) x: Tensor<R>,
+    /// Polynomial coefficients a_i (= y_i) as tensor.
+    pub(crate) a: Tensor<R>,
+    /// Polynomial coefficients b_i as tensor.
+    pub(crate) b: Tensor<R>,
+    /// Polynomial coefficients c_i as tensor (length n).
+    pub(crate) c: Tensor<R>,
+    /// Polynomial coefficients d_i as tensor.
+    pub(crate) d: Tensor<R>,
     /// Number of data points.
     pub(crate) n: usize,
     /// Minimum x value.
     pub(crate) x_min: f64,
     /// Maximum x value.
     pub(crate) x_max: f64,
-    /// Cached x data for evaluation.
-    pub(crate) x_data: Vec<f64>,
 }
 
 impl<R: Runtime> CubicSpline<R> {
@@ -80,7 +77,7 @@ impl<R: Runtime> CubicSpline<R> {
     /// - x has fewer than 2 points
     /// - x values are not strictly increasing
     pub fn new<C: RuntimeClient<R>>(
-        _client: &C,
+        client: &C,
         x: &Tensor<R>,
         y: &Tensor<R>,
         boundary: SplineBoundary,
@@ -113,9 +110,9 @@ impl<R: Runtime> CubicSpline<R> {
             });
         }
 
-        // Get data as vectors
-        let x_data: Vec<f64> = x.to_vec();
-        let y_data: Vec<f64> = y.to_vec();
+        // Get data as vectors for coefficient computation (construction time)
+        let x_data: Vec<f64> = x.contiguous().to_vec();
+        let y_data: Vec<f64> = y.contiguous().to_vec();
 
         // Check strictly increasing
         for i in 1..n {
@@ -129,8 +126,16 @@ impl<R: Runtime> CubicSpline<R> {
         let x_min = x_data[0];
         let x_max = x_data[n - 1];
 
-        // Compute spline coefficients
-        let (a, b, c, d) = coefficients::compute_coefficients(&x_data, &y_data, &boundary)?;
+        // Compute spline coefficients (tridiagonal solver - inherently sequential)
+        let (a_vec, b_vec, c_vec, d_vec) =
+            coefficients::compute_coefficients(&x_data, &y_data, &boundary)?;
+
+        // Store coefficients as tensors for GPU evaluation
+        let device = client.device();
+        let a = Tensor::from_slice(&a_vec, &[n], device);
+        let b = Tensor::from_slice(&b_vec, &[n - 1], device);
+        let c = Tensor::from_slice(&c_vec, &[n], device);
+        let d = Tensor::from_slice(&d_vec, &[n - 1], device);
 
         Ok(Self {
             x: x.clone(),
@@ -141,7 +146,6 @@ impl<R: Runtime> CubicSpline<R> {
             n,
             x_min,
             x_max,
-            x_data,
         })
     }
 

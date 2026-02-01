@@ -52,10 +52,10 @@ pub enum ExtrapolateMode {
 /// you provide n coordinate arrays where the i-th array has length di, and a values
 /// tensor with shape [d0, d1, ..., dn-1].
 pub struct RegularGridInterpolator<R: Runtime> {
-    /// Coordinate arrays for each dimension.
-    pub(crate) points: Vec<Vec<f64>>,
-    /// Grid values (N-dimensional).
-    pub(crate) values: Vec<f64>,
+    /// Coordinate arrays for each dimension as tensors.
+    pub(crate) points: Vec<Tensor<R>>,
+    /// Grid values as N-dimensional tensor.
+    pub(crate) values: Tensor<R>,
     /// Shape of the values array.
     pub(crate) shape: Vec<usize>,
     /// Number of dimensions.
@@ -64,8 +64,6 @@ pub struct RegularGridInterpolator<R: Runtime> {
     pub(crate) method: InterpNdMethod,
     /// How to handle out-of-bounds queries.
     pub(crate) extrapolate: ExtrapolateMode,
-    /// Device for output tensors.
-    pub(crate) device: R::Device,
 }
 
 impl<R: Runtime> RegularGridInterpolator<R> {
@@ -118,7 +116,7 @@ impl<R: Runtime> RegularGridInterpolator<R> {
             });
         }
 
-        let mut point_vecs = Vec::with_capacity(ndim);
+        let mut point_tensors = Vec::with_capacity(ndim);
         let mut shape = Vec::with_capacity(ndim);
 
         for (dim, &pts) in points.iter().enumerate() {
@@ -150,9 +148,8 @@ impl<R: Runtime> RegularGridInterpolator<R> {
                 });
             }
 
-            let pts_data: Vec<f64> = pts.to_vec();
-
-            // Check strictly increasing
+            // Validate monotonicity (construction-time check)
+            let pts_data: Vec<f64> = pts.contiguous().to_vec();
             for i in 1..n {
                 if pts_data[i] <= pts_data[i - 1] {
                     return Err(InterpolateError::NotMonotonic {
@@ -162,20 +159,16 @@ impl<R: Runtime> RegularGridInterpolator<R> {
             }
 
             shape.push(n);
-            point_vecs.push(pts_data);
+            point_tensors.push(pts.clone());
         }
 
-        let values_data: Vec<f64> = values.to_vec();
-        let device = values.device().clone();
-
         Ok(Self {
-            points: point_vecs,
-            values: values_data,
+            points: point_tensors,
+            values: values.clone(),
             shape,
             n_dims: ndim,
             method,
             extrapolate,
-            device,
         })
     }
 
@@ -193,7 +186,10 @@ impl<R: Runtime> RegularGridInterpolator<R> {
     pub fn bounds(&self) -> Vec<(f64, f64)> {
         self.points
             .iter()
-            .map(|pts| (pts[0], pts[pts.len() - 1]))
+            .map(|pts| {
+                let pts_data: Vec<f64> = pts.contiguous().to_vec();
+                (pts_data[0], pts_data[pts_data.len() - 1])
+            })
             .collect()
     }
 
