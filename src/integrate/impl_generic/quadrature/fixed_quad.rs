@@ -132,7 +132,13 @@ mod tests {
         // Exact: 1.0
         let result = fixed_quad_impl(
             &client,
-            |x| Ok(Tensor::from_slice(&vec![1.0; x.numel()], x.shape(), x.device())),
+            |x| {
+                Ok(Tensor::from_slice(
+                    &vec![1.0; x.numel()],
+                    x.shape(),
+                    x.device(),
+                ))
+            },
             0.0,
             1.0,
             5,

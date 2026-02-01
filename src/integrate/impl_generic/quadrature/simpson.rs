@@ -47,12 +47,7 @@ where
 }
 
 /// Simpson's rule with constant spacing using tensor operations.
-fn simpson_constant_spacing<R, C>(
-    client: &C,
-    y: &Tensor<R>,
-    dx: f64,
-    n: usize,
-) -> Result<Tensor<R>>
+fn simpson_constant_spacing<R, C>(client: &C, y: &Tensor<R>, dx: f64, n: usize) -> Result<Tensor<R>>
 where
     R: Runtime,
     C: TensorOps<R> + ScalarOps<R> + RuntimeClient<R>,

@@ -169,12 +169,8 @@ where
         let x_shape = x_tensor.shape();
         let x_last_dim = x_shape.len() - 1;
 
-        let x_left = x_tensor
-            .narrow(x_last_dim as isize, 0, n - 1)?
-            .contiguous();
-        let x_right = x_tensor
-            .narrow(x_last_dim as isize, 1, n - 1)?
-            .contiguous();
+        let x_left = x_tensor.narrow(x_last_dim as isize, 0, n - 1)?.contiguous();
+        let x_right = x_tensor.narrow(x_last_dim as isize, 1, n - 1)?.contiguous();
         let dx_tensor = client.sub(&x_right, &x_left)?;
 
         let scaled_y = client.mul_scalar(&y_sum, 0.5)?;
