@@ -5,6 +5,7 @@ use numr::runtime::Runtime;
 use numr::tensor::Tensor;
 
 use crate::optimize::error::OptimizeResult;
+use crate::optimize::minimize::impl_generic::LbfgsOptions;
 use crate::optimize::minimize::{MinimizeOptions, TensorMinimizeResult};
 use crate::optimize::scalar::{MinimizeResult, RootResult, ScalarOptions};
 
@@ -81,11 +82,26 @@ pub trait OptimizationAlgorithms<R: Runtime> {
     /// BFGS quasi-Newton method for multivariate minimization.
     ///
     /// Uses tensor-based computation for GPU acceleration.
+    /// Memory: O(n²) for storing inverse Hessian approximation.
     fn bfgs<F>(
         &self,
         f: F,
         x0: &Tensor<R>,
         options: &MinimizeOptions,
+    ) -> OptimizeResult<TensorMinimizeResult<R>>
+    where
+        F: Fn(&Tensor<R>) -> Result<f64>;
+
+    /// L-BFGS (Limited-memory BFGS) for large-scale minimization.
+    ///
+    /// Memory-efficient variant of BFGS using O(mn) memory instead of O(n²).
+    /// Stores m recent correction pairs instead of full inverse Hessian.
+    /// Ideal for problems with thousands to millions of parameters.
+    fn lbfgs<F>(
+        &self,
+        f: F,
+        x0: &Tensor<R>,
+        options: &LbfgsOptions,
     ) -> OptimizeResult<TensorMinimizeResult<R>>
     where
         F: Fn(&Tensor<R>) -> Result<f64>;

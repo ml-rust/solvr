@@ -5,6 +5,7 @@
 pub mod bfgs;
 pub mod conjugate_gradient;
 pub mod helpers;
+pub mod lbfgs;
 pub mod nelder_mead;
 pub mod powell;
 pub mod utils;
@@ -13,5 +14,6 @@ pub mod utils;
 pub use bfgs::bfgs_impl;
 pub use conjugate_gradient::conjugate_gradient_impl;
 pub use helpers::TensorMinimizeResult;
+pub use lbfgs::{LbfgsOptions, lbfgs_impl};
 pub use nelder_mead::nelder_mead_impl;
 pub use powell::powell_impl;

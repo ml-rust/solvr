@@ -8,7 +8,8 @@ use crate::optimize::error::OptimizeResult;
 use crate::optimize::minimize::MinimizeOptions;
 
 use super::impl_generic::{
-    TensorMinimizeResult, bfgs_impl, conjugate_gradient_impl, nelder_mead_impl, powell_impl,
+    LbfgsOptions, TensorMinimizeResult, bfgs_impl, conjugate_gradient_impl, lbfgs_impl,
+    nelder_mead_impl, powell_impl,
 };
 use crate::optimize::impl_generic::scalar::{
     bisect_impl, brentq_impl, minimize_scalar_brent_impl, newton_impl,
@@ -68,6 +69,18 @@ impl crate::optimize::OptimizationAlgorithms<CudaRuntime> for CudaClient {
         F: Fn(&Tensor<CudaRuntime>) -> Result<f64>,
     {
         bfgs_impl(self, f, x0, options)
+    }
+
+    fn lbfgs<F>(
+        &self,
+        f: F,
+        x0: &Tensor<CudaRuntime>,
+        options: &LbfgsOptions,
+    ) -> OptimizeResult<TensorMinimizeResult<CudaRuntime>>
+    where
+        F: Fn(&Tensor<CudaRuntime>) -> Result<f64>,
+    {
+        lbfgs_impl(self, f, x0, options)
     }
 
     fn nelder_mead<F>(

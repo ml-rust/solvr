@@ -52,7 +52,7 @@ pub use error::{OptimizeError, OptimizeResult};
 pub use traits::OptimizationAlgorithms;
 
 // Re-export result types and options
-pub use minimize::{MinimizeOptions, TensorMinimizeResult};
+pub use minimize::{LbfgsOptions, MinimizeOptions, TensorMinimizeResult};
 
 // Re-export scalar optimization (1D) - these are inherently scalar, not tensor
 pub use scalar::{

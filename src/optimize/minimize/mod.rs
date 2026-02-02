@@ -10,4 +10,5 @@ mod traits;
 #[cfg(feature = "wgpu")]
 mod wgpu;
 
+pub use impl_generic::LbfgsOptions;
 pub use traits::{MinimizeOptions, TensorMinimizeResult};

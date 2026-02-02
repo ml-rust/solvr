@@ -8,7 +8,8 @@ use crate::optimize::error::OptimizeResult;
 use crate::optimize::minimize::MinimizeOptions;
 
 use super::impl_generic::{
-    TensorMinimizeResult, bfgs_impl, conjugate_gradient_impl, nelder_mead_impl, powell_impl,
+    LbfgsOptions, TensorMinimizeResult, bfgs_impl, conjugate_gradient_impl, lbfgs_impl,
+    nelder_mead_impl, powell_impl,
 };
 use crate::optimize::impl_generic::scalar::{
     bisect_impl, brentq_impl, minimize_scalar_brent_impl, newton_impl,
@@ -68,6 +69,18 @@ impl crate::optimize::OptimizationAlgorithms<CpuRuntime> for CpuClient {
         F: Fn(&Tensor<CpuRuntime>) -> Result<f64>,
     {
         bfgs_impl(self, f, x0, options)
+    }
+
+    fn lbfgs<F>(
+        &self,
+        f: F,
+        x0: &Tensor<CpuRuntime>,
+        options: &LbfgsOptions,
+    ) -> OptimizeResult<TensorMinimizeResult<CpuRuntime>>
+    where
+        F: Fn(&Tensor<CpuRuntime>) -> Result<f64>,
+    {
+        lbfgs_impl(self, f, x0, options)
     }
 
     fn nelder_mead<F>(
@@ -137,6 +150,66 @@ mod tests {
 
         assert!(result.converged);
         assert!(result.fun < 1e-6);
+    }
+
+    #[test]
+    fn test_lbfgs_cpu() {
+        let (device, client) = setup();
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device);
+
+        let result = client
+            .lbfgs(
+                |x| {
+                    let data: Vec<f64> = x.to_vec();
+                    Ok(data.iter().map(|xi| xi * xi).sum())
+                },
+                &x0,
+                &LbfgsOptions::default(),
+            )
+            .unwrap();
+
+        assert!(result.converged);
+        assert!(result.fun < 1e-6);
+    }
+
+    #[test]
+    fn test_lbfgs_high_dimensional() {
+        let (device, client) = setup();
+        // L-BFGS shines for high-dimensional problems
+        // For n=100, BFGS needs 100x100 = 10K floats, L-BFGS needs ~10*100 = 1K floats
+        let n = 100;
+        let initial: Vec<f64> = (0..n).map(|i| (i as f64 / 10.0) + 1.0).collect();
+        let x0 = Tensor::<CpuRuntime>::from_slice(&initial, &[n], &device);
+
+        // Minimize Rosenbrock function: sum((1-x_i)^2 + 100*(x_{i+1} - x_i^2)^2)
+        let result = client
+            .lbfgs(
+                |x| {
+                    let data: Vec<f64> = x.to_vec();
+                    let mut sum = 0.0;
+                    for i in 0..(data.len() - 1) {
+                        sum += (1.0 - data[i]).powi(2)
+                            + 100.0 * (data[i + 1] - data[i].powi(2)).powi(2);
+                    }
+                    Ok(sum)
+                },
+                &x0,
+                &LbfgsOptions {
+                    base: MinimizeOptions {
+                        max_iter: 200,
+                        ..Default::default()
+                    },
+                    m: 10,
+                },
+            )
+            .unwrap();
+
+        // Should converge (Rosenbrock minimum is at x_i = 1 for all i)
+        assert!(result.fun < 100.0); // Allow some tolerance for high-dimensional Rosenbrock
+        let solution: Vec<f64> = result.x.to_vec();
+        // Check that solution is close to 1.0 for most components
+        let close_to_one = solution.iter().filter(|&&x| (x - 1.0).abs() < 0.5).count();
+        assert!(close_to_one > n / 2); // At least half should be close
     }
 
     #[test]
