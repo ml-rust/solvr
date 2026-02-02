@@ -6,9 +6,11 @@ mod cpu;
 #[cfg(feature = "cuda")]
 mod cuda;
 pub mod impl_generic;
-mod traits;
+pub mod traits;
 #[cfg(feature = "wgpu")]
 mod wgpu;
 
 pub use impl_generic::LbfgsOptions;
-pub use traits::{MinimizeOptions, TensorMinimizeResult};
+pub use traits::{
+    MinimizeOptions, NewtonCGAlgorithms, NewtonCGOptions, NewtonCGResult, TensorMinimizeResult,
+};

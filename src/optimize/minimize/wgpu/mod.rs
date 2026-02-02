@@ -1,5 +1,7 @@
 //! WebGPU implementations of multivariate minimization algorithms.
 
+mod newton_cg;
+
 use numr::error::Result;
 use numr::runtime::wgpu::{WgpuClient, WgpuRuntime};
 use numr::tensor::Tensor;

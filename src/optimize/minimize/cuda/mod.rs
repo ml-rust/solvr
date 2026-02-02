@@ -1,5 +1,7 @@
 //! CUDA implementations of multivariate minimization algorithms.
 
+mod newton_cg;
+
 use numr::error::Result;
 use numr::runtime::cuda::{CudaClient, CudaRuntime};
 use numr::tensor::Tensor;

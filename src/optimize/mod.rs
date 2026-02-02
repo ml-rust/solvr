@@ -54,6 +54,9 @@ pub use traits::OptimizationAlgorithms;
 // Re-export result types and options
 pub use minimize::{LbfgsOptions, MinimizeOptions, TensorMinimizeResult};
 
+// Newton-CG (autograd-based second-order optimization)
+pub use minimize::{NewtonCGAlgorithms, NewtonCGOptions, NewtonCGResult};
+
 // Re-export scalar optimization (1D) - these are inherently scalar, not tensor
 pub use scalar::{
     MinimizeResult as ScalarMinResult, RootResult as ScalarRootResult, ScalarOptions as ScalarOpts,

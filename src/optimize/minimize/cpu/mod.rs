@@ -1,5 +1,7 @@
 //! CPU implementations of multivariate minimization algorithms.
 
+mod newton_cg;
+
 use numr::error::Result;
 use numr::runtime::cpu::{CpuClient, CpuRuntime};
 use numr::tensor::Tensor;
