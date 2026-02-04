@@ -32,10 +32,10 @@
 //! - [`optimize`] - Root finding, minimization, least squares, linear programming
 //! - [`integrate`] - ODE solvers and numerical quadrature
 //! - [`stats`] - Statistical distributions, hypothesis tests, descriptive stats
+//! - [`spatial`] - KDTree, BallTree, distance metrics, convex hull, Delaunay, Voronoi, rotations
 //!
 //! # Planned Modules
 //!
-//! - `spatial` - KDTree, distance metrics, geometric algorithms
 //! - `ndimage` - N-dimensional image processing
 //!
 //! # Backend Support
@@ -95,6 +95,7 @@ pub mod integrate;
 pub mod interpolate;
 pub mod optimize;
 pub mod signal;
+pub mod spatial;
 pub mod stats;
 pub mod window;
 
@@ -109,6 +110,33 @@ pub use interpolate::{
 };
 pub use optimize::{OptimizeError, OptimizeResult, scalar::*};
 pub use signal::{ConvMode, ConvolutionAlgorithms, SpectrogramAlgorithms, StftAlgorithms};
+pub use spatial::{
+    BallTree,
+    BallTreeAlgorithms,
+    BallTreeOptions,
+    // Computational geometry
+    ConvexHull,
+    ConvexHullAlgorithms,
+    Delaunay,
+    DelaunayAlgorithms,
+    // Distance algorithms
+    DistanceAlgorithms,
+    DistanceMetric,
+    EulerOrder,
+    // Spatial trees
+    KDTree,
+    KDTreeAlgorithms,
+    KDTreeOptions,
+    KNNResult,
+    ProcrustesAlgorithms,
+    ProcrustesResult,
+    RadiusResult,
+    // Transforms
+    Rotation,
+    RotationAlgorithms,
+    Voronoi,
+    VoronoiAlgorithms,
+};
 pub use stats::{
     // Continuous distributions
     Beta,
