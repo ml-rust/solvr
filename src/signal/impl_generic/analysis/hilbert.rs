@@ -54,11 +54,11 @@ where
     h_data[0] = 1.0; // DC
 
     let half = n / 2;
-    for i in 1..half {
-        h_data[i] = 2.0; // Positive frequencies
+    for hi in h_data.iter_mut().take(half).skip(1) {
+        *hi = 2.0; // Positive frequencies
     }
 
-    if n % 2 == 0 {
+    if n.is_multiple_of(2) {
         h_data[half] = 1.0; // Nyquist for even N
     } else {
         h_data[half] = 2.0; // Include in positive for odd N

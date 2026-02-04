@@ -141,6 +141,7 @@ pub enum SpectralWindow<R: Runtime> {
     Custom(Tensor<R>),
 }
 
+#[allow(clippy::derivable_impls)]
 impl<R: Runtime> Default for SpectralWindow<R> {
     fn default() -> Self {
         SpectralWindow::Hann

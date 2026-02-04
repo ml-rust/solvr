@@ -3,6 +3,11 @@
 //! Provides design functions for Infinite Impulse Response (IIR) digital filters
 //! using the bilinear transform method.
 
+// Allow many arguments for filter design functions that match scipy's signature
+#![allow(clippy::too_many_arguments)]
+// Allow large enum variant size difference (ZpkFilter is larger than tf/sos)
+#![allow(clippy::large_enum_variant)]
+
 use crate::signal::filter::types::{
     AnalogPrototype, FilterOutput, FilterType, SosFilter, TransferFunction, ZpkFilter,
 };

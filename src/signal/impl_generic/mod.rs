@@ -21,10 +21,15 @@ mod slice;
 mod spectral;
 mod stft;
 
-// Re-export only what backends need - internal helpers are used within impl_generic
+// Re-export only what backends need
+// GPU-accelerable algorithms:
+pub use analysis::{hilbert_impl, resample_impl};
+// CPU helper functions used by cpu/ implementations:
 pub use analysis::{
-    decimate_impl, find_peaks_impl, hilbert_impl, resample_impl, savgol_filter_impl,
+    apply_butter_lowpass, apply_fir_lowpass, compute_prominences, compute_savgol_coeffs,
+    filter_by_distance,
 };
+// CPU-only algorithms (decimate, find_peaks, savgol, extrema, medfilt, wiener) live in cpu/
 pub use convolution::{convolve_impl, convolve2d_impl, correlate_impl, correlate2d_impl};
 pub use frequency_response::{freqz_impl, group_delay_impl, sosfreqz_impl};
 pub use spectral::{coherence_impl, csd_impl, lombscargle_impl, periodogram_impl, welch_impl};

@@ -1,14 +1,16 @@
 //! Generic implementations of signal analysis algorithms.
+//!
+//! GPU-accelerable algorithms (hilbert, resample) live here.
+//! CPU-only algorithms (decimate, find_peaks, savgol, extrema, medfilt, wiener)
+//! live in cpu/ and use helpers from this module.
 
-pub mod decimate;
-pub mod find_peaks;
 pub mod helpers;
-pub mod hilbert;
-pub mod resample;
-pub mod savgol;
+mod hilbert;
+mod resample;
 
-pub use decimate::decimate_impl;
-pub use find_peaks::find_peaks_impl;
+pub use helpers::{
+    apply_butter_lowpass, apply_fir_lowpass, compute_prominences, compute_savgol_coeffs,
+    filter_by_distance,
+};
 pub use hilbert::hilbert_impl;
 pub use resample::resample_impl;
-pub use savgol::savgol_filter_impl;

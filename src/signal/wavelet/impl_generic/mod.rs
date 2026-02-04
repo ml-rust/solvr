@@ -418,10 +418,10 @@ fn extend_signal(x: &[f64], filter_len: usize, mode: ExtensionMode) -> Vec<f64> 
     // Left extension
     match mode {
         ExtensionMode::Zero => {
-            extended.extend(std::iter::repeat(0.0).take(pad));
+            extended.extend(std::iter::repeat_n(0.0, pad));
         }
         ExtensionMode::Constant => {
-            extended.extend(std::iter::repeat(x[0]).take(pad));
+            extended.extend(std::iter::repeat_n(x[0], pad));
         }
         ExtensionMode::Symmetric => {
             for i in (0..pad).rev() {
@@ -449,10 +449,10 @@ fn extend_signal(x: &[f64], filter_len: usize, mode: ExtensionMode) -> Vec<f64> 
     // Right extension
     match mode {
         ExtensionMode::Zero => {
-            extended.extend(std::iter::repeat(0.0).take(pad));
+            extended.extend(std::iter::repeat_n(0.0, pad));
         }
         ExtensionMode::Constant => {
-            extended.extend(std::iter::repeat(x[n - 1]).take(pad));
+            extended.extend(std::iter::repeat_n(x[n - 1], pad));
         }
         ExtensionMode::Symmetric => {
             for i in 0..pad {

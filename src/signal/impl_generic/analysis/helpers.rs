@@ -1,121 +1,20 @@
 //! Helper functions for signal analysis algorithms.
+//!
+//! These are legitimate CPU-only operations that don't benefit from GPU acceleration:
+//! - Peak filtering by distance (requires sorted access patterns)
+//! - Peak prominence calculation (requires sequential search)
+//! - Savitzky-Golay coefficient computation (small matrix operations)
+//! - Simple lowpass filters for decimation (decimation is inherently sequential)
+
+// Allow indexed loops for matrix algorithms - clearer than nested iterators
+#![allow(clippy::needless_range_loop)]
 
 use std::f64::consts::PI;
 
-/// Compute FFT (simple DFT implementation).
-pub fn compute_fft(data: &[f64]) -> Vec<(f64, f64)> {
-    let n = data.len();
-    let mut result = Vec::with_capacity(n);
-
-    for k in 0..n {
-        let mut re = 0.0;
-        let mut im = 0.0;
-        for (j, &x) in data.iter().enumerate() {
-            let angle = -2.0 * PI * k as f64 * j as f64 / n as f64;
-            re += x * angle.cos();
-            im += x * angle.sin();
-        }
-        result.push((re, im));
-    }
-
-    result
-}
-
-/// Compute IFFT.
-pub fn compute_ifft(data: &[(f64, f64)]) -> Vec<(f64, f64)> {
-    let n = data.len();
-    let mut result = Vec::with_capacity(n);
-
-    for k in 0..n {
-        let mut re = 0.0;
-        let mut im = 0.0;
-        for (j, &(x_re, x_im)) in data.iter().enumerate() {
-            let angle = 2.0 * PI * k as f64 * j as f64 / n as f64;
-            let cos_a = angle.cos();
-            let sin_a = angle.sin();
-            re += x_re * cos_a - x_im * sin_a;
-            im += x_re * sin_a + x_im * cos_a;
-        }
-        result.push((re / n as f64, im / n as f64));
-    }
-
-    result
-}
-
-/// Apply Butterworth lowpass filter.
-pub fn apply_butter_lowpass(data: &[f64], cutoff: f64, order: usize, zero_phase: bool) -> Vec<f64> {
-    // Simple first-order IIR approximation for each cascade stage
-    let alpha = 2.0 * PI * cutoff / (2.0 + 2.0 * PI * cutoff);
-
-    let mut filtered = data.to_vec();
-
-    // Apply multiple passes for higher order
-    for _ in 0..order {
-        // Forward pass
-        let mut y_prev = filtered[0];
-        for i in 0..filtered.len() {
-            let y = alpha * filtered[i] + (1.0 - alpha) * y_prev;
-            filtered[i] = y;
-            y_prev = y;
-        }
-
-        if zero_phase {
-            // Backward pass
-            y_prev = filtered[filtered.len() - 1];
-            for i in (0..filtered.len()).rev() {
-                let y = alpha * filtered[i] + (1.0 - alpha) * y_prev;
-                filtered[i] = y;
-                y_prev = y;
-            }
-        }
-    }
-
-    filtered
-}
-
-/// Apply FIR lowpass filter.
-pub fn apply_fir_lowpass(data: &[f64], cutoff: f64, filter_len: usize) -> Vec<f64> {
-    // Design sinc filter
-    let half = filter_len / 2;
-    let mut h = Vec::with_capacity(filter_len);
-
-    for i in 0..filter_len {
-        let n = i as f64 - half as f64;
-        let sinc = if n.abs() < 1e-10 {
-            2.0 * cutoff
-        } else {
-            (2.0 * PI * cutoff * n).sin() / (PI * n)
-        };
-        // Apply Hamming window
-        let window = 0.54 - 0.46 * (2.0 * PI * i as f64 / (filter_len - 1) as f64).cos();
-        h.push(sinc * window);
-    }
-
-    // Normalize
-    let sum: f64 = h.iter().sum();
-    if sum.abs() > 1e-10 {
-        for c in &mut h {
-            *c /= sum;
-        }
-    }
-
-    // Convolve
-    let n = data.len();
-    let mut result = vec![0.0; n];
-
-    for i in 0..n {
-        for (j, &hj) in h.iter().enumerate() {
-            let k = i as isize + j as isize - half as isize;
-            if k >= 0 && (k as usize) < n {
-                result[i] += data[k as usize] * hj;
-            }
-        }
-    }
-
-    result
-}
-
 /// Filter peaks by minimum distance.
+///
+/// This is a CPU-only operation because it requires sorted access patterns
+/// and iterative filtering that doesn't parallelize well.
 pub fn filter_by_distance(peaks: &[usize], data: &[f64], min_distance: usize) -> Vec<usize> {
     if peaks.is_empty() {
         return vec![];
@@ -133,15 +32,8 @@ pub fn filter_by_distance(peaks: &[usize], data: &[f64], min_distance: usize) ->
             result.push(idx);
             // Mark nearby peaks as removed
             for (j, &(other_idx, _)) in sorted.iter().enumerate() {
-                if j != i && keep[j] {
-                    let dist = if idx > other_idx {
-                        idx - other_idx
-                    } else {
-                        other_idx - idx
-                    };
-                    if dist < min_distance {
-                        keep[j] = false;
-                    }
+                if j != i && keep[j] && idx.abs_diff(other_idx) < min_distance {
+                    keep[j] = false;
                 }
             }
         }
@@ -152,6 +44,9 @@ pub fn filter_by_distance(peaks: &[usize], data: &[f64], min_distance: usize) ->
 }
 
 /// Compute peak prominences.
+///
+/// This is a CPU-only operation because prominence requires sequential
+/// search patterns from each peak to find the nearest higher peak.
 pub fn compute_prominences(peaks: &[usize], data: &[f64]) -> Vec<f64> {
     let n = data.len();
     let mut prominences = Vec::with_capacity(peaks.len());
@@ -186,6 +81,9 @@ pub fn compute_prominences(peaks: &[usize], data: &[f64]) -> Vec<f64> {
 }
 
 /// Compute Savitzky-Golay filter coefficients.
+///
+/// This is a CPU-only operation because it's a small matrix solve
+/// (window_length x polyorder) that happens once per filter application.
 pub fn compute_savgol_coeffs(window_length: usize, polyorder: usize, deriv: usize) -> Vec<f64> {
     let half = window_length / 2;
 
@@ -273,4 +171,95 @@ pub fn compute_savgol_coeffs(window_length: usize, polyorder: usize, deriv: usiz
     }
 
     coeffs
+}
+
+// ============================================================================
+// Simple lowpass filters for decimation
+// ============================================================================
+//
+// These simple filter implementations are kept here for decimation because:
+// 1. Decimation is inherently sequential (downsampling step)
+// 2. The filter is just an anti-aliasing prefilter before downsampling
+// 3. Using the full FilterApplicationAlgorithms would be overkill for this use case
+//
+// The proper filter infrastructure (lfilter, filtfilt, sosfilt, etc.) should be
+// used for general-purpose filtering where full control over filter design is needed.
+
+/// Apply Butterworth lowpass filter (simple first-order IIR approximation).
+///
+/// This is a simple anti-aliasing filter for decimation.
+/// For production use, prefer the full filter design infrastructure.
+pub fn apply_butter_lowpass(data: &[f64], cutoff: f64, order: usize, zero_phase: bool) -> Vec<f64> {
+    // Simple first-order IIR approximation for each cascade stage
+    let alpha = 2.0 * PI * cutoff / (2.0 + 2.0 * PI * cutoff);
+
+    let mut filtered = data.to_vec();
+
+    // Apply multiple passes for higher order
+    for _ in 0..order {
+        // Forward pass
+        let mut y_prev = filtered[0];
+        for i in 0..filtered.len() {
+            let y = alpha * filtered[i] + (1.0 - alpha) * y_prev;
+            filtered[i] = y;
+            y_prev = y;
+        }
+
+        if zero_phase {
+            // Backward pass
+            y_prev = filtered[filtered.len() - 1];
+            for i in (0..filtered.len()).rev() {
+                let y = alpha * filtered[i] + (1.0 - alpha) * y_prev;
+                filtered[i] = y;
+                y_prev = y;
+            }
+        }
+    }
+
+    filtered
+}
+
+/// Apply FIR lowpass filter using windowed sinc.
+///
+/// This is a simple anti-aliasing filter for decimation.
+/// For production use, prefer the full filter design infrastructure.
+pub fn apply_fir_lowpass(data: &[f64], cutoff: f64, filter_len: usize) -> Vec<f64> {
+    // Design sinc filter
+    let half = filter_len / 2;
+    let mut h = Vec::with_capacity(filter_len);
+
+    for i in 0..filter_len {
+        let n = i as f64 - half as f64;
+        let sinc = if n.abs() < 1e-10 {
+            2.0 * cutoff
+        } else {
+            (2.0 * PI * cutoff * n).sin() / (PI * n)
+        };
+        // Apply Hamming window
+        let window = 0.54 - 0.46 * (2.0 * PI * i as f64 / (filter_len - 1) as f64).cos();
+        h.push(sinc * window);
+    }
+
+    // Normalize
+    let sum: f64 = h.iter().sum();
+    if sum.abs() > 1e-10 {
+        for c in &mut h {
+            *c /= sum;
+        }
+    }
+
+    // Convolve
+    let n = data.len();
+    let mut result = vec![0.0; n];
+
+    for i in 0..n {
+        for (j, &hj) in h.iter().enumerate() {
+            let k = i as isize + j as isize - half as isize;
+            if k >= 0 && (k as usize) < n {
+                result[i] += data[k as usize] * hj;
+            }
+        }
+    }
+
+    result
 }

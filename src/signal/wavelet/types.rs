@@ -3,9 +3,10 @@
 use std::f64::consts::PI;
 
 /// Wavelet family enumeration.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum WaveletFamily {
     /// Haar wavelet (simplest orthogonal wavelet).
+    #[default]
     Haar,
     /// Daubechies wavelets (dbN where N is the order).
     Daubechies(usize),
@@ -17,12 +18,6 @@ pub enum WaveletFamily {
     Morlet,
     /// Mexican Hat wavelet (Ricker, for CWT).
     MexicanHat,
-}
-
-impl Default for WaveletFamily {
-    fn default() -> Self {
-        WaveletFamily::Haar
-    }
 }
 
 /// Wavelet with filter coefficients.
@@ -217,7 +212,7 @@ fn coiflet_coefficients(order: usize) -> (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>
             -0.0727326195128539,
             0.38486484686420286,
             0.8525720202122554,
-            0.33789766245780922,
+            0.337_897_662_457_809_2,
             -0.0727326195128539,
         ],
         2 => vec![
@@ -241,7 +236,7 @@ fn coiflet_coefficients(order: usize) -> (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>
                 -0.0727326195128539,
                 0.38486484686420286,
                 0.8525720202122554,
-                0.33789766245780922,
+                0.337_897_662_457_809_2,
                 -0.0727326195128539,
             ]
         }

@@ -310,7 +310,7 @@ fn sosfilt_impl(
     // Process signal through each section (sequential by necessity)
     let mut y = x_data.clone();
 
-    for section_idx in 0..n_sections {
+    for (section_idx, z_sec) in z.iter_mut().enumerate() {
         let offset = section_idx * 6;
         let b0 = sos_data[offset];
         let b1 = sos_data[offset + 1];
@@ -325,8 +325,6 @@ fn sosfilt_impl(
         let b2 = b2 / a0;
         let a1 = a1 / a0;
         let a2 = a2 / a0;
-
-        let z_sec = &mut z[section_idx];
         let mut new_y = Vec::with_capacity(n_samples);
 
         for &xn in &y {

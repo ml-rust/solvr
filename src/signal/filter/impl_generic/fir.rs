@@ -5,6 +5,11 @@
 //! - Frequency sampling method (firwin2)
 //! - Minimum phase conversion
 
+// Allow indexed loops for filter coefficient computation
+#![allow(clippy::needless_range_loop)]
+// Allow manual div_ceil for clarity
+#![allow(clippy::manual_div_ceil)]
+
 use crate::signal::filter::traits::fir_design::FirWindow;
 use crate::signal::filter::types::FilterType;
 use crate::window::WindowFunctions;
@@ -56,41 +61,41 @@ where
     match filter_type {
         FilterType::Lowpass => {
             let fc = cutoff[0];
-            for i in 0..numtaps {
+            for (i, hi) in h.iter_mut().enumerate() {
                 let n = i as f64 - alpha;
                 if n.abs() < 1e-10 {
-                    h[i] = 2.0 * fc;
+                    *hi = 2.0 * fc;
                 } else {
-                    h[i] = (2.0 * PI * fc * n).sin() / (PI * n);
+                    *hi = (2.0 * PI * fc * n).sin() / (PI * n);
                 }
             }
         }
         FilterType::Highpass => {
             let fc = cutoff[0];
-            for i in 0..numtaps {
+            for (i, hi) in h.iter_mut().enumerate() {
                 let n = i as f64 - alpha;
                 if n.abs() < 1e-10 {
-                    h[i] = 1.0 - 2.0 * fc;
+                    *hi = 1.0 - 2.0 * fc;
                 } else {
-                    h[i] = -(2.0 * PI * fc * n).sin() / (PI * n);
+                    *hi = -(2.0 * PI * fc * n).sin() / (PI * n);
                 }
             }
             // Spectral inversion for highpass
-            for i in 0..numtaps {
+            for (i, hi) in h.iter_mut().enumerate() {
                 if (i as f64 - alpha).abs() < 1e-10 {
-                    h[i] += 1.0;
+                    *hi += 1.0;
                 }
             }
         }
         FilterType::Bandpass => {
             let fc_low = cutoff[0];
             let fc_high = cutoff[1];
-            for i in 0..numtaps {
+            for (i, hi) in h.iter_mut().enumerate() {
                 let n = i as f64 - alpha;
                 if n.abs() < 1e-10 {
-                    h[i] = 2.0 * (fc_high - fc_low);
+                    *hi = 2.0 * (fc_high - fc_low);
                 } else {
-                    h[i] = (2.0 * PI * fc_high * n).sin() / (PI * n)
+                    *hi = (2.0 * PI * fc_high * n).sin() / (PI * n)
                         - (2.0 * PI * fc_low * n).sin() / (PI * n);
                 }
             }
@@ -98,12 +103,12 @@ where
         FilterType::Bandstop => {
             let fc_low = cutoff[0];
             let fc_high = cutoff[1];
-            for i in 0..numtaps {
+            for (i, hi) in h.iter_mut().enumerate() {
                 let n = i as f64 - alpha;
                 if n.abs() < 1e-10 {
-                    h[i] = 1.0 - 2.0 * (fc_high - fc_low);
+                    *hi = 1.0 - 2.0 * (fc_high - fc_low);
                 } else {
-                    h[i] = (2.0 * PI * fc_low * n).sin() / (PI * n)
+                    *hi = (2.0 * PI * fc_low * n).sin() / (PI * n)
                         - (2.0 * PI * fc_high * n).sin() / (PI * n);
                 }
             }

@@ -7,6 +7,11 @@
 //! - Elliptic/Cauer (equiripple both bands)
 //! - Bessel-Thomson (maximally flat group delay)
 
+// Allow manual div_ceil and is_multiple_of for clarity in filter order calculations
+#![allow(clippy::manual_div_ceil, clippy::manual_is_multiple_of)]
+// Allow many arguments for filter design functions that match scipy's signature
+#![allow(clippy::too_many_arguments)]
+
 use super::bilinear::{bilinear_zpk_impl, prewarp};
 use super::conversions::{tf2sos_impl, zpk2tf_impl};
 use super::freq_transform::{lp2bp_zpk_impl, lp2bs_zpk_impl, lp2hp_zpk_impl, lp2lp_zpk_impl};

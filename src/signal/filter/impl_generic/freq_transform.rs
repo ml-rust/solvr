@@ -3,6 +3,9 @@
 //! These functions transform a lowpass analog prototype (cutoff = 1 rad/s)
 //! to other filter types (highpass, bandpass, bandstop) with specified cutoffs.
 
+// Allow indexed loops for vector operations that update in place
+#![allow(clippy::needless_range_loop)]
+
 use crate::signal::filter::types::AnalogPrototype;
 use numr::error::Result;
 use numr::runtime::{Runtime, RuntimeClient};

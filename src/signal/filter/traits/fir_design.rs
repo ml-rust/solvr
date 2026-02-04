@@ -107,6 +107,7 @@ pub enum FirWindow {
     Custom(Vec<f64>),
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for FirWindow {
     fn default() -> Self {
         FirWindow::Hamming

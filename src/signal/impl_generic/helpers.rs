@@ -90,6 +90,7 @@ where
 /// Computes (a_re + a_im*i) / (b_re + b_im*i) using the formula:
 /// result_re = (a_re*b_re + a_im*b_im) / (b_re^2 + b_im^2)
 /// result_im = (a_im*b_re - a_re*b_im) / (b_re^2 + b_im^2)
+#[allow(dead_code)]
 pub fn complex_divide_impl<R, C>(client: &C, a: &Tensor<R>, b: &Tensor<R>) -> Result<Tensor<R>>
 where
     R: Runtime,
@@ -135,6 +136,7 @@ where
 /// Detrend a tensor by removing mean (constant) or linear trend.
 ///
 /// This operates on the last dimension of the tensor, allowing batch processing.
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum DetrendMode {
     /// No detrending
@@ -149,6 +151,7 @@ pub enum DetrendMode {
 /// Detrend a 1D or 2D tensor along the last dimension.
 ///
 /// For batched inputs (2D), detrends each row independently.
+#[allow(dead_code)]
 pub fn detrend_tensor_impl<R, C>(
     client: &C,
     tensor: &Tensor<R>,
@@ -176,7 +179,7 @@ where
             let ndim = tensor.ndim();
             let last_dim = ndim - 1;
             let n = tensor.shape()[last_dim];
-            let device = tensor.device();
+            let _device = tensor.device();
             let dtype = tensor.dtype();
 
             if n < 2 {

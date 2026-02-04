@@ -84,7 +84,6 @@ mod tests {
     use super::*;
     use crate::signal::wavelet::types::WaveletFamily;
     use numr::runtime::cpu::CpuDevice;
-    use std::f64::consts::PI;
 
     fn setup() -> (CpuClient, CpuDevice) {
         let device = CpuDevice::new();

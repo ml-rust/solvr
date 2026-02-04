@@ -11,6 +11,12 @@ use numr::ops::{ScalarOps, TensorOps};
 use numr::runtime::{Runtime, RuntimeClient};
 use numr::tensor::Tensor;
 
+/// Complex number represented as (real, imaginary) tuple.
+type Complex = (f64, f64);
+
+/// Pair of complex numbers (for pole/zero pairing in biquad sections).
+type ComplexPair = (Complex, Complex);
+
 /// Convert transfer function to zeros, poles, and gain.
 ///
 /// Uses polynomial root finding via companion matrix eigendecomposition.
@@ -198,7 +204,7 @@ where
     let n_poles = zpk.num_poles();
 
     // Number of sections needed
-    let n_sections = (n_poles.max(n_zeros) + 1) / 2;
+    let n_sections = n_poles.max(n_zeros).div_ceil(2);
 
     if n_sections == 0 {
         // Just a gain
@@ -223,15 +229,15 @@ where
 
     for i in 0..n_sections {
         let (b0, b1, b2, a0, a1, a2) = if i < paired_poles.len() {
-            let (p1, p2) = &paired_poles[i];
+            let (p1, p2) = paired_poles[i];
             let (z1, z2) = if i < paired_zeros.len() {
-                paired_zeros[i].clone()
+                paired_zeros[i]
             } else {
                 // No more zeros, use (0, 0) which adds z^-2 term
                 ((0.0, 0.0), (0.0, 0.0))
             };
 
-            biquad_coeffs(z1, z2, p1.clone(), p2.clone())
+            biquad_coeffs(z1, z2, p1, p2)
         } else {
             // Extra zeros without poles (shouldn't happen for proper filters)
             (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
@@ -357,7 +363,7 @@ fn pair_poles_zeros(
     zeros_im: &[f64],
     poles_re: &[f64],
     poles_im: &[f64],
-) -> Result<(Vec<((f64, f64), (f64, f64))>, Vec<((f64, f64), (f64, f64))>)> {
+) -> Result<(Vec<ComplexPair>, Vec<ComplexPair>)> {
     // Separate into complex conjugate pairs and real values
     let mut complex_poles: Vec<(f64, f64)> = Vec::new();
     let mut real_poles: Vec<f64> = Vec::new();
