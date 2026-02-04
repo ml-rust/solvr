@@ -4,4 +4,7 @@ mod algorithms;
 mod types;
 
 pub use algorithms::IntegrationAlgorithms;
-pub use types::{QuadOptions, QuadResult, RombergOptions};
+pub use types::{
+    BVPResult, MonteCarloMethod, MonteCarloOptions, MonteCarloResult, NQuadOptions, QMCOptions,
+    QMCSequence, QuadOptions, QuadResult, RombergOptions, SymplecticResult, TanhSinhOptions,
+};

@@ -1,15 +1,24 @@
+use numr::autograd::DualTensor;
 use numr::error::Result;
 use numr::runtime::cpu::{CpuClient, CpuRuntime};
 use numr::tensor::Tensor;
 
 use crate::integrate::error::IntegrateResult;
-use crate::integrate::impl_generic::ode::solve_ivp_impl;
+use crate::integrate::impl_generic::ode::{
+    bdf_impl, bvp_impl, leapfrog_impl, lsoda_impl, radau_impl, solve_ivp_impl, verlet_impl,
+};
 use crate::integrate::impl_generic::quadrature::{
-    cumulative_trapezoid_impl, fixed_quad_impl, quad_impl, romberg_impl, simpson_impl,
-    trapezoid_impl, trapezoid_uniform_impl,
+    cumulative_trapezoid_impl, dblquad_impl, fixed_quad_impl, monte_carlo_impl, nquad_impl,
+    qmc_impl, quad_impl, romberg_impl, simpson_impl, tanh_sinh_impl, trapezoid_impl,
+    trapezoid_uniform_impl,
+};
+use crate::integrate::ode::{
+    BDFOptions, BVPOptions, LSODAOptions, RadauOptions, SymplecticOptions,
 };
 use crate::integrate::{
-    IntegrationAlgorithms, ODEOptions, ODEResultTensor, QuadOptions, QuadResult, RombergOptions,
+    BVPResult, IntegrationAlgorithms, MonteCarloOptions, MonteCarloResult, NQuadOptions,
+    ODEOptions, ODEResultTensor, QMCOptions, QuadOptions, QuadResult, RombergOptions,
+    SymplecticResult, TanhSinhOptions,
 };
 
 mod fixed_quad;
@@ -88,6 +97,177 @@ impl IntegrationAlgorithms<CpuRuntime> for CpuClient {
         F: Fn(&Tensor<CpuRuntime>, &Tensor<CpuRuntime>) -> Result<Tensor<CpuRuntime>>,
     {
         solve_ivp_impl(self, f, t_span, y0, options)
+    }
+
+    // Advanced quadrature
+
+    fn tanh_sinh<F>(
+        &self,
+        f: F,
+        a: f64,
+        b: f64,
+        options: &TanhSinhOptions,
+    ) -> Result<QuadResult<CpuRuntime>>
+    where
+        F: Fn(&Tensor<CpuRuntime>) -> Result<Tensor<CpuRuntime>>,
+    {
+        tanh_sinh_impl(self, f, a, b, options)
+    }
+
+    fn monte_carlo<F>(
+        &self,
+        f: F,
+        bounds: &[(f64, f64)],
+        options: &MonteCarloOptions,
+    ) -> Result<MonteCarloResult<CpuRuntime>>
+    where
+        F: Fn(&Tensor<CpuRuntime>) -> Result<Tensor<CpuRuntime>>,
+    {
+        monte_carlo_impl(self, f, bounds, options)
+    }
+
+    fn qmc_quad<F>(
+        &self,
+        f: F,
+        bounds: &[(f64, f64)],
+        options: &QMCOptions,
+    ) -> Result<QuadResult<CpuRuntime>>
+    where
+        F: Fn(&Tensor<CpuRuntime>) -> Result<Tensor<CpuRuntime>>,
+    {
+        qmc_impl(self, f, bounds, options)
+    }
+
+    fn dblquad<F, G, H>(
+        &self,
+        f: F,
+        a: f64,
+        b: f64,
+        gfun: G,
+        hfun: H,
+        options: &NQuadOptions,
+    ) -> Result<QuadResult<CpuRuntime>>
+    where
+        F: Fn(&Tensor<CpuRuntime>, &Tensor<CpuRuntime>) -> Result<Tensor<CpuRuntime>>,
+        G: Fn(f64) -> f64,
+        H: Fn(f64) -> f64,
+    {
+        dblquad_impl(self, f, a, b, gfun, hfun, options)
+    }
+
+    fn nquad<F>(
+        &self,
+        f: F,
+        bounds: &[(f64, f64)],
+        options: &NQuadOptions,
+    ) -> Result<QuadResult<CpuRuntime>>
+    where
+        F: Fn(&Tensor<CpuRuntime>) -> Result<Tensor<CpuRuntime>>,
+    {
+        nquad_impl(self, f, bounds, options)
+    }
+
+    // Stiff ODE solvers
+
+    fn solve_ivp_bdf<F>(
+        &self,
+        f: F,
+        t_span: [f64; 2],
+        y0: &Tensor<CpuRuntime>,
+        options: &ODEOptions,
+        bdf_options: &BDFOptions,
+    ) -> IntegrateResult<ODEResultTensor<CpuRuntime>>
+    where
+        F: Fn(
+            &DualTensor<CpuRuntime>,
+            &DualTensor<CpuRuntime>,
+            &Self,
+        ) -> Result<DualTensor<CpuRuntime>>,
+    {
+        bdf_impl(self, f, t_span, y0, options, bdf_options)
+    }
+
+    fn solve_ivp_radau<F>(
+        &self,
+        f: F,
+        t_span: [f64; 2],
+        y0: &Tensor<CpuRuntime>,
+        options: &ODEOptions,
+        radau_options: &RadauOptions,
+    ) -> IntegrateResult<ODEResultTensor<CpuRuntime>>
+    where
+        F: Fn(
+            &DualTensor<CpuRuntime>,
+            &DualTensor<CpuRuntime>,
+            &Self,
+        ) -> Result<DualTensor<CpuRuntime>>,
+    {
+        radau_impl(self, f, t_span, y0, options, radau_options)
+    }
+
+    fn solve_ivp_lsoda<F>(
+        &self,
+        f: F,
+        t_span: [f64; 2],
+        y0: &Tensor<CpuRuntime>,
+        options: &ODEOptions,
+        lsoda_options: &LSODAOptions,
+    ) -> IntegrateResult<ODEResultTensor<CpuRuntime>>
+    where
+        F: Fn(
+            &DualTensor<CpuRuntime>,
+            &DualTensor<CpuRuntime>,
+            &Self,
+        ) -> Result<DualTensor<CpuRuntime>>,
+    {
+        lsoda_impl(self, f, t_span, y0, options, lsoda_options)
+    }
+
+    // BVP solver
+
+    fn solve_bvp<F, BC>(
+        &self,
+        f: F,
+        bc: BC,
+        x: &Tensor<CpuRuntime>,
+        y: &Tensor<CpuRuntime>,
+        options: &BVPOptions,
+    ) -> IntegrateResult<BVPResult<CpuRuntime>>
+    where
+        F: Fn(&Tensor<CpuRuntime>, &Tensor<CpuRuntime>) -> Result<Tensor<CpuRuntime>>,
+        BC: Fn(&Tensor<CpuRuntime>, &Tensor<CpuRuntime>) -> Result<Tensor<CpuRuntime>>,
+    {
+        bvp_impl(self, f, bc, x, y, options)
+    }
+
+    // Symplectic integrators
+
+    fn verlet<F>(
+        &self,
+        force: F,
+        t_span: [f64; 2],
+        q0: &Tensor<CpuRuntime>,
+        p0: &Tensor<CpuRuntime>,
+        options: &SymplecticOptions,
+    ) -> IntegrateResult<SymplecticResult<CpuRuntime>>
+    where
+        F: Fn(&Tensor<CpuRuntime>) -> Result<Tensor<CpuRuntime>>,
+    {
+        verlet_impl(self, force, t_span, q0, p0, options)
+    }
+
+    fn leapfrog<F>(
+        &self,
+        force: F,
+        t_span: [f64; 2],
+        q0: &Tensor<CpuRuntime>,
+        p0: &Tensor<CpuRuntime>,
+        options: &SymplecticOptions,
+    ) -> IntegrateResult<SymplecticResult<CpuRuntime>>
+    where
+        F: Fn(&Tensor<CpuRuntime>) -> Result<Tensor<CpuRuntime>>,
+    {
+        leapfrog_impl(self, force, t_span, q0, p0, options)
     }
 }
 

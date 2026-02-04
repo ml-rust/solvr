@@ -6,11 +6,28 @@
 //!
 //! # Available Methods
 //!
-//! | Method | Order | Type | Best For |
-//! |--------|-------|------|----------|
-//! | RK23 | 2(3) | Explicit | Low accuracy, fast |
-//! | RK45 | 4(5) | Explicit | General purpose (default) |
-//! | DOP853 | 8(5,3) | Explicit | High accuracy |
+//! ## Explicit Methods (Non-Stiff Problems)
+//!
+//! | Method | Order | Best For |
+//! |--------|-------|----------|
+//! | RK23 | 2(3) | Low accuracy, fast |
+//! | RK45 | 4(5) | General purpose (default) |
+//! | DOP853 | 8(5,3) | High accuracy |
+//!
+//! ## Implicit Methods (Stiff Problems)
+//!
+//! | Method | Order | Best For |
+//! |--------|-------|----------|
+//! | BDF | 1-5 | Stiff problems, chemical kinetics |
+//! | Radau | 5 | Very stiff problems |
+//! | LSODA | auto | Unknown stiffness |
+//!
+//! ## Symplectic Methods (Hamiltonian Systems)
+//!
+//! | Method | Order | Best For |
+//! |--------|-------|----------|
+//! | Verlet | 2 | Molecular dynamics |
+//! | Leapfrog | 2 | N-body simulations |
 //!
 //! # Usage
 //!
@@ -40,4 +57,6 @@
 
 mod types;
 
-pub use types::{ODEMethod, ODEOptions};
+pub use types::{
+    BDFOptions, BVPOptions, LSODAOptions, ODEMethod, ODEOptions, RadauOptions, SymplecticOptions,
+};

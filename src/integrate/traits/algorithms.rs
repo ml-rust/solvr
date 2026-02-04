@@ -1,11 +1,18 @@
+use numr::autograd::DualTensor;
 use numr::error::Result;
 use numr::runtime::Runtime;
 use numr::tensor::Tensor;
 
 use crate::integrate::error::IntegrateResult;
+use crate::integrate::ode::{
+    BDFOptions, BVPOptions, LSODAOptions, RadauOptions, SymplecticOptions,
+};
 use crate::integrate::{ODEOptions, ODEResultTensor};
 
-use super::{QuadOptions, QuadResult, RombergOptions};
+use super::{
+    BVPResult, MonteCarloOptions, MonteCarloResult, NQuadOptions, QMCOptions, QuadOptions,
+    QuadResult, RombergOptions, SymplecticResult, TanhSinhOptions,
+};
 
 /// Trait for integration algorithms that work across all Runtime backends.
 ///
@@ -169,4 +176,279 @@ pub trait IntegrationAlgorithms<R: Runtime> {
     ) -> IntegrateResult<ODEResultTensor<R>>
     where
         F: Fn(&Tensor<R>, &Tensor<R>) -> Result<Tensor<R>>;
+
+    // ========================================================================
+    // Advanced Quadrature Methods
+    // ========================================================================
+
+    /// Tanh-sinh (double exponential) quadrature.
+    ///
+    /// Highly effective for integrals with endpoint singularities or infinite
+    /// derivatives at boundaries. Uses the transformation:
+    /// x = tanh(π/2 * sinh(t))
+    ///
+    /// # Arguments
+    /// * `f` - Integrand function taking tensor of evaluation points
+    /// * `a` - Lower bound
+    /// * `b` - Upper bound
+    /// * `options` - Integration options
+    ///
+    /// # Returns
+    /// A [`QuadResult`] with integral value and error estimate.
+    fn tanh_sinh<F>(
+        &self,
+        f: F,
+        a: f64,
+        b: f64,
+        options: &TanhSinhOptions,
+    ) -> Result<QuadResult<R>>
+    where
+        F: Fn(&Tensor<R>) -> Result<Tensor<R>>;
+
+    /// Monte Carlo integration for multi-dimensional integrals.
+    ///
+    /// Suitable for high-dimensional integrals where deterministic methods
+    /// suffer from the curse of dimensionality. Error decreases as O(1/√n).
+    ///
+    /// # Arguments
+    /// * `f` - Integrand function taking tensor of shape [n_samples, n_dims]
+    /// * `bounds` - Integration bounds for each dimension [(a1, b1), (a2, b2), ...]
+    /// * `options` - Monte Carlo options (samples, method, seed)
+    ///
+    /// # Returns
+    /// A [`MonteCarloResult`] with integral estimate and standard error.
+    fn monte_carlo<F>(
+        &self,
+        f: F,
+        bounds: &[(f64, f64)],
+        options: &MonteCarloOptions,
+    ) -> Result<MonteCarloResult<R>>
+    where
+        F: Fn(&Tensor<R>) -> Result<Tensor<R>>;
+
+    /// Quasi-Monte Carlo integration using low-discrepancy sequences.
+    ///
+    /// Similar to Monte Carlo but uses deterministic low-discrepancy sequences
+    /// (Sobol, Halton) instead of random points. Faster convergence: O(1/n)
+    /// vs O(1/√n) for random sampling.
+    ///
+    /// # Arguments
+    /// * `f` - Integrand function taking tensor of shape [n_samples, n_dims]
+    /// * `bounds` - Integration bounds for each dimension
+    /// * `options` - QMC options (samples, sequence type)
+    ///
+    /// # Returns
+    /// A [`QuadResult`] with integral estimate.
+    fn qmc_quad<F>(
+        &self,
+        f: F,
+        bounds: &[(f64, f64)],
+        options: &QMCOptions,
+    ) -> Result<QuadResult<R>>
+    where
+        F: Fn(&Tensor<R>) -> Result<Tensor<R>>;
+
+    /// Double integral over a rectangular region.
+    ///
+    /// Computes ∫∫ f(x, y) dx dy over [a, b] × [gfun(x), hfun(x)].
+    ///
+    /// # Arguments
+    /// * `f` - Integrand function f(x, y) where x, y are tensors
+    /// * `a`, `b` - Outer integration bounds (x direction)
+    /// * `gfun`, `hfun` - Functions defining inner bounds as functions of x
+    /// * `options` - Quadrature options
+    fn dblquad<F, G, H>(
+        &self,
+        f: F,
+        a: f64,
+        b: f64,
+        gfun: G,
+        hfun: H,
+        options: &NQuadOptions,
+    ) -> Result<QuadResult<R>>
+    where
+        F: Fn(&Tensor<R>, &Tensor<R>) -> Result<Tensor<R>>,
+        G: Fn(f64) -> f64,
+        H: Fn(f64) -> f64;
+
+    /// N-dimensional adaptive quadrature.
+    ///
+    /// Computes n-dimensional integrals using nested adaptive quadrature.
+    /// For dimensions > 3, consider using Monte Carlo or QMC methods instead.
+    ///
+    /// # Arguments
+    /// * `f` - Integrand function taking tensor of shape [n_points, n_dims]
+    /// * `bounds` - Integration bounds for each dimension [(a1, b1), ...]
+    /// * `options` - Quadrature options
+    fn nquad<F>(
+        &self,
+        f: F,
+        bounds: &[(f64, f64)],
+        options: &NQuadOptions,
+    ) -> Result<QuadResult<R>>
+    where
+        F: Fn(&Tensor<R>) -> Result<Tensor<R>>;
+
+    // ========================================================================
+    // Stiff ODE Solvers
+    // ========================================================================
+
+    /// Solve a stiff ODE using BDF (Backward Differentiation Formula) method.
+    ///
+    /// BDF is an implicit multistep method ideal for stiff problems where
+    /// explicit methods would require impractically small time steps.
+    /// Uses Newton iteration with **automatic Jacobian computation** via autograd.
+    ///
+    /// # Unique Capability
+    ///
+    /// This is the only Rust ODE solver with automatic Jacobian computation.
+    /// The ODE function uses `DualTensor` and `dual_*` operations from
+    /// `numr::autograd::dual_ops`, enabling exact Jacobians without finite differences.
+    ///
+    /// # Arguments
+    /// * `f` - Right-hand side function using DualTensor ops: f(t, y, client) -> dy/dt
+    /// * `t_span` - Integration interval [t0, tf]
+    /// * `y0` - Initial condition
+    /// * `options` - General ODE options
+    /// * `bdf_options` - BDF-specific options (order, Newton parameters)
+    fn solve_ivp_bdf<F>(
+        &self,
+        f: F,
+        t_span: [f64; 2],
+        y0: &Tensor<R>,
+        options: &ODEOptions,
+        bdf_options: &BDFOptions,
+    ) -> IntegrateResult<ODEResultTensor<R>>
+    where
+        F: Fn(&DualTensor<R>, &DualTensor<R>, &Self) -> Result<DualTensor<R>>;
+
+    /// Solve a stiff ODE using Radau IIA method.
+    ///
+    /// Radau IIA is a 3-stage implicit Runge-Kutta method of order 5.
+    /// More stable than BDF for extremely stiff problems.
+    /// Uses **automatic Jacobian computation** via autograd.
+    ///
+    /// # Arguments
+    /// * `f` - Right-hand side function using DualTensor ops: f(t, y, client) -> dy/dt
+    /// * `t_span` - Integration interval [t0, tf]
+    /// * `y0` - Initial condition
+    /// * `options` - General ODE options
+    /// * `radau_options` - Radau-specific options
+    fn solve_ivp_radau<F>(
+        &self,
+        f: F,
+        t_span: [f64; 2],
+        y0: &Tensor<R>,
+        options: &ODEOptions,
+        radau_options: &RadauOptions,
+    ) -> IntegrateResult<ODEResultTensor<R>>
+    where
+        F: Fn(&DualTensor<R>, &DualTensor<R>, &Self) -> Result<DualTensor<R>>;
+
+    /// Solve an ODE with automatic stiff/non-stiff method switching (LSODA).
+    ///
+    /// LSODA automatically detects stiffness and switches between
+    /// Adams-Moulton (non-stiff) and BDF (stiff) methods.
+    /// Uses **automatic Jacobian computation** via autograd when in stiff mode.
+    ///
+    /// # Arguments
+    /// * `f` - Right-hand side function using DualTensor ops: f(t, y, client) -> dy/dt
+    /// * `t_span` - Integration interval [t0, tf]
+    /// * `y0` - Initial condition
+    /// * `options` - General ODE options
+    /// * `lsoda_options` - LSODA-specific options (switching thresholds)
+    fn solve_ivp_lsoda<F>(
+        &self,
+        f: F,
+        t_span: [f64; 2],
+        y0: &Tensor<R>,
+        options: &ODEOptions,
+        lsoda_options: &LSODAOptions,
+    ) -> IntegrateResult<ODEResultTensor<R>>
+    where
+        F: Fn(&DualTensor<R>, &DualTensor<R>, &Self) -> Result<DualTensor<R>>;
+
+    // ========================================================================
+    // Boundary Value Problem Solver
+    // ========================================================================
+
+    /// Solve a two-point boundary value problem using collocation.
+    ///
+    /// Solves the system dy/dx = f(x, y) with boundary conditions bc(y(a), y(b)) = 0.
+    ///
+    /// # Arguments
+    /// * `f` - ODE right-hand side f(x, y) where x is scalar tensor, y is state tensor
+    /// * `bc` - Boundary condition function bc(ya, yb) returning residual tensor
+    /// * `x` - Initial mesh points (1-D tensor)
+    /// * `y` - Initial guess for solution at mesh points (shape [n_vars, n_points])
+    /// * `options` - BVP solver options
+    ///
+    /// # Returns
+    /// A [`BVPResult`] with the solution on the (possibly refined) mesh.
+    fn solve_bvp<F, BC>(
+        &self,
+        f: F,
+        bc: BC,
+        x: &Tensor<R>,
+        y: &Tensor<R>,
+        options: &BVPOptions,
+    ) -> IntegrateResult<BVPResult<R>>
+    where
+        F: Fn(&Tensor<R>, &Tensor<R>) -> Result<Tensor<R>>,
+        BC: Fn(&Tensor<R>, &Tensor<R>) -> Result<Tensor<R>>;
+
+    // ========================================================================
+    // Symplectic Integrators
+    // ========================================================================
+
+    /// Störmer-Verlet symplectic integrator for Hamiltonian systems.
+    ///
+    /// Solves Hamilton's equations:
+    ///   dq/dt = ∂H/∂p = p/m  (velocity)
+    ///   dp/dt = -∂H/∂q = F(q) (force)
+    ///
+    /// Preserves the symplectic structure, providing excellent long-term
+    /// energy conservation.
+    ///
+    /// # Arguments
+    /// * `force` - Force function F(q) returning -∂V/∂q
+    /// * `t_span` - Integration interval [t0, tf]
+    /// * `q0` - Initial positions
+    /// * `p0` - Initial momenta
+    /// * `options` - Symplectic integrator options (fixed step size)
+    ///
+    /// # Returns
+    /// A [`SymplecticResult`] with position and momentum trajectories.
+    fn verlet<F>(
+        &self,
+        force: F,
+        t_span: [f64; 2],
+        q0: &Tensor<R>,
+        p0: &Tensor<R>,
+        options: &SymplecticOptions,
+    ) -> IntegrateResult<SymplecticResult<R>>
+    where
+        F: Fn(&Tensor<R>) -> Result<Tensor<R>>;
+
+    /// Leapfrog symplectic integrator for Hamiltonian systems.
+    ///
+    /// Equivalent to Störmer-Verlet with a different arrangement of updates.
+    /// Time-reversible and symplectic. Common in N-body simulations.
+    ///
+    /// # Arguments
+    /// * `force` - Force function F(q) returning -∂V/∂q
+    /// * `t_span` - Integration interval [t0, tf]
+    /// * `q0` - Initial positions
+    /// * `p0` - Initial momenta
+    /// * `options` - Symplectic integrator options
+    fn leapfrog<F>(
+        &self,
+        force: F,
+        t_span: [f64; 2],
+        q0: &Tensor<R>,
+        p0: &Tensor<R>,
+        options: &SymplecticOptions,
+    ) -> IntegrateResult<SymplecticResult<R>>
+    where
+        F: Fn(&Tensor<R>) -> Result<Tensor<R>>;
 }

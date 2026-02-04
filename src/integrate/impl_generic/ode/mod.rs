@@ -3,22 +3,81 @@
 //! All implementations use numr's `TensorOps` and `ScalarOps` for computation,
 //! keeping data on device (GPU/CPU with SIMD) throughout the algorithm.
 
+mod bdf;
+mod bvp;
 mod dop853;
+mod jacobian;
+mod lsoda;
+mod radau;
 mod rk23;
 mod rk45;
 mod step_control;
+mod symplectic;
 
+pub use bdf::bdf_impl;
+pub use bvp::bvp_impl;
 pub use dop853::dop853_impl;
+pub use jacobian::{
+    compute_iteration_matrix, compute_jacobian_autograd, compute_norm, compute_norm_scalar,
+    eval_primal,
+};
+pub use lsoda::lsoda_impl;
+pub use radau::radau_impl;
+// Shared result building (used by all ODE solvers)
 pub use rk23::rk23_impl;
 pub use rk45::rk45_impl;
 pub use step_control::*;
+pub use symplectic::{leapfrog_impl, verlet_impl};
 
 use numr::error::Result;
-use numr::runtime::Runtime;
+use numr::ops::TensorOps;
+use numr::runtime::{Runtime, RuntimeClient};
 use numr::tensor::Tensor;
 
 use crate::integrate::error::{IntegrateError, IntegrateResult};
 use crate::integrate::{ODEMethod, ODEOptions};
+
+/// Parameters for building ODE results (reduces function argument count).
+pub struct ODEResultParams<'a, R: Runtime> {
+    pub t_values: &'a [f64],
+    pub y_values: &'a [Tensor<R>],
+    pub success: bool,
+    pub message: Option<String>,
+    pub nfev: usize,
+    pub naccept: usize,
+    pub nreject: usize,
+}
+
+/// Build ODE result from collected values (shared across solvers).
+pub fn build_ode_result<R, C>(
+    client: &C,
+    params: ODEResultParams<R>,
+    method: ODEMethod,
+) -> IntegrateResult<ODEResultTensor<R>>
+where
+    R: Runtime,
+    C: TensorOps<R> + RuntimeClient<R>,
+{
+    let n_steps = params.t_values.len();
+    let t_tensor = Tensor::<R>::from_slice(params.t_values, &[n_steps], client.device());
+    let y_refs: Vec<&Tensor<R>> = params.y_values.iter().collect();
+    let y_tensor = client
+        .stack(&y_refs, 0)
+        .map_err(|e| IntegrateError::InvalidInput {
+            context: format!("Failed to stack y tensors: {}", e),
+        })?;
+
+    Ok(ODEResultTensor {
+        t: t_tensor,
+        y: y_tensor,
+        success: params.success,
+        message: params.message,
+        nfev: params.nfev,
+        naccept: params.naccept,
+        nreject: params.nreject,
+        method,
+    })
+}
 
 /// Result of tensor-based ODE integration.
 ///
@@ -156,5 +215,19 @@ where
         ODEMethod::RK23 => rk23_impl(client, f, t_span, y0, options),
         ODEMethod::RK45 => rk45_impl(client, f, t_span, y0, options),
         ODEMethod::DOP853 => dop853_impl(client, f, t_span, y0, options),
+        // Note: BDF, Radau, LSODA, Verlet, Leapfrog have separate entry points
+        // with their own options structs (BDFOptions, RadauOptions, etc.)
+        ODEMethod::BDF | ODEMethod::Radau | ODEMethod::LSODA => Err(IntegrateError::InvalidInput {
+            context: format!(
+                "Method {:?} requires using the dedicated solver function (e.g., solve_ivp_bdf)",
+                options.method
+            ),
+        }),
+        ODEMethod::Verlet | ODEMethod::Leapfrog => Err(IntegrateError::InvalidInput {
+            context: format!(
+                "Symplectic method {:?} requires using verlet() or leapfrog() with q0, p0",
+                options.method
+            ),
+        }),
     }
 }
