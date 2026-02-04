@@ -6,6 +6,8 @@
 //! - STFT (Short-Time Fourier Transform)
 //! - ISTFT (Inverse STFT)
 //! - Spectrogram
+//! - Digital filter design (IIR: butter, cheby1, cheby2, ellip, bessel; FIR: firwin)
+//! - Filter representation conversions (tf, zpk, sos)
 //!
 //! # Runtime-Generic Architecture
 //!
@@ -67,8 +69,10 @@
 //! ```
 
 mod cpu;
+pub mod filter;
 pub mod impl_generic;
 pub mod traits;
+pub mod wavelet;
 
 #[cfg(feature = "cuda")]
 mod cuda;
@@ -79,8 +83,29 @@ mod wgpu;
 use numr::dtype::DType;
 use numr::error::{Error, Result};
 
+pub use traits::analysis::{
+    DecimateFilterImpl, DecimateParams, HilbertResult, PeakParams, PeakResult,
+    SignalAnalysisAlgorithms,
+};
 pub use traits::convolution::ConvMode;
+pub use traits::filter_apply::{
+    FilterApplicationAlgorithms, LfilterResult, PadType, SosfiltResult,
+};
+pub use traits::frequency_response::{FrequencyResponseAlgorithms, FreqzResult, FreqzSpec};
+pub use traits::spectral::{
+    CoherenceResult, CsdResult, Detrend, PeriodogramParams, PeriodogramResult, PsdScaling,
+    SpectralAnalysisAlgorithms, SpectralWindow, WelchParams, WelchResult,
+};
 pub use traits::{ConvolutionAlgorithms, SpectrogramAlgorithms, StftAlgorithms};
+pub use wavelet::{
+    CwtAlgorithms, CwtResult, DwtAlgorithms, DwtResult, WavedecResult, Wavelet, WaveletFamily,
+};
+
+// Re-export filter types and traits
+pub use filter::{
+    FilterConversions, FilterOutput, FilterType, FirDesignAlgorithms, FirWindow,
+    IirDesignAlgorithms, IirDesignResult, SosFilter, SosPairing, TransferFunction, ZpkFilter,
+};
 
 // ============================================================================
 // Validation Helpers
