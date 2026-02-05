@@ -58,5 +58,6 @@
 mod types;
 
 pub use types::{
-    BDFOptions, BVPOptions, LSODAOptions, ODEMethod, ODEOptions, RadauOptions, SymplecticOptions,
+    BDFOptions, BVPOptions, LSODAOptions, ODEMethod, ODEOptions, RadauOptions,
+    SparseJacobianConfig, SymplecticOptions,
 };

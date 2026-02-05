@@ -25,3 +25,6 @@ wgpu = ["numr/wgpu"]
 # Precision features
 f16 = ["numr/f16"]
 fp8 = ["numr/fp8"]
+
+# Enables sparse support
+sparse = ["numr/sparse"]

@@ -177,7 +177,7 @@ impl IntegrationAlgorithms<CudaRuntime> for CudaClient {
         t_span: [f64; 2],
         y0: &Tensor<CudaRuntime>,
         options: &ODEOptions,
-        bdf_options: &BDFOptions,
+        bdf_options: &BDFOptions<CudaRuntime>,
     ) -> IntegrateResult<ODEResultTensor<CudaRuntime>>
     where
         F: Fn(
@@ -195,7 +195,7 @@ impl IntegrationAlgorithms<CudaRuntime> for CudaClient {
         t_span: [f64; 2],
         y0: &Tensor<CudaRuntime>,
         options: &ODEOptions,
-        radau_options: &RadauOptions,
+        radau_options: &RadauOptions<CudaRuntime>,
     ) -> IntegrateResult<ODEResultTensor<CudaRuntime>>
     where
         F: Fn(

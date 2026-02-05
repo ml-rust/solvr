@@ -177,7 +177,7 @@ impl IntegrationAlgorithms<WgpuRuntime> for WgpuClient {
         t_span: [f64; 2],
         y0: &Tensor<WgpuRuntime>,
         options: &ODEOptions,
-        bdf_options: &BDFOptions,
+        bdf_options: &BDFOptions<WgpuRuntime>,
     ) -> IntegrateResult<ODEResultTensor<WgpuRuntime>>
     where
         F: Fn(
@@ -195,7 +195,7 @@ impl IntegrationAlgorithms<WgpuRuntime> for WgpuClient {
         t_span: [f64; 2],
         y0: &Tensor<WgpuRuntime>,
         options: &ODEOptions,
-        radau_options: &RadauOptions,
+        radau_options: &RadauOptions<WgpuRuntime>,
     ) -> IntegrateResult<ODEResultTensor<WgpuRuntime>>
     where
         F: Fn(

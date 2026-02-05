@@ -1,5 +1,149 @@
 //! Types for ODE solvers.
 
+use numr::runtime::Runtime;
+
+#[cfg(feature = "sparse")]
+use numr::sparse::CsrData;
+
+// ============================================================================
+// Sparse Jacobian Configuration
+// ============================================================================
+
+/// Configuration for sparse Jacobian solvers in implicit ODE methods.
+///
+/// For large-scale stiff systems (e.g., PDE discretizations with 10k+ variables),
+/// dense linear algebra becomes infeasible (O(n²) memory, O(n³) time). Sparse
+/// solvers exploit the structure of the Jacobian to achieve O(nnz) memory and
+/// O(k·nnz) time complexity.
+///
+/// # Feature Flag
+///
+/// Requires the `sparse` feature to be enabled in both `numr` and `solvr`.
+///
+/// # When to Use
+///
+/// Enable sparse mode when:
+/// - System size n > 1000
+/// - Jacobian has sparse structure (PDE discretizations, chemical networks)
+/// - Dense solve causes OOM or is too slow
+///
+/// # Example
+///
+/// ```ignore
+/// use solvr::integrate::ode::SparseJacobianConfig;
+/// use numr::algorithm::iterative::PreconditionerType;
+///
+/// let sparse_config = SparseJacobianConfig {
+///     enabled: true,
+///     pattern: None,  // Auto-detect or provide CsrData
+///     gmres_tol: 1e-10,
+///     max_gmres_iter: 100,
+///     preconditioner: PreconditionerType::Ilu0,
+///     _phantom: std::marker::PhantomData,
+/// };
+/// ```
+#[derive(Debug, Clone)]
+pub struct SparseJacobianConfig<R: Runtime> {
+    /// Enable sparse Jacobian solver (default: false).
+    ///
+    /// When enabled, uses GMRES instead of dense LU for Newton system solves.
+    /// **Note**: Requires the `sparse` feature to be enabled.
+    pub enabled: bool,
+
+    /// Sparsity pattern of the Jacobian (optional).
+    ///
+    /// If provided, the dense Jacobian will be converted to CSR format using
+    /// this pattern. If None, full dense matrix is used (defeats the purpose).
+    ///
+    /// **Note**: Automatic sparsity detection is not yet implemented.
+    /// **Note**: Only available with the `sparse` feature.
+    #[cfg(feature = "sparse")]
+    pub pattern: Option<CsrData<R>>,
+
+    /// GMRES convergence tolerance (default: 1e-10).
+    ///
+    /// Should match ODE accuracy requirements. Lower values increase Newton
+    /// iteration accuracy but require more GMRES iterations.
+    pub gmres_tol: f64,
+
+    /// Maximum GMRES iterations (default: 100).
+    pub max_gmres_iter: usize,
+
+    /// Preconditioner type (default: Ilu0).
+    ///
+    /// ILU(0) is recommended for general non-symmetric Jacobians. IC(0) can
+    /// be used if the Jacobian is symmetric positive definite.
+    /// **Note**: Only available with the `sparse` feature.
+    #[cfg(feature = "sparse")]
+    pub preconditioner: numr::algorithm::iterative::PreconditionerType,
+
+    /// Phantom data to preserve the Runtime type parameter.
+    _phantom: std::marker::PhantomData<R>,
+}
+
+impl<R: Runtime> Default for SparseJacobianConfig<R> {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            #[cfg(feature = "sparse")]
+            pattern: None,
+            gmres_tol: 1e-10,
+            max_gmres_iter: 100,
+            #[cfg(feature = "sparse")]
+            preconditioner: numr::algorithm::iterative::PreconditionerType::Ilu0,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<R: Runtime> SparseJacobianConfig<R> {
+    /// Create a disabled sparse configuration.
+    pub fn disabled() -> Self {
+        Self {
+            enabled: false,
+            ..Default::default()
+        }
+    }
+
+    /// Enable sparse mode with default settings.
+    ///
+    /// **Note**: Requires the `sparse` feature to be enabled.
+    #[cfg(feature = "sparse")]
+    pub fn enabled() -> Self {
+        Self {
+            enabled: true,
+            ..Default::default()
+        }
+    }
+
+    /// Set the sparsity pattern.
+    ///
+    /// **Note**: Requires the `sparse` feature to be enabled.
+    #[cfg(feature = "sparse")]
+    pub fn with_pattern(mut self, pattern: CsrData<R>) -> Self {
+        self.pattern = Some(pattern);
+        self
+    }
+
+    /// Set GMRES tolerance.
+    pub fn with_gmres_tol(mut self, tol: f64) -> Self {
+        self.gmres_tol = tol;
+        self
+    }
+
+    /// Set preconditioner type.
+    ///
+    /// **Note**: Requires the `sparse` feature to be enabled.
+    #[cfg(feature = "sparse")]
+    pub fn with_preconditioner(
+        mut self,
+        precond: numr::algorithm::iterative::PreconditionerType,
+    ) -> Self {
+        self.preconditioner = precond;
+        self
+    }
+}
+
 /// ODE solver method.
 ///
 /// # Available Methods
@@ -233,7 +377,7 @@ impl ODEOptions {
 
 /// Options specific to BDF (Backward Differentiation Formula) solver.
 #[derive(Debug, Clone)]
-pub struct BDFOptions {
+pub struct BDFOptions<R: Runtime> {
     /// Maximum BDF order (1-5, default: 5).
     ///
     /// Higher orders are more accurate but may be less stable for very stiff problems.
@@ -251,20 +395,26 @@ pub struct BDFOptions {
     ///
     /// If false, assumes Jacobian is provided analytically.
     pub numerical_jacobian: bool,
+
+    /// Sparse Jacobian configuration (default: disabled).
+    ///
+    /// Enable for large-scale systems (n > 1000) with sparse Jacobians.
+    pub sparse_jacobian: SparseJacobianConfig<R>,
 }
 
-impl Default for BDFOptions {
+impl<R: Runtime> Default for BDFOptions<R> {
     fn default() -> Self {
         Self {
             max_order: 5,
             newton_tol: 1e-6,
             max_newton_iter: 10,
             numerical_jacobian: true,
+            sparse_jacobian: SparseJacobianConfig::default(),
         }
     }
 }
 
-impl BDFOptions {
+impl<R: Runtime> BDFOptions<R> {
     /// Set maximum order.
     pub fn max_order(mut self, order: usize) -> Self {
         self.max_order = order.clamp(1, 5);
@@ -277,11 +427,17 @@ impl BDFOptions {
         self.max_newton_iter = max_iter;
         self
     }
+
+    /// Enable sparse Jacobian solver.
+    pub fn with_sparse_jacobian(mut self, config: SparseJacobianConfig<R>) -> Self {
+        self.sparse_jacobian = config;
+        self
+    }
 }
 
 /// Options specific to Radau IIA solver.
 #[derive(Debug, Clone)]
-pub struct RadauOptions {
+pub struct RadauOptions<R: Runtime> {
     /// Newton iteration tolerance (default: 1e-6).
     pub newton_tol: f64,
 
@@ -292,23 +448,35 @@ pub struct RadauOptions {
     ///
     /// Simplified Newton reuses the Jacobian across iterations for efficiency.
     pub simplified_newton: bool,
+
+    /// Sparse Jacobian configuration (default: disabled).
+    ///
+    /// Enable for large-scale systems (n > 1000) with sparse Jacobians.
+    pub sparse_jacobian: SparseJacobianConfig<R>,
 }
 
-impl Default for RadauOptions {
+impl<R: Runtime> Default for RadauOptions<R> {
     fn default() -> Self {
         Self {
             newton_tol: 1e-6,
             max_newton_iter: 10,
             simplified_newton: true,
+            sparse_jacobian: SparseJacobianConfig::default(),
         }
     }
 }
 
-impl RadauOptions {
+impl<R: Runtime> RadauOptions<R> {
     /// Set Newton iteration parameters.
     pub fn newton_params(mut self, tol: f64, max_iter: usize) -> Self {
         self.newton_tol = tol;
         self.max_newton_iter = max_iter;
+        self
+    }
+
+    /// Enable sparse Jacobian solver.
+    pub fn with_sparse_jacobian(mut self, config: SparseJacobianConfig<R>) -> Self {
+        self.sparse_jacobian = config;
         self
     }
 }
@@ -480,11 +648,16 @@ mod tests {
 
     #[test]
     fn test_bdf_options() {
-        let opts = BDFOptions::default();
+        use numr::runtime::cpu::CpuRuntime;
+
+        let opts = BDFOptions::<CpuRuntime>::default();
         assert_eq!(opts.max_order, 5);
         assert_eq!(opts.max_newton_iter, 10);
+        assert!(!opts.sparse_jacobian.enabled);
 
-        let opts = BDFOptions::default().max_order(3).newton_params(1e-8, 20);
+        let opts = BDFOptions::<CpuRuntime>::default()
+            .max_order(3)
+            .newton_params(1e-8, 20);
         assert_eq!(opts.max_order, 3);
         assert_eq!(opts.newton_tol, 1e-8);
         assert_eq!(opts.max_newton_iter, 20);
@@ -492,10 +665,13 @@ mod tests {
 
     #[test]
     fn test_radau_options() {
-        let opts = RadauOptions::default();
-        assert!(opts.simplified_newton);
+        use numr::runtime::cpu::CpuRuntime;
 
-        let opts = RadauOptions::default().newton_params(1e-10, 15);
+        let opts = RadauOptions::<CpuRuntime>::default();
+        assert!(opts.simplified_newton);
+        assert!(!opts.sparse_jacobian.enabled);
+
+        let opts = RadauOptions::<CpuRuntime>::default().newton_params(1e-10, 15);
         assert_eq!(opts.newton_tol, 1e-10);
         assert_eq!(opts.max_newton_iter, 15);
     }

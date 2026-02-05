@@ -310,14 +310,14 @@ pub trait IntegrationAlgorithms<R: Runtime> {
     /// * `t_span` - Integration interval [t0, tf]
     /// * `y0` - Initial condition
     /// * `options` - General ODE options
-    /// * `bdf_options` - BDF-specific options (order, Newton parameters)
+    /// * `bdf_options` - BDF-specific options (order, Newton parameters, sparse Jacobian)
     fn solve_ivp_bdf<F>(
         &self,
         f: F,
         t_span: [f64; 2],
         y0: &Tensor<R>,
         options: &ODEOptions,
-        bdf_options: &BDFOptions,
+        bdf_options: &BDFOptions<R>,
     ) -> IntegrateResult<ODEResultTensor<R>>
     where
         F: Fn(&DualTensor<R>, &DualTensor<R>, &Self) -> Result<DualTensor<R>>;
@@ -333,14 +333,14 @@ pub trait IntegrationAlgorithms<R: Runtime> {
     /// * `t_span` - Integration interval [t0, tf]
     /// * `y0` - Initial condition
     /// * `options` - General ODE options
-    /// * `radau_options` - Radau-specific options
+    /// * `radau_options` - Radau-specific options (Newton parameters, sparse Jacobian)
     fn solve_ivp_radau<F>(
         &self,
         f: F,
         t_span: [f64; 2],
         y0: &Tensor<R>,
         options: &ODEOptions,
-        radau_options: &RadauOptions,
+        radau_options: &RadauOptions<R>,
     ) -> IntegrateResult<ODEResultTensor<R>>
     where
         F: Fn(&DualTensor<R>, &DualTensor<R>, &Self) -> Result<DualTensor<R>>;

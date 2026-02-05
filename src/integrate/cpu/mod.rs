@@ -175,7 +175,7 @@ impl IntegrationAlgorithms<CpuRuntime> for CpuClient {
         t_span: [f64; 2],
         y0: &Tensor<CpuRuntime>,
         options: &ODEOptions,
-        bdf_options: &BDFOptions,
+        bdf_options: &BDFOptions<CpuRuntime>,
     ) -> IntegrateResult<ODEResultTensor<CpuRuntime>>
     where
         F: Fn(
@@ -193,7 +193,7 @@ impl IntegrationAlgorithms<CpuRuntime> for CpuClient {
         t_span: [f64; 2],
         y0: &Tensor<CpuRuntime>,
         options: &ODEOptions,
-        radau_options: &RadauOptions,
+        radau_options: &RadauOptions<CpuRuntime>,
     ) -> IntegrateResult<ODEResultTensor<CpuRuntime>>
     where
         F: Fn(

@@ -26,9 +26,16 @@
 use numr::autograd::DualTensor;
 use numr::dtype::DType;
 use numr::error::Result;
-use numr::ops::{LinalgOps, ScalarOps, TensorOps, UtilityOps};
+use numr::ops::{LinalgOps, ScalarOps, TensorOps};
 use numr::runtime::{Runtime, RuntimeClient};
 use numr::tensor::Tensor;
+
+#[cfg(feature = "sparse")]
+use super::sparse_utils::{dense_to_csr_full, solve_with_gmres};
+#[cfg(feature = "sparse")]
+use numr::algorithm::iterative::IterativeSolvers;
+#[cfg(feature = "sparse")]
+use numr::sparse::SparseOps;
 
 use crate::integrate::error::{IntegrateError, IntegrateResult};
 use crate::integrate::impl_generic::ode::{
@@ -37,6 +44,7 @@ use crate::integrate::impl_generic::ode::{
 use crate::integrate::ode::{BDFOptions, ODEMethod, ODEOptions};
 
 use super::jacobian::{compute_jacobian_autograd, compute_norm_scalar, eval_primal};
+use super::stiff_client::StiffSolverClient;
 
 // BDF coefficients for orders 1-5
 const BDF_ALPHA: [[f64; 6]; 5] = [
@@ -77,11 +85,11 @@ pub fn bdf_impl<R, C, F>(
     t_span: [f64; 2],
     y0: &Tensor<R>,
     options: &ODEOptions,
-    bdf_options: &BDFOptions,
+    bdf_options: &BDFOptions<R>,
 ) -> IntegrateResult<ODEResultTensor<R>>
 where
     R: Runtime,
-    C: TensorOps<R> + ScalarOps<R> + LinalgOps<R> + UtilityOps<R> + RuntimeClient<R>,
+    C: StiffSolverClient<R>,
     F: Fn(&DualTensor<R>, &DualTensor<R>, &C) -> Result<DualTensor<R>>,
 {
     let [t_start, t_end] = t_span;
@@ -313,11 +321,11 @@ fn newton_iteration<R, C, F>(
     order: usize,
     h: f64,
     jacobian: &Tensor<R>,
-    options: &BDFOptions,
+    options: &BDFOptions<R>,
 ) -> IntegrateResult<(Tensor<R>, bool, usize)>
 where
     R: Runtime,
-    C: TensorOps<R> + ScalarOps<R> + LinalgOps<R> + UtilityOps<R> + RuntimeClient<R>,
+    C: StiffSolverClient<R>,
     F: Fn(&DualTensor<R>, &DualTensor<R>, &C) -> Result<DualTensor<R>>,
 {
     let device = client.device();
@@ -381,9 +389,13 @@ where
             .mul_scalar(&residual, -1.0)
             .map_err(to_integrate_err)?;
         let neg_res_col = neg_residual.reshape(&[n, 1]).map_err(to_integrate_err)?;
-        let delta_col = client
-            .solve(&iteration_matrix, &neg_res_col)
-            .map_err(to_integrate_err)?;
+        let delta_col = solve_bdf_linear(
+            client,
+            &iteration_matrix,
+            &neg_res_col,
+            &options.sparse_jacobian,
+        )
+        .map_err(to_integrate_err)?;
         let delta = delta_col.reshape(&[n]).map_err(to_integrate_err)?;
 
         y_iter = client.add(&y_iter, &delta).map_err(to_integrate_err)?;
@@ -430,6 +442,41 @@ fn to_integrate_err(e: numr::error::Error) -> IntegrateError {
     }
 }
 
+// With sparse feature: support both dense and sparse solvers
+#[cfg(feature = "sparse")]
+fn solve_bdf_linear<R, C>(
+    client: &C,
+    m_dense: &Tensor<R>,
+    b: &Tensor<R>,
+    sparse_config: &crate::integrate::ode::SparseJacobianConfig<R>,
+) -> Result<Tensor<R>>
+where
+    R: Runtime,
+    C: LinalgOps<R> + RuntimeClient<R> + IterativeSolvers<R> + SparseOps<R>,
+{
+    if !sparse_config.enabled {
+        return client.solve(m_dense, b);
+    }
+
+    let m_sparse = dense_to_csr_full(client, m_dense)?;
+    solve_with_gmres(client, &m_sparse, b, sparse_config, "BDF")
+}
+
+// Without sparse feature: dense-only solver
+#[cfg(not(feature = "sparse"))]
+fn solve_bdf_linear<R, C>(
+    client: &C,
+    m_dense: &Tensor<R>,
+    b: &Tensor<R>,
+    _sparse_config: &crate::integrate::ode::SparseJacobianConfig<R>,
+) -> Result<Tensor<R>>
+where
+    R: Runtime,
+    C: LinalgOps<R> + RuntimeClient<R>,
+{
+    client.solve(m_dense, b)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -455,7 +502,7 @@ mod tests {
             [0.0, 5.0],
             &y0,
             &ODEOptions::with_tolerances(1e-4, 1e-6),
-            &BDFOptions::default(),
+            &BDFOptions::<CpuRuntime>::default(),
         )
         .unwrap();
 
@@ -485,7 +532,7 @@ mod tests {
             [0.0, 0.1],
             &y0,
             &ODEOptions::with_tolerances(1e-4, 1e-6),
-            &BDFOptions::default(),
+            &BDFOptions::<CpuRuntime>::default(),
         )
         .unwrap();
 
@@ -527,7 +574,7 @@ mod tests {
             [0.0, 2.0],
             &y0,
             &opts,
-            &BDFOptions::default(),
+            &BDFOptions::<CpuRuntime>::default(),
         )
         .unwrap();
 

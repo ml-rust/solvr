@@ -11,7 +11,10 @@ mod lsoda;
 mod radau;
 mod rk23;
 mod rk45;
+#[cfg(feature = "sparse")]
+mod sparse_utils;
 mod step_control;
+mod stiff_client;
 mod symplectic;
 
 pub use bdf::bdf_impl;
