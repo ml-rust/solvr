@@ -443,9 +443,7 @@ mod tests {
         for &xi in &x_data {
             y_data.push(xi); // y1 initial guess
         }
-        for _ in &x_data {
-            y_data.push(1.0); // y2 initial guess
-        }
+        y_data.extend(std::iter::repeat_n(1.0, n_points)); // y2 initial guess
         let y = Tensor::<CpuRuntime>::from_slice(&y_data, &[2, n_points], &device);
 
         let result = bvp_impl(

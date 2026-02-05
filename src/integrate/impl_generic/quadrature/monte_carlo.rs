@@ -533,7 +533,7 @@ mod tests {
 
         let result1 = monte_carlo_impl(
             &client,
-            &f,
+            f,
             &[(0.0, 1.0), (0.0, 1.0)],
             &MonteCarloOptions::with_samples(1000).seed(seed),
         )
@@ -541,7 +541,7 @@ mod tests {
 
         let result2 = monte_carlo_impl(
             &client,
-            &f,
+            f,
             &[(0.0, 1.0), (0.0, 1.0)],
             &MonteCarloOptions::with_samples(1000).seed(seed),
         )
@@ -578,8 +578,8 @@ mod tests {
             .method(MonteCarloMethod::Stratified { n_strata: 5 })
             .seed(seed);
 
-        let result1 = monte_carlo_impl(&client, &f, &[(0.0, 1.0), (0.0, 1.0)], &options).unwrap();
-        let result2 = monte_carlo_impl(&client, &f, &[(0.0, 1.0), (0.0, 1.0)], &options).unwrap();
+        let result1 = monte_carlo_impl(&client, f, &[(0.0, 1.0), (0.0, 1.0)], &options).unwrap();
+        let result2 = monte_carlo_impl(&client, f, &[(0.0, 1.0), (0.0, 1.0)], &options).unwrap();
 
         let integral1: f64 = result1.integral.to_vec()[0];
         let integral2: f64 = result2.integral.to_vec()[0];
@@ -607,8 +607,8 @@ mod tests {
             .method(MonteCarloMethod::Antithetic)
             .seed(seed);
 
-        let result1 = monte_carlo_impl(&client, &f, &[(0.0, 1.0)], &options).unwrap();
-        let result2 = monte_carlo_impl(&client, &f, &[(0.0, 1.0)], &options).unwrap();
+        let result1 = monte_carlo_impl(&client, f, &[(0.0, 1.0)], &options).unwrap();
+        let result2 = monte_carlo_impl(&client, f, &[(0.0, 1.0)], &options).unwrap();
 
         let integral1: f64 = result1.integral.to_vec()[0];
         let integral2: f64 = result2.integral.to_vec()[0];

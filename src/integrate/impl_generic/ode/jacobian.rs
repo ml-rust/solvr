@@ -157,8 +157,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use numr::autograd::dual_ops::{dual_mul, dual_mul_scalar, dual_sub};
-    use numr::ops::MatmulOps;
+    use numr::autograd::dual_ops::{dual_mul, dual_mul_scalar};
     use numr::runtime::cpu::{CpuClient, CpuDevice, CpuRuntime};
 
     fn setup() -> (CpuDevice, CpuClient) {

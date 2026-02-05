@@ -357,7 +357,7 @@ mod tests {
 
     #[test]
     fn test_dblquad_polynomial() {
-        let (device, client) = setup();
+        let (_device, client) = setup();
 
         // Integrate f(x,y) = x*y over [0,1] × [0,1], exact = 1/4
         let result = dblquad_impl(
