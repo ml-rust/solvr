@@ -1,6 +1,7 @@
 //! Clustering algorithm traits.
 
 pub mod affinity_propagation;
+pub mod bayesian_gmm;
 pub mod bisecting_kmeans;
 pub mod dbscan;
 pub mod gmm;

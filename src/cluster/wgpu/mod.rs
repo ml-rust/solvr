@@ -1,6 +1,7 @@
 //! WebGPU implementations of clustering algorithms.
 
 mod affinity_propagation;
+mod bayesian_gmm;
 mod bisecting_kmeans;
 mod dbscan;
 mod gmm;
