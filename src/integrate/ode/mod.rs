@@ -62,3 +62,8 @@ pub use types::{
     EventOptions, EventRecord, EventSpec, LSODAOptions, ODEMethod, ODEOptions, ODEResultWithEvents,
     RadauOptions, SparseJacobianConfig, SymplecticOptions,
 };
+
+#[cfg(feature = "sparse")]
+pub use types::DirectSolverConfig;
+#[cfg(feature = "sparse")]
+pub use types::SparseSolverStrategy;

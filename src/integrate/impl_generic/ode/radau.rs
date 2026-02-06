@@ -12,16 +12,16 @@
 use numr::autograd::DualTensor;
 use numr::dtype::DType;
 use numr::error::Result;
-use numr::ops::{LinalgOps, ScalarOps, TensorOps};
-use numr::runtime::{Runtime, RuntimeClient};
+use numr::ops::{ScalarOps, TensorOps};
+use numr::runtime::Runtime;
+#[allow(unused_imports)]
+use numr::runtime::RuntimeClient;
 use numr::tensor::Tensor;
 
 #[cfg(feature = "sparse")]
-use super::sparse_utils::{dense_to_csr_full, dense_to_csr_with_pattern, solve_with_gmres};
+use super::direct_solver::DirectSparseSolver;
 #[cfg(feature = "sparse")]
-use numr::algorithm::iterative::IterativeSolvers;
-#[cfg(feature = "sparse")]
-use numr::sparse::SparseOps;
+use super::sparse_utils::{create_direct_solver, solve_sparse_system};
 
 use crate::integrate::error::{IntegrateError, IntegrateResult};
 use crate::integrate::impl_generic::ode::{
@@ -135,6 +135,10 @@ where
         1
     };
 
+    // Direct sparse LU solver (created when strategy is DirectLU or Auto)
+    #[cfg(feature = "sparse")]
+    let mut direct_solver = create_direct_solver(&radau_options.sparse_jacobian, n);
+
     // Main loop
     while t_val < t_end {
         if naccept + nreject >= options.max_steps {
@@ -179,6 +183,8 @@ where
             h,
             jacobian.as_ref().unwrap(),
             radau_options,
+            #[cfg(feature = "sparse")]
+            &mut direct_solver,
         )?;
         nfev += newton_iters;
 
@@ -256,7 +262,7 @@ where
 }
 
 /// Solve the Radau implicit system for all three stages.
-#[allow(clippy::type_complexity)]
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
 fn solve_radau_stages<R, C, F>(
     client: &C,
     f: &F,
@@ -265,6 +271,7 @@ fn solve_radau_stages<R, C, F>(
     h: f64,
     jacobian: &Tensor<R>,
     options: &RadauOptions<R>,
+    #[cfg(feature = "sparse")] direct_solver: &mut Option<DirectSparseSolver<R>>,
 ) -> IntegrateResult<(Tensor<R>, Tensor<R>, Tensor<R>, bool, usize)>
 where
     R: Runtime,
@@ -340,9 +347,30 @@ where
         let neg_r2 = client.mul_scalar(&r2, -1.0).map_err(to_integrate_err)?;
         let neg_r3 = client.mul_scalar(&r3, -1.0).map_err(to_integrate_err)?;
 
-        let dk1 = solve_linear(client, &m_matrix, &neg_r1, &options.sparse_jacobian)?;
-        let dk2 = solve_linear(client, &m_matrix, &neg_r2, &options.sparse_jacobian)?;
-        let dk3 = solve_linear(client, &m_matrix, &neg_r3, &options.sparse_jacobian)?;
+        let dk1 = solve_linear(
+            client,
+            &m_matrix,
+            &neg_r1,
+            &options.sparse_jacobian,
+            #[cfg(feature = "sparse")]
+            direct_solver,
+        )?;
+        let dk2 = solve_linear(
+            client,
+            &m_matrix,
+            &neg_r2,
+            &options.sparse_jacobian,
+            #[cfg(feature = "sparse")]
+            direct_solver,
+        )?;
+        let dk3 = solve_linear(
+            client,
+            &m_matrix,
+            &neg_r3,
+            &options.sparse_jacobian,
+            #[cfg(feature = "sparse")]
+            direct_solver,
+        )?;
 
         // Update stages
         k1 = client.add(&k1, &dk1).map_err(to_integrate_err)?;
@@ -397,34 +425,37 @@ where
 /// - If `sparse_config.enabled == false`: Uses dense LU factorization via `client.solve()`
 /// - If `sparse_config.enabled == true`: Converts dense M to CSR format and uses GMRES
 ///   with optional ILU(0) preconditioning
-// With sparse feature: support both dense and sparse solvers
+// With sparse feature: support dense, GMRES, and direct LU solvers
 #[cfg(feature = "sparse")]
 fn solve_linear<R, C>(
     client: &C,
     m_dense: &Tensor<R>,
     b: &Tensor<R>,
     sparse_config: &crate::integrate::ode::SparseJacobianConfig<R>,
+    direct_solver: &mut Option<DirectSparseSolver<R>>,
 ) -> Result<Tensor<R>>
 where
     R: Runtime,
-    C: LinalgOps<R> + RuntimeClient<R> + IterativeSolvers<R> + SparseOps<R>,
+    C: StiffSolverClient<R>,
 {
     if !sparse_config.enabled {
-        // Dense path
+        // Dense path - Radau requires reshape
         let n = b.shape()[0];
         let b_col = b.reshape(&[n, 1])?;
         let x_col = client.solve(m_dense, &b_col)?;
         return x_col.reshape(&[n]);
     }
 
-    // Sparse path: Convert to CSR and use GMRES
-    let m_sparse = if let Some(pattern) = &sparse_config.pattern {
-        dense_to_csr_with_pattern(client, m_dense, pattern)?
-    } else {
-        dense_to_csr_full(client, m_dense)?
-    };
-
-    solve_with_gmres(client, &m_sparse, b, sparse_config, "Radau")
+    // Sparse path - use pattern if available for Radau
+    solve_sparse_system(
+        client,
+        m_dense,
+        b,
+        sparse_config,
+        direct_solver,
+        sparse_config.pattern.as_ref(),
+        "Radau",
+    )
 }
 
 // Without sparse feature: dense-only solver
@@ -437,7 +468,7 @@ fn solve_linear<R, C>(
 ) -> Result<Tensor<R>>
 where
     R: Runtime,
-    C: LinalgOps<R> + RuntimeClient<R>,
+    C: numr::ops::LinalgOps<R> + RuntimeClient<R>,
 {
     let n = b.shape()[0];
     let b_col = b.reshape(&[n, 1])?;

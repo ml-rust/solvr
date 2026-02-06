@@ -10,13 +10,15 @@ use numr::runtime::{Runtime, RuntimeClient};
 #[cfg(feature = "sparse")]
 use numr::algorithm::iterative::IterativeSolvers;
 #[cfg(feature = "sparse")]
+use numr::ops::IndexingOps;
+#[cfg(feature = "sparse")]
 use numr::sparse::SparseOps;
 
 /// Client trait for stiff ODE solvers requiring linear algebra operations.
 ///
 /// When the `sparse` feature is enabled, this trait also requires `IterativeSolvers`
-/// for GMRES-based sparse linear system solving and `SparseOps` for dense-to-CSR
-/// conversion.
+/// for GMRES-based sparse linear system solving, `SparseOps` for dense-to-CSR
+/// conversion, and `IndexingOps` for `gather_2d` used by the direct sparse solver.
 #[cfg(feature = "sparse")]
 pub trait StiffSolverClient<R: Runtime>:
     TensorOps<R>
@@ -26,6 +28,7 @@ pub trait StiffSolverClient<R: Runtime>:
     + RuntimeClient<R>
     + IterativeSolvers<R>
     + SparseOps<R>
+    + IndexingOps<R>
 {
 }
 
@@ -39,7 +42,8 @@ where
         + UtilityOps<R>
         + RuntimeClient<R>
         + IterativeSolvers<R>
-        + SparseOps<R>,
+        + SparseOps<R>
+        + IndexingOps<R>,
 {
 }
 

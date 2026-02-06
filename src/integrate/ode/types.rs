@@ -6,6 +6,11 @@ use numr::tensor::Tensor;
 #[cfg(feature = "sparse")]
 use numr::sparse::CsrData;
 
+#[cfg(feature = "sparse")]
+pub use crate::integrate::impl_generic::ode::direct_solver_config::{
+    DirectSolverConfig, SparseSolverStrategy,
+};
+
 // ============================================================================
 // Sparse Jacobian Configuration
 // ============================================================================
@@ -78,6 +83,21 @@ pub struct SparseJacobianConfig<R: Runtime> {
     #[cfg(feature = "sparse")]
     pub preconditioner: numr::algorithm::iterative::PreconditionerType,
 
+    /// Sparse solver strategy (default: Gmres).
+    ///
+    /// Controls whether the Newton system is solved using iterative GMRES
+    /// or direct sparse LU factorization.
+    /// **Note**: Only available with the `sparse` feature.
+    #[cfg(feature = "sparse")]
+    pub solver_strategy: SparseSolverStrategy,
+
+    /// Configuration for direct sparse LU solver (default: defaults).
+    ///
+    /// Only used when `solver_strategy` is `DirectLU` or `Auto`.
+    /// **Note**: Only available with the `sparse` feature.
+    #[cfg(feature = "sparse")]
+    pub direct_solver_config: DirectSolverConfig,
+
     /// Phantom data to preserve the Runtime type parameter.
     _phantom: std::marker::PhantomData<R>,
 }
@@ -92,6 +112,10 @@ impl<R: Runtime> Default for SparseJacobianConfig<R> {
             max_gmres_iter: 100,
             #[cfg(feature = "sparse")]
             preconditioner: numr::algorithm::iterative::PreconditionerType::Ilu0,
+            #[cfg(feature = "sparse")]
+            solver_strategy: SparseSolverStrategy::default(),
+            #[cfg(feature = "sparse")]
+            direct_solver_config: DirectSolverConfig::default(),
             _phantom: std::marker::PhantomData,
         }
     }
@@ -141,6 +165,37 @@ impl<R: Runtime> SparseJacobianConfig<R> {
         precond: numr::algorithm::iterative::PreconditionerType,
     ) -> Self {
         self.preconditioner = precond;
+        self
+    }
+
+    /// Set the sparse solver strategy.
+    ///
+    /// **Note**: Requires the `sparse` feature to be enabled.
+    #[cfg(feature = "sparse")]
+    pub fn with_solver_strategy(mut self, strategy: SparseSolverStrategy) -> Self {
+        self.solver_strategy = strategy;
+        self
+    }
+
+    /// Configure for direct sparse LU solver.
+    ///
+    /// Convenience method that enables sparse mode and sets DirectLU strategy.
+    /// **Note**: Requires the `sparse` feature to be enabled.
+    #[cfg(feature = "sparse")]
+    pub fn with_direct_lu() -> Self {
+        Self {
+            enabled: true,
+            solver_strategy: SparseSolverStrategy::DirectLU,
+            ..Default::default()
+        }
+    }
+
+    /// Set direct solver configuration.
+    ///
+    /// **Note**: Requires the `sparse` feature to be enabled.
+    #[cfg(feature = "sparse")]
+    pub fn with_direct_solver_config(mut self, config: DirectSolverConfig) -> Self {
+        self.direct_solver_config = config;
         self
     }
 }

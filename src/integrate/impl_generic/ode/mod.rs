@@ -10,6 +10,10 @@ mod dae_helpers;
 mod dae_ic;
 mod dae_jacobian;
 pub mod dense_output;
+#[cfg(feature = "sparse")]
+pub(crate) mod direct_solver;
+#[cfg(feature = "sparse")]
+pub(crate) mod direct_solver_config;
 mod dop853;
 pub mod events;
 mod jacobian;
@@ -19,6 +23,13 @@ mod rk23;
 mod rk45;
 #[cfg(feature = "sparse")]
 mod sparse_utils;
+#[cfg(feature = "sparse")]
+pub(crate) mod symbolic_analysis;
+
+#[cfg(feature = "sparse")]
+pub use direct_solver::DirectSparseSolver;
+#[cfg(feature = "sparse")]
+pub use direct_solver_config::{DirectSolverConfig, SparseSolverStrategy};
 #[cfg(feature = "sparse")]
 pub use sparse_utils::SparseJacobianCache;
 mod step_control;

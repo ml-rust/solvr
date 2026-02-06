@@ -34,16 +34,18 @@ use crate::integrate::error::{IntegrateError, IntegrateResult};
 use crate::integrate::ode::{DAEOptions, DAEResultTensor, ODEOptions};
 
 use super::dae_helpers::{
-    adjust_order, build_dae_result, compute_error, compute_error_with_exclusion,
-    compute_predictor_with_yp, compute_step_factor, compute_yp_from_bdf, estimate_error,
-    to_integrate_err, BDF_ALPHA, BDF_BETA,
+    BDF_ALPHA, BDF_BETA, adjust_order, build_dae_result, compute_error,
+    compute_error_with_exclusion, compute_predictor_with_yp, compute_step_factor,
+    compute_yp_from_bdf, estimate_error, to_integrate_err,
 };
 use super::dae_ic::compute_consistent_ic;
 use super::dae_jacobian::{compute_dae_jacobian, eval_dae_primal};
 use super::jacobian::compute_norm_scalar;
 
 #[cfg(feature = "sparse")]
-use super::sparse_utils::{dense_to_csr_full, solve_with_gmres};
+use super::direct_solver::DirectSparseSolver;
+#[cfg(feature = "sparse")]
+use super::sparse_utils::{create_direct_solver, solve_sparse_system};
 #[cfg(feature = "sparse")]
 use numr::algorithm::iterative::IterativeSolvers;
 #[cfg(feature = "sparse")]
@@ -203,6 +205,9 @@ where
     let mut steps_since_jacobian = 0;
     let jacobian_update_interval = 5;
 
+    // Direct sparse LU solver (created when strategy is DirectLU or Auto)
+    let mut direct_solver = create_direct_solver(&dae_options.sparse_jacobian, n);
+
     // Main integration loop
     while t_val < t_end {
         if naccept + nreject >= options.max_steps {
@@ -259,6 +264,7 @@ where
             h,
             jacobian.as_ref().expect("jacobian computed above"),
             dae_options,
+            &mut direct_solver,
         )?;
         nfev += newton_iters;
 
@@ -532,8 +538,15 @@ where
 
         // Compute error estimate
         let error_tensor = estimate_error(client, &y_new, &y_pred, order)?;
-        let error_val = compute_error(client, &y_new, &error_tensor, &y, options.rtol, options.atol)
-            .map_err(to_integrate_err)?;
+        let error_val = compute_error(
+            client,
+            &y_new,
+            &error_tensor,
+            &y,
+            options.rtol,
+            options.atol,
+        )
+        .map_err(to_integrate_err)?;
 
         if error_val <= 1.0 {
             // Accept step
@@ -598,6 +611,7 @@ fn dae_newton_iteration<R, C, F>(
     h: f64,
     jacobian: &Tensor<R>,
     dae_options: &DAEOptions<R>,
+    direct_solver: &mut Option<DirectSparseSolver<R>>,
 ) -> IntegrateResult<(Tensor<R>, Tensor<R>, bool, usize)>
 where
     R: Runtime,
@@ -653,8 +667,13 @@ where
             .map_err(to_integrate_err)?;
         let neg_res_col = neg_res.reshape(&[n, 1]).map_err(to_integrate_err)?;
 
-        let delta_col = match solve_dae_linear(client, iteration_matrix, &neg_res_col, dae_options)
-        {
+        let delta_col = match solve_dae_linear(
+            client,
+            iteration_matrix,
+            &neg_res_col,
+            dae_options,
+            direct_solver,
+        ) {
             Ok(d) => d,
             Err(_) => {
                 // Matrix solve failed (singular), return not converged
@@ -745,17 +764,32 @@ fn solve_dae_linear<R, C>(
     m_dense: &Tensor<R>,
     b: &Tensor<R>,
     dae_options: &DAEOptions<R>,
+    direct_solver: &mut Option<DirectSparseSolver<R>>,
 ) -> Result<Tensor<R>>
 where
     R: Runtime,
-    C: LinalgOps<R> + RuntimeClient<R> + IterativeSolvers<R> + SparseOps<R>,
+    C: TensorOps<R>
+        + ScalarOps<R>
+        + LinalgOps<R>
+        + UtilityOps<R>
+        + RuntimeClient<R>
+        + IterativeSolvers<R>
+        + SparseOps<R>
+        + numr::ops::IndexingOps<R>,
 {
     if !dae_options.sparse_jacobian.enabled {
         return client.solve(m_dense, b);
     }
 
-    let m_sparse = dense_to_csr_full(client, m_dense)?;
-    solve_with_gmres(client, &m_sparse, b, &dae_options.sparse_jacobian, "DAE")
+    solve_sparse_system(
+        client,
+        m_dense,
+        b,
+        &dae_options.sparse_jacobian,
+        direct_solver,
+        None,
+        "DAE",
+    )
 }
 
 #[cfg(not(feature = "sparse"))]

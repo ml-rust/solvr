@@ -26,16 +26,16 @@
 use numr::autograd::DualTensor;
 use numr::dtype::DType;
 use numr::error::Result;
-use numr::ops::{LinalgOps, ScalarOps, TensorOps};
-use numr::runtime::{Runtime, RuntimeClient};
+use numr::ops::{ScalarOps, TensorOps};
+use numr::runtime::Runtime;
+#[allow(unused_imports)]
+use numr::runtime::RuntimeClient;
 use numr::tensor::Tensor;
 
 #[cfg(feature = "sparse")]
-use super::sparse_utils::{dense_to_csr_full, solve_with_gmres};
+use super::direct_solver::DirectSparseSolver;
 #[cfg(feature = "sparse")]
-use numr::algorithm::iterative::IterativeSolvers;
-#[cfg(feature = "sparse")]
-use numr::sparse::SparseOps;
+use super::sparse_utils::{create_direct_solver, solve_sparse_system};
 
 use crate::integrate::error::{IntegrateError, IntegrateResult};
 use crate::integrate::impl_generic::ode::{
@@ -137,6 +137,10 @@ where
     let mut steps_since_jacobian = 0;
     let jacobian_update_interval = 5;
 
+    // Direct sparse LU solver (created when strategy is DirectLU or Auto)
+    #[cfg(feature = "sparse")]
+    let mut direct_solver = create_direct_solver(&bdf_options.sparse_jacobian, n);
+
     // Main integration loop
     while t_val < t_end {
         if naccept + nreject >= options.max_steps {
@@ -188,6 +192,8 @@ where
             h,
             jacobian.as_ref().unwrap(),
             bdf_options,
+            #[cfg(feature = "sparse")]
+            &mut direct_solver,
         )?;
         nfev += newton_iters;
 
@@ -322,6 +328,7 @@ fn newton_iteration<R, C, F>(
     h: f64,
     jacobian: &Tensor<R>,
     options: &BDFOptions<R>,
+    #[cfg(feature = "sparse")] direct_solver: &mut Option<DirectSparseSolver<R>>,
 ) -> IntegrateResult<(Tensor<R>, bool, usize)>
 where
     R: Runtime,
@@ -394,6 +401,8 @@ where
             &iteration_matrix,
             &neg_res_col,
             &options.sparse_jacobian,
+            #[cfg(feature = "sparse")]
+            direct_solver,
         )
         .map_err(to_integrate_err)?;
         let delta = delta_col.reshape(&[n]).map_err(to_integrate_err)?;
@@ -442,24 +451,32 @@ fn to_integrate_err(e: numr::error::Error) -> IntegrateError {
     }
 }
 
-// With sparse feature: support both dense and sparse solvers
+// With sparse feature: support dense, GMRES, and direct LU solvers
 #[cfg(feature = "sparse")]
 fn solve_bdf_linear<R, C>(
     client: &C,
     m_dense: &Tensor<R>,
     b: &Tensor<R>,
     sparse_config: &crate::integrate::ode::SparseJacobianConfig<R>,
+    direct_solver: &mut Option<DirectSparseSolver<R>>,
 ) -> Result<Tensor<R>>
 where
     R: Runtime,
-    C: LinalgOps<R> + RuntimeClient<R> + IterativeSolvers<R> + SparseOps<R>,
+    C: StiffSolverClient<R>,
 {
     if !sparse_config.enabled {
         return client.solve(m_dense, b);
     }
 
-    let m_sparse = dense_to_csr_full(client, m_dense)?;
-    solve_with_gmres(client, &m_sparse, b, sparse_config, "BDF")
+    solve_sparse_system(
+        client,
+        m_dense,
+        b,
+        sparse_config,
+        direct_solver,
+        None,
+        "BDF",
+    )
 }
 
 // Without sparse feature: dense-only solver
@@ -472,7 +489,7 @@ fn solve_bdf_linear<R, C>(
 ) -> Result<Tensor<R>>
 where
     R: Runtime,
-    C: LinalgOps<R> + RuntimeClient<R>,
+    C: numr::ops::LinalgOps<R> + RuntimeClient<R>,
 {
     client.solve(m_dense, b)
 }

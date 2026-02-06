@@ -34,6 +34,8 @@ use numr::sparse::{CsrData, SparseOps};
 use numr::tensor::Tensor;
 
 #[cfg(feature = "sparse")]
+use super::direct_solver::DirectSparseSolver;
+#[cfg(feature = "sparse")]
 use crate::integrate::ode::SparseJacobianConfig;
 
 /// Cache for sparse Jacobian operations in stiff ODE solvers.
@@ -98,7 +100,8 @@ impl SparseJacobianCache {
         }
 
         // Safe: we just ensured symbolic_ilu is Some above
-        let symbolic = self.symbolic_ilu
+        let symbolic = self
+            .symbolic_ilu
             .as_ref()
             .expect("symbolic_ilu guaranteed to be Some after initialization above");
 
@@ -268,4 +271,118 @@ where
     }
 
     Ok(result.solution)
+}
+
+/// Solve a sparse linear system using direct sparse LU factorization.
+///
+/// Uses the `DirectSparseSolver` to convert the dense iteration matrix to
+/// sparse format, apply COLAMD ordering, compute symbolic/numeric LU
+/// factorization, and solve via forward/backward substitution.
+///
+/// # Arguments
+///
+/// * `client` - Runtime client with sparse operations
+/// * `direct_solver` - Mutable reference to the direct solver (caches symbolic analysis)
+/// * `m_dense` - Dense iteration matrix
+/// * `b` - Right-hand side vector
+///
+/// # Returns
+///
+/// Solution vector x such that m_dense * x = b
+#[cfg(feature = "sparse")]
+pub fn solve_with_direct_lu<R, C>(
+    client: &C,
+    direct_solver: &mut DirectSparseSolver<R>,
+    m_dense: &Tensor<R>,
+    b: &Tensor<R>,
+) -> Result<Tensor<R>>
+where
+    R: Runtime,
+    C: SparseOps<R> + numr::ops::IndexingOps<R> + numr::ops::TensorOps<R> + numr::ops::ScalarOps<R>,
+{
+    direct_solver.solve(client, m_dense, b)
+}
+
+/// Unified sparse system solver for BDF/Radau/DAE solvers.
+///
+/// Dispatches to direct LU (if available) or falls back to GMRES.
+/// The dense path is NOT included here — each solver handles dense separately
+/// since Radau requires reshape operations.
+///
+/// # Arguments
+///
+/// * `client` - Runtime client with sparse operations
+/// * `m_dense` - Dense iteration matrix
+/// * `b` - Right-hand side vector
+/// * `sparse_config` - Sparse Jacobian configuration
+/// * `direct_solver` - Optional direct LU solver (may be None for Auto/GMRES strategy)
+/// * `pattern` - Optional CSR pattern for optimized dense→CSR conversion
+/// * `solver_name` - Name for error messages ("BDF", "Radau", "DAE")
+///
+/// # Returns
+///
+/// Solution vector x such that m_dense * x = b
+#[cfg(feature = "sparse")]
+pub fn solve_sparse_system<R, C>(
+    client: &C,
+    m_dense: &Tensor<R>,
+    b: &Tensor<R>,
+    sparse_config: &crate::integrate::ode::SparseJacobianConfig<R>,
+    direct_solver: &mut Option<DirectSparseSolver<R>>,
+    pattern: Option<&CsrData<R>>,
+    solver_name: &str,
+) -> Result<Tensor<R>>
+where
+    R: Runtime,
+    C: SparseOps<R>
+        + numr::ops::IndexingOps<R>
+        + numr::ops::TensorOps<R>
+        + numr::ops::ScalarOps<R>
+        + IterativeSolvers<R>,
+{
+    // Use direct LU if a solver is available
+    if let Some(ds) = direct_solver.as_mut() {
+        return solve_with_direct_lu(client, ds, m_dense, b);
+    }
+
+    // Fall back to GMRES
+    let m_sparse = if let Some(pat) = pattern {
+        dense_to_csr_with_pattern(client, m_dense, pat)?
+    } else {
+        dense_to_csr_full(client, m_dense)?
+    };
+
+    solve_with_gmres(client, &m_sparse, b, sparse_config, solver_name)
+}
+
+/// Create a DirectSparseSolver based on configuration and problem size.
+///
+/// # Arguments
+///
+/// * `sparse_config` - Sparse Jacobian configuration
+/// * `n` - Problem size (state dimension)
+///
+/// # Returns
+///
+/// Some(DirectSparseSolver) if strategy is DirectLU or Auto (n < 5000), None otherwise
+#[cfg(feature = "sparse")]
+pub fn create_direct_solver<R: Runtime>(
+    sparse_config: &crate::integrate::ode::SparseJacobianConfig<R>,
+    n: usize,
+) -> Option<DirectSparseSolver<R>> {
+    use super::direct_solver_config::SparseSolverStrategy;
+
+    if !sparse_config.enabled {
+        return None;
+    }
+
+    match sparse_config.solver_strategy {
+        SparseSolverStrategy::DirectLU => {
+            Some(DirectSparseSolver::new(&sparse_config.direct_solver_config))
+        }
+        SparseSolverStrategy::Auto if n < 5000 => {
+            Some(DirectSparseSolver::new(&sparse_config.direct_solver_config))
+        }
+        _ => None,
+    }
 }
