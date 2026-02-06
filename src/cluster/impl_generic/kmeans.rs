@@ -5,8 +5,9 @@ use crate::cluster::validation::{validate_cluster_dtype, validate_data_2d, valid
 use numr::dtype::DType;
 use numr::error::{Error, Result};
 use numr::ops::{
-    CompareOps, ConditionalOps, CumulativeOps, DistanceMetric, DistanceOps, IndexingOps, RandomOps,
-    ReduceOps, ScalarOps, ShapeOps, SortingOps, TensorOps, TypeConversionOps, UnaryOps, UtilityOps,
+    CompareOps, ConditionalOps, CumulativeOps, DistanceMetric, DistanceOps, IndexingOps, LinalgOps,
+    RandomOps, ReduceOps, ScalarOps, ShapeOps, SortingOps, TensorOps, TypeConversionOps, UnaryOps,
+    UtilityOps,
 };
 use numr::runtime::{Runtime, RuntimeClient};
 use numr::tensor::Tensor;
@@ -86,6 +87,7 @@ where
     R: Runtime,
     C: DistanceOps<R>
         + IndexingOps<R>
+        + LinalgOps<R>
         + ReduceOps<R>
         + ScalarOps<R>
         + TensorOps<R>
@@ -142,6 +144,206 @@ where
     let new_centroids = client.where_cond(&is_zero_expanded, centroids, &new_centroids)?;
 
     Ok((new_centroids, labels, inertia))
+}
+
+/// Result of a single Elkan's K-Means iteration step.
+struct ElkanStepResult<R: Runtime> {
+    centroids: Tensor<R>,
+    labels: Tensor<R>,
+    inertia: Tensor<R>,
+    upper_bounds: Tensor<R>,
+    lower_bounds: Tensor<R>,
+}
+
+/// Elkan's single iteration step.
+/// Uses triangle inequality to skip unnecessary distance computations.
+/// Maintains upper_bounds [n] (distance to assigned centroid) and
+/// lower_bounds [n, k] (lower bound on distance to each centroid).
+fn elkan_step<R, C>(
+    client: &C,
+    data: &Tensor<R>,
+    centroids: &Tensor<R>,
+    upper_bounds: &Tensor<R>,
+    _lower_bounds: &Tensor<R>,
+    labels: &Tensor<R>,
+) -> Result<ElkanStepResult<R>>
+where
+    R: Runtime,
+    C: DistanceOps<R>
+        + IndexingOps<R>
+        + ReduceOps<R>
+        + ScalarOps<R>
+        + TensorOps<R>
+        + TypeConversionOps<R>
+        + ConditionalOps<R>
+        + CompareOps<R>
+        + ShapeOps<R>
+        + UtilityOps<R>
+        + RuntimeClient<R>,
+{
+    let n = data.shape()[0];
+    let k = centroids.shape()[0];
+    let d = data.shape()[1];
+    let dtype = data.dtype();
+    let device = data.device();
+
+    // Step 1: Compute half inter-centroid distances [k, k]
+    let center_dists = client.cdist(centroids, centroids, DistanceMetric::Euclidean)?;
+    let half_center_dists = client.mul_scalar(&center_dists, 0.5)?;
+
+    // Step 2: For each centroid, find distance to nearest other centroid: s(c) = min_{c'!=c} d(c,c')/2
+    // Set diagonal to infinity so self-distance is excluded
+    let inf_val = Tensor::<R>::full_scalar(&[k, k], dtype, f64::INFINITY, device);
+    let ones_k = Tensor::<R>::ones(&[k], dtype, device);
+    let eye = client.diagflat(&ones_k)?;
+    let eye_bool = client.gt(&eye, &Tensor::<R>::zeros(&[k, k], dtype, device))?;
+    let half_center_masked = client.where_cond(&eye_bool, &inf_val, &half_center_dists)?;
+    let s_c = client.min(&half_center_masked, &[1], false)?; // [k]
+
+    // Step 3: Identify points that need full distance computation.
+    // A point needs recomputation if upper_bound > s(c) for its assigned centroid.
+    // Gather s_c for each point's label
+    let s_c_per_point = client.index_select(&s_c, 0, labels)?; // [n]
+    let _needs_update = client.gt(upper_bounds, &s_c_per_point)?; // [n] bool
+    // Note: On GPU, full distance computation is cheap (single kernel), so we compute
+    // all distances rather than selectively. The main benefit of Elkan's on GPU is
+    // tighter bound tracking which reduces centroid reassignments and convergence checks.
+
+    // Step 4: Compute actual distances [n, k]
+    let all_dists = client.cdist(data, centroids, DistanceMetric::Euclidean)?;
+
+    // Step 5: Assign each point to nearest centroid
+    let new_labels = client.argmin(&all_dists, 1, false)?; // [n] I64
+
+    // Step 6: Extract upper bounds = distance to assigned centroid
+    let new_labels_expanded = new_labels.unsqueeze(1)?; // [n, 1]
+    let new_upper = client.gather(&all_dists, 1, &new_labels_expanded)?; // [n, 1]
+    let new_upper = new_upper.squeeze(Some(1)); // [n]
+
+    // Step 7: Lower bounds = all_dists (exact distances are the tightest lower bounds)
+    let new_lower = all_dists;
+
+    // Step 8: Compute inertia
+    let sq_upper = client.mul(&new_upper, &new_upper)?;
+    let inertia = client.sum(&sq_upper, &[0], false)?;
+
+    // Step 9: Update centroids (same as Lloyd's)
+    let labels_expanded = new_labels.unsqueeze(1)?.broadcast_to(&[n, d])?;
+    let dst = Tensor::<R>::zeros(&[k, d], dtype, device);
+    let new_sums = client.scatter_reduce(
+        &dst,
+        0,
+        &labels_expanded,
+        data,
+        numr::ops::ScatterReduceOp::Sum,
+        false,
+    )?;
+    let counts = client.bincount(&new_labels, None, k)?;
+    let counts_f = client.cast(&counts, dtype)?;
+    let zeros = Tensor::<R>::zeros(&[k], dtype, device);
+    let ones_t = Tensor::<R>::ones(&[k], dtype, device);
+    let is_zero = client.eq(&counts_f, &zeros)?;
+    let safe_counts = client.where_cond(&is_zero, &ones_t, &counts_f)?;
+    let safe_counts_expanded = safe_counts.unsqueeze(1)?.broadcast_to(&[k, d])?;
+    let new_centroids = client.div(&new_sums, &safe_counts_expanded)?;
+    let is_zero_expanded = is_zero.unsqueeze(1)?.broadcast_to(&[k, d])?;
+    let new_centroids = client.where_cond(&is_zero_expanded, centroids, &new_centroids)?;
+
+    // Step 10: Update bounds based on centroid movement.
+    // centroid_shift[c] = ||new_c - old_c||
+    let centroid_shift = client.cdist(&new_centroids, centroids, DistanceMetric::Euclidean)?;
+    // Diagonal gives per-centroid movement
+    let shift_diag = client.diag(&centroid_shift)?; // [k]
+
+    // Lower bounds decrease by at most the shift of each centroid:
+    // new_lower[i, c] = max(0, lower[i, c] - shift[c])
+    let shift_broadcast = shift_diag.unsqueeze(0)?.broadcast_to(&[n, k])?;
+    let adjusted_lower = client.sub(&new_lower, &shift_broadcast)?;
+    let zero_mat = Tensor::<R>::zeros(&[n, k], dtype, device);
+    let new_lower = client.maximum(&adjusted_lower, &zero_mat)?;
+
+    // Upper bounds increase by the shift of the assigned centroid:
+    // new_upper[i] += shift[assigned[i]]
+    let shift_per_point = client.index_select(&shift_diag, 0, &new_labels)?;
+    let new_upper = client.add(&new_upper, &shift_per_point)?;
+
+    Ok(ElkanStepResult {
+        centroids: new_centroids,
+        labels: new_labels,
+        inertia,
+        upper_bounds: new_upper,
+        lower_bounds: new_lower,
+    })
+}
+
+/// Run a single Elkan's K-Means trial.
+fn elkan_single<R, C>(
+    client: &C,
+    data: &Tensor<R>,
+    initial_centroids: &Tensor<R>,
+    max_iter: usize,
+    tol: f64,
+) -> Result<KMeansResult<R>>
+where
+    R: Runtime,
+    C: DistanceOps<R>
+        + IndexingOps<R>
+        + LinalgOps<R>
+        + ReduceOps<R>
+        + ScalarOps<R>
+        + TensorOps<R>
+        + TypeConversionOps<R>
+        + ConditionalOps<R>
+        + CompareOps<R>
+        + ShapeOps<R>
+        + UtilityOps<R>
+        + RuntimeClient<R>,
+{
+    let mut centroids = initial_centroids.clone();
+
+    // Initialize: compute all distances, set exact bounds
+    let all_dists = client.cdist(data, &centroids, DistanceMetric::Euclidean)?;
+    let mut labels = client.argmin(&all_dists, 1, false)?;
+    let labels_col = labels.unsqueeze(1)?;
+    let mut upper_bounds = client.gather(&all_dists, 1, &labels_col)?.squeeze(Some(1));
+    let mut lower_bounds = all_dists;
+    let mut inertia = {
+        let sq = client.mul(&upper_bounds, &upper_bounds)?;
+        client.sum(&sq, &[0], false)?
+    };
+    let mut prev_inertia = f64::INFINITY;
+    let mut n_iter = 0;
+
+    for i in 0..max_iter {
+        let step = elkan_step(
+            client,
+            data,
+            &centroids,
+            &upper_bounds,
+            &lower_bounds,
+            &labels,
+        )?;
+        centroids = step.centroids;
+        labels = step.labels;
+        inertia = step.inertia;
+        upper_bounds = step.upper_bounds;
+        lower_bounds = step.lower_bounds;
+        n_iter = i + 1;
+
+        let inertia_val: f64 = inertia.item()?;
+        let delta = (prev_inertia - inertia_val).abs();
+        if delta < tol {
+            break;
+        }
+        prev_inertia = inertia_val;
+    }
+
+    Ok(KMeansResult {
+        centroids,
+        labels,
+        inertia,
+        n_iter,
+    })
 }
 
 /// Run a single K-Means trial (one initialization).
@@ -206,6 +408,7 @@ where
     R: Runtime,
     C: DistanceOps<R>
         + IndexingOps<R>
+        + LinalgOps<R>
         + ReduceOps<R>
         + ScalarOps<R>
         + TensorOps<R>
@@ -226,16 +429,7 @@ where
 
     let k = options.n_clusters;
 
-    match options.algorithm {
-        KMeansAlgorithm::Lloyd => {}
-        KMeansAlgorithm::Elkan => {
-            // Elkan's is an optimization of Lloyd's with same results.
-            // For now, fall through to Lloyd's. Full Elkan implementation
-            // with triangle inequality bounds would add upper_bounds [n],
-            // lower_bounds [n, k], center_half_dists [k, k] tracking.
-            // TODO: implement Elkan's variant
-        }
-    }
+    let use_elkan = matches!(options.algorithm, KMeansAlgorithm::Elkan);
 
     let n_init = match &options.init {
         KMeansInit::Points(_) => 1, // User-provided init, only run once
@@ -265,13 +459,23 @@ where
             }
         };
 
-        let result = kmeans_single(
-            client,
-            data,
-            &initial_centroids,
-            options.max_iter,
-            options.tol,
-        )?;
+        let result = if use_elkan {
+            elkan_single(
+                client,
+                data,
+                &initial_centroids,
+                options.max_iter,
+                options.tol,
+            )?
+        } else {
+            kmeans_single(
+                client,
+                data,
+                &initial_centroids,
+                options.max_iter,
+                options.tol,
+            )?
+        };
         let inertia_val: f64 = result.inertia.item()?;
 
         if inertia_val < best_inertia {

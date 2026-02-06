@@ -27,7 +27,7 @@ impl KMeansAlgorithms<CpuRuntime> for CpuClient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cluster::traits::kmeans::{KMeansInit, KMeansOptions};
+    use crate::cluster::traits::kmeans::{KMeansAlgorithm, KMeansInit, KMeansOptions};
     use numr::runtime::cpu::CpuDevice;
 
     fn setup() -> (CpuClient, CpuDevice) {
@@ -129,6 +129,48 @@ mod tests {
         let result = client.kmeans(&data, &options).unwrap();
         let labels: Vec<i64> = result.labels.to_vec();
         assert!(labels.iter().all(|&l| l == 0));
+    }
+
+    #[test]
+    fn test_kmeans_elkan() {
+        let (client, device) = setup();
+
+        #[rustfmt::skip]
+        let data = Tensor::<CpuRuntime>::from_slice(
+            &[
+                0.0, 0.0,
+                0.1, 0.1,
+                0.2, 0.0,
+                10.0, 10.0,
+                10.1, 10.1,
+                10.2, 10.0,
+            ],
+            &[6, 2],
+            &device,
+        );
+
+        let init_centroids =
+            Tensor::<CpuRuntime>::from_slice(&[0.1, 0.03, 10.1, 10.03], &[2, 2], &device);
+
+        let options = KMeansOptions {
+            n_clusters: 2,
+            max_iter: 100,
+            tol: 1e-4,
+            n_init: 1,
+            init: KMeansInit::Points(init_centroids),
+            algorithm: KMeansAlgorithm::Elkan,
+        };
+
+        let result = client.kmeans(&data, &options).unwrap();
+        assert_eq!(result.centroids.shape(), &[2, 2]);
+        assert_eq!(result.labels.shape(), &[6]);
+
+        let labels: Vec<i64> = result.labels.to_vec();
+        assert_eq!(labels[0], labels[1]);
+        assert_eq!(labels[1], labels[2]);
+        assert_eq!(labels[3], labels[4]);
+        assert_eq!(labels[4], labels[5]);
+        assert_ne!(labels[0], labels[3]);
     }
 
     #[test]
