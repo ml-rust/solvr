@@ -1,15 +1,24 @@
 //! Cubic spline coefficient computation generic implementation.
 //!
-//! Implements the Thomas algorithm for solving the tridiagonal system
-//! that arises in cubic spline interpolation.
+//! Computes cubic spline coefficients using dense linear algebra.
+//! The tridiagonal system is assembled on-device using diagflat + cat,
+//! then solved via `LinearAlgebraAlgorithms::solve`. Zero GPU↔CPU transfers.
 
 use crate::interpolate::error::{InterpolateError, InterpolateResult};
 use crate::interpolate::traits::cubic_spline::{SplineBoundary, SplineCoefficients};
+use numr::algorithm::linalg::LinearAlgebraAlgorithms;
 use numr::ops::ScalarOps;
+use numr::prelude::DType;
 use numr::runtime::{Runtime, RuntimeClient};
 use numr::tensor::Tensor;
 
-/// Compute cubic spline coefficients using Thomas algorithm.
+/// Four diagonal/rhs tensors: (main_diag, upper_diag, lower_diag, rhs).
+type DiagonalSystem<R> = (Tensor<R>, Tensor<R>, Tensor<R>, Tensor<R>);
+
+/// Compute cubic spline coefficients (fully on-device).
+///
+/// Builds the tridiagonal system using tensor operations (diagflat, cat)
+/// and solves via LU decomposition. All computation stays on device.
 pub fn cubic_spline_coefficients<R, C>(
     client: &C,
     x: &Tensor<R>,
@@ -18,168 +27,309 @@ pub fn cubic_spline_coefficients<R, C>(
 ) -> InterpolateResult<SplineCoefficients<R>>
 where
     R: Runtime,
-    C: ScalarOps<R> + RuntimeClient<R>,
+    C: ScalarOps<R> + LinearAlgebraAlgorithms<R> + RuntimeClient<R>,
 {
     let device = client.device();
+    let n = x.shape()[0];
 
-    // Get data as vectors for coefficient computation (construction time)
-    // This is acceptable here because the tridiagonal solve is inherently sequential
-    let x_data: Vec<f64> = x.contiguous().to_vec();
-    let y_data: Vec<f64> = y.contiguous().to_vec();
-
-    let n = x_data.len();
-
-    // a coefficients are just the y values
-    let a: Vec<f64> = y_data.to_vec();
-
-    // Compute interval widths h_i = x_{i+1} - x_i
-    let mut h = Vec::with_capacity(n - 1);
-    for i in 0..n - 1 {
-        h.push(x_data[i + 1] - x_data[i]);
+    if n < 2 {
+        return Err(InterpolateError::InsufficientData {
+            required: 2,
+            actual: n,
+            context: "cubic_spline_coefficients".to_string(),
+        });
     }
 
-    // Set up tridiagonal system for c coefficients (second derivatives / 2)
-    // The system is: lower[i] * c[i-1] + diag[i] * c[i] + upper[i] * c[i+1] = rhs[i]
-    let mut diag = vec![0.0; n];
-    let mut upper = vec![0.0; n - 1];
-    let mut lower = vec![0.0; n - 1];
-    let mut rhs = vec![0.0; n];
+    // h[i] = x[i+1] - x[i], shape [n-1]
+    let x_hi = x.narrow(0, 1, n - 1)?;
+    let x_lo = x.narrow(0, 0, n - 1)?;
+    let h = client.sub(&x_hi, &x_lo)?;
 
-    // Interior equations (natural cubic spline continuity)
-    for i in 1..n - 1 {
-        lower[i - 1] = h[i - 1];
-        diag[i] = 2.0 * (h[i - 1] + h[i]);
-        upper[i] = h[i];
-        rhs[i] =
-            3.0 * ((y_data[i + 1] - y_data[i]) / h[i] - (y_data[i] - y_data[i - 1]) / h[i - 1]);
-    }
+    // slopes[i] = (y[i+1] - y[i]) / h[i], shape [n-1]
+    let y_hi = y.narrow(0, 1, n - 1)?;
+    let y_lo = y.narrow(0, 0, n - 1)?;
+    let dy = client.sub(&y_hi, &y_lo)?;
+    let slopes = client.div(&dy, &h)?;
 
-    // Apply boundary conditions
-    match boundary {
-        SplineBoundary::Natural => {
-            // c[0] = 0, c[n-1] = 0
-            diag[0] = 1.0;
-            rhs[0] = 0.0;
-            diag[n - 1] = 1.0;
-            rhs[n - 1] = 0.0;
+    // Interior diagonals (rows 1..n-2):
+    // main[i] = 2*(h[i-1] + h[i])  for i=1..n-2  → computed from h[0:n-2] + h[1:n-1]
+    // upper[i] = h[i]              for i=1..n-2  → h[1:n-1]
+    // lower[i-1] = h[i-1]          for i=1..n-2  → h[0:n-2]
+    // rhs[i] = 3*(slopes[i] - slopes[i-1])
+    let h_lo_int = h.narrow(0, 0, n - 2)?.contiguous();
+    let h_hi_int = h.narrow(0, 1, n - 2)?.contiguous();
+    let main_interior = client.mul_scalar(&client.add(&h_lo_int, &h_hi_int)?, 2.0)?;
+
+    let s_lo = slopes.narrow(0, 0, n - 2)?.contiguous();
+    let s_hi = slopes.narrow(0, 1, n - 2)?.contiguous();
+    let rhs_interior = client.mul_scalar(&client.sub(&s_hi, &s_lo)?, 3.0)?;
+
+    // Build boundary-dependent diagonals and rhs
+    let (main_diag, upper_diag, lower_diag, rhs) = build_boundary_diagonals(
+        client,
+        &h,
+        &slopes,
+        &main_interior,
+        &rhs_interior,
+        boundary,
+        n,
+    )?;
+
+    // Assemble tridiagonal matrix from diagonals (on-device)
+    let a_mat = build_tridiagonal(client, &main_diag, &upper_diag, &lower_diag)?;
+    let rhs_col = rhs.reshape(&[n, 1])?;
+
+    // Solve on-device
+    let c_col = LinearAlgebraAlgorithms::solve(client, &a_mat, &rhs_col).map_err(|e| {
+        InterpolateError::NumericalError {
+            message: format!("Failed to solve tridiagonal system: {}", e),
         }
-        SplineBoundary::Clamped { left, right } => {
-            // First derivative specified at endpoints
-            // S'(x_0) = left => b[0] = left
-            // S'(x_{n-1}) = right => b[n-1] = right
-            diag[0] = 2.0 * h[0];
-            upper[0] = h[0];
-            rhs[0] = 3.0 * ((y_data[1] - y_data[0]) / h[0] - left);
+    })?;
+    let c_tensor = c_col.reshape(&[n])?;
 
-            diag[n - 1] = 2.0 * h[n - 2];
-            lower[n - 2] = h[n - 2];
-            rhs[n - 1] = 3.0 * (right - (y_data[n - 1] - y_data[n - 2]) / h[n - 2]);
-        }
-        SplineBoundary::NotAKnot => {
-            if n < 4 {
-                // Fall back to natural for small n
-                diag[0] = 1.0;
-                rhs[0] = 0.0;
-                diag[n - 1] = 1.0;
-                rhs[n - 1] = 0.0;
-            } else {
-                // Not-a-knot: d[0] = d[1] and d[n-3] = d[n-2]
-                // This makes third derivative continuous at x[1] and x[n-2]
-                let h0h1 = h[0] * h[0] * h[1];
-                let h1h0 = h[1] * h[1] * h[0];
-                diag[0] = h1h0;
-                upper[0] = -(h0h1 + h1h0);
-                rhs[0] = h0h1 * ((y_data[2] - y_data[1]) / h[1] - (y_data[1] - y_data[0]) / h[0]);
+    // a coefficients = y values
+    let a_tensor = y.clone();
 
-                let hn2 = h[n - 2];
-                let hn3 = h[n - 3];
-                diag[n - 1] = hn3 * hn3 * hn2;
-                lower[n - 2] = -(hn2 * hn2 * hn3 + hn3 * hn3 * hn2);
-                rhs[n - 1] = hn2
-                    * hn2
-                    * hn3
-                    * ((y_data[n - 1] - y_data[n - 2]) / hn2
-                        - (y_data[n - 2] - y_data[n - 3]) / hn3);
-            }
-        }
-    }
+    // Compute b and d from c using tensor ops:
+    // b[i] = slopes[i] - h[i] * (2*c[i] + c[i+1]) / 3
+    // d[i] = (c[i+1] - c[i]) / (3 * h[i])
+    let c_left = c_tensor.narrow(0, 0, n - 1)?;
+    let c_right = c_tensor.narrow(0, 1, n - 1)?;
 
-    // Solve tridiagonal system using Thomas algorithm
-    let c = solve_tridiagonal(&lower, &diag, &upper, &rhs)?;
+    let two_c_left = client.mul_scalar(&c_left, 2.0)?;
+    let sum_c = client.add(&two_c_left, &c_right)?;
+    let three = Tensor::full_scalar(&[n - 1], DType::F64, 3.0, device);
+    let hc_term = client.div(&client.mul(&h, &sum_c)?, &three)?;
+    let b_tensor = client.sub(&slopes, &hc_term)?;
 
-    // Compute b and d coefficients from c
-    let mut b = vec![0.0; n - 1];
-    let mut d = vec![0.0; n - 1];
-
-    for i in 0..n - 1 {
-        b[i] = (y_data[i + 1] - y_data[i]) / h[i] - h[i] * (2.0 * c[i] + c[i + 1]) / 3.0;
-        d[i] = (c[i + 1] - c[i]) / (3.0 * h[i]);
-    }
-
-    // Convert to tensors
-    let a_tensor = Tensor::from_slice(&a, &[n], device);
-    let b_tensor = Tensor::from_slice(&b, &[n - 1], device);
-    let c_tensor = Tensor::from_slice(&c, &[n], device);
-    let d_tensor = Tensor::from_slice(&d, &[n - 1], device);
+    let c_diff = client.sub(&c_right, &c_left)?;
+    let three_h = client.mul_scalar(&h, 3.0)?;
+    let d_tensor = client.div(&c_diff, &three_h)?;
 
     Ok((a_tensor, b_tensor, c_tensor, d_tensor))
 }
 
-/// Solve tridiagonal system using Thomas algorithm.
-fn solve_tridiagonal(
-    lower: &[f64],
-    diag: &[f64],
-    upper: &[f64],
-    rhs: &[f64],
-) -> InterpolateResult<Vec<f64>> {
-    let n = diag.len();
-    let mut c_prime = vec![0.0; n];
-    let mut d_prime = vec![0.0; n];
+/// Build the boundary-dependent diagonal vectors and rhs (fully on-device).
+fn build_boundary_diagonals<R, C>(
+    client: &C,
+    h: &Tensor<R>,
+    slopes: &Tensor<R>,
+    main_interior: &Tensor<R>,
+    rhs_interior: &Tensor<R>,
+    boundary: &SplineBoundary,
+    n: usize,
+) -> InterpolateResult<DiagonalSystem<R>>
+where
+    R: Runtime,
+    C: ScalarOps<R> + RuntimeClient<R>,
+{
+    let device = client.device();
+    let one = Tensor::full_scalar(&[1], DType::F64, 1.0, device);
+    let zero_1 = Tensor::zeros(&[1], DType::F64, device);
+    let h_lo_int = h.narrow(0, 0, n - 2)?.contiguous();
+    let h_hi_int = h.narrow(0, 1, n - 2)?.contiguous();
 
-    // Forward sweep
-    c_prime[0] = upper[0] / diag[0];
-    d_prime[0] = rhs[0] / diag[0];
-
-    for i in 1..n {
-        let denom = diag[i] - lower[i.saturating_sub(1)] * c_prime[i - 1];
-        if denom.abs() < 1e-14 {
-            return Err(InterpolateError::NumericalError {
-                message: "Singular tridiagonal system in spline computation".to_string(),
-            });
+    match boundary {
+        SplineBoundary::Natural => {
+            let main = client.cat(&[&one, main_interior, &one], 0)?;
+            let upper = client.cat(&[&zero_1, &h_hi_int], 0)?;
+            let lower = client.cat(&[&h_lo_int, &zero_1], 0)?;
+            let rhs = client.cat(&[&zero_1, rhs_interior, &zero_1], 0)?;
+            Ok((main, upper, lower, rhs))
         }
-        if i < n - 1 {
-            c_prime[i] = upper[i] / denom;
+        SplineBoundary::Clamped { left, right } => {
+            let h_first = h.narrow(0, 0, 1)?.contiguous();
+            let h_last = h.narrow(0, n - 2, 1)?.contiguous();
+            let two_h_first = client.mul_scalar(&h_first, 2.0)?;
+            let two_h_last = client.mul_scalar(&h_last, 2.0)?;
+
+            let main = client.cat(&[&two_h_first, main_interior, &two_h_last], 0)?;
+            let upper = client.cat(&[&h_first, &h_hi_int], 0)?;
+            let lower = client.cat(&[&h_lo_int, &h_last], 0)?;
+
+            let s_first = slopes.narrow(0, 0, 1)?.contiguous();
+            let s_last = slopes.narrow(0, n - 2, 1)?.contiguous();
+            let left_t = Tensor::full_scalar(&[1], DType::F64, *left, device);
+            let right_t = Tensor::full_scalar(&[1], DType::F64, *right, device);
+            let rhs_first = client.mul_scalar(&client.sub(&s_first, &left_t)?, 3.0)?;
+            let rhs_last = client.mul_scalar(&client.sub(&right_t, &s_last)?, 3.0)?;
+            let rhs = client.cat(&[&rhs_first, rhs_interior, &rhs_last], 0)?;
+
+            Ok((main, upper, lower, rhs))
         }
-        d_prime[i] = (rhs[i] - lower[i.saturating_sub(1)] * d_prime[i - 1]) / denom;
-    }
+        SplineBoundary::NotAKnot => {
+            if n < 4 {
+                // Fall back to natural for small n
+                let main = client.cat(&[&one, main_interior, &one], 0)?;
+                let upper = client.cat(&[&zero_1, &h_hi_int], 0)?;
+                let lower = client.cat(&[&h_lo_int, &zero_1], 0)?;
+                let rhs = client.cat(&[&zero_1, rhs_interior, &zero_1], 0)?;
+                Ok((main, upper, lower, rhs))
+            } else {
+                // Not-a-knot boundary conditions
+                let h0 = h.narrow(0, 0, 1)?.contiguous();
+                let h1 = h.narrow(0, 1, 1)?.contiguous();
+                let hn3 = h.narrow(0, n - 3, 1)?.contiguous();
+                let hn2 = h.narrow(0, n - 2, 1)?.contiguous();
 
-    // Back substitution
-    let mut x = vec![0.0; n];
-    x[n - 1] = d_prime[n - 1];
-    for i in (0..n - 1).rev() {
-        x[i] = d_prime[i] - c_prime[i] * x[i + 1];
-    }
+                // Main diagonal: [h1²*h0, interior..., hn3²*hn2]
+                let h1_sq = client.mul(&h1, &h1)?;
+                let main_first = client.mul(&h1_sq, &h0)?;
+                let hn3_sq = client.mul(&hn3, &hn3)?;
+                let main_last = client.mul(&hn3_sq, &hn2)?;
+                let main = client.cat(&[&main_first, main_interior, &main_last], 0)?;
 
-    Ok(x)
+                // Upper: [-(h0²*h1 + h1²*h0), interior h values...]
+                let h0_sq = client.mul(&h0, &h0)?;
+                let h0_sq_h1 = client.mul(&h0_sq, &h1)?;
+                let h1_sq_h0 = client.mul(&h1_sq, &h0)?;
+                let upper_first = client.mul_scalar(&client.add(&h0_sq_h1, &h1_sq_h0)?, -1.0)?;
+                let upper = client.cat(&[&upper_first, &h_hi_int], 0)?;
+
+                // Lower: [interior h values..., -(hn2²*hn3 + hn3²*hn2)]
+                let hn2_sq = client.mul(&hn2, &hn2)?;
+                let hn2_sq_hn3 = client.mul(&hn2_sq, &hn3)?;
+                let hn3_sq_hn2 = client.mul(&hn3_sq, &hn2)?;
+                let lower_last = client.mul_scalar(&client.add(&hn2_sq_hn3, &hn3_sq_hn2)?, -1.0)?;
+                let lower = client.cat(&[&h_lo_int, &lower_last], 0)?;
+
+                // RHS: [h0²*h1*(s1-s0), interior..., hn2²*hn3*(sn2-sn3)]
+                let s0 = slopes.narrow(0, 0, 1)?.contiguous();
+                let s1 = slopes.narrow(0, 1, 1)?.contiguous();
+                let rhs_first = client.mul(&h0_sq_h1, &client.sub(&s1, &s0)?)?;
+                let sn3 = slopes.narrow(0, n - 3, 1)?.contiguous();
+                let sn2 = slopes.narrow(0, n - 2, 1)?.contiguous();
+                let rhs_last = client.mul(&hn2_sq_hn3, &client.sub(&sn2, &sn3)?)?;
+                let rhs = client.cat(&[&rhs_first, rhs_interior, &rhs_last], 0)?;
+
+                Ok((main, upper, lower, rhs))
+            }
+        }
+    }
+}
+
+/// Build a tridiagonal [n, n] matrix from diagonal vectors (fully on-device).
+///
+/// Uses diagflat for each diagonal, then cat to shift upper/lower diagonals
+/// into position.
+fn build_tridiagonal<R, C>(
+    client: &C,
+    main_diag: &Tensor<R>,
+    upper_diag: &Tensor<R>,
+    lower_diag: &Tensor<R>,
+) -> InterpolateResult<Tensor<R>>
+where
+    R: Runtime,
+    C: ScalarOps<R> + RuntimeClient<R>,
+{
+    let device = client.device();
+    let n = main_diag.shape()[0];
+
+    // Main diagonal → [n, n]
+    let main_mat = client.diagflat(main_diag)?;
+
+    // Upper diagonal [n-1] → [n-1, n-1] → shift right: prepend zero column, append zero row
+    let upper_small = client.diagflat(upper_diag)?;
+    let zero_col = Tensor::zeros(&[n - 1, 1], DType::F64, device);
+    let upper_shifted = client.cat(&[&zero_col, &upper_small], 1)?; // [n-1, n]
+    let zero_row = Tensor::zeros(&[1, n], DType::F64, device);
+    let upper_mat = client.cat(&[&upper_shifted, &zero_row], 0)?; // [n, n]
+
+    // Lower diagonal [n-1] → [n-1, n-1] → shift down: append zero column, prepend zero row
+    let lower_small = client.diagflat(lower_diag)?;
+    let lower_shifted = client.cat(&[&lower_small, &zero_col], 1)?; // [n-1, n]
+    let lower_mat = client.cat(&[&zero_row, &lower_shifted], 0)?; // [n, n]
+
+    let result = client.add(&client.add(&main_mat, &upper_mat)?, &lower_mat)?;
+    Ok(result)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use numr::runtime::cpu::{CpuClient, CpuDevice, CpuRuntime};
+
+    fn setup() -> (CpuDevice, CpuClient) {
+        let device = CpuDevice::new();
+        let client = CpuClient::new(device.clone());
+        (device, client)
+    }
 
     #[test]
-    fn test_tridiagonal_solver() {
-        // Simple 3x3 system
-        let lower = vec![1.0, 1.0];
-        let diag = vec![2.0, 2.0, 2.0];
-        let upper = vec![1.0, 1.0];
-        let rhs = vec![1.0, 2.0, 1.0];
+    fn test_natural_spline_interpolates_knots() {
+        let (device, client) = setup();
+        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], &device);
+        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 4.0, 9.0], &[4], &device);
 
-        let x = solve_tridiagonal(&lower, &diag, &upper, &rhs).unwrap();
+        let (a, b, c, d) =
+            cubic_spline_coefficients(&client, &x, &y, &SplineBoundary::Natural).unwrap();
 
-        // Verify solution satisfies Ax = b
-        assert!((diag[0] * x[0] + upper[0] * x[1] - rhs[0]).abs() < 1e-10);
-        assert!((lower[0] * x[0] + diag[1] * x[1] + upper[1] * x[2] - rhs[1]).abs() < 1e-10);
-        assert!((lower[1] * x[1] + diag[2] * x[2] - rhs[2]).abs() < 1e-10);
+        let a_v: Vec<f64> = a.to_vec();
+        let b_v: Vec<f64> = b.to_vec();
+        let c_v: Vec<f64> = c.to_vec();
+        let d_v: Vec<f64> = d.to_vec();
+
+        // At t=1 on segment i: a[i]+b[i]+c[i]+d[i] = y[i+1]
+        for i in 0..3 {
+            let val = a_v[i] + b_v[i] + c_v[i] + d_v[i];
+            assert!(
+                (val - a_v[i + 1]).abs() < 1e-10,
+                "segment {} endpoint: {} vs {}",
+                i,
+                val,
+                a_v[i + 1]
+            );
+        }
+    }
+
+    #[test]
+    fn test_clamped_spline_derivative() {
+        let (device, client) = setup();
+        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0], &[3], &device);
+        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 0.0], &[3], &device);
+
+        let (_a, b, _c, _d) = cubic_spline_coefficients(
+            &client,
+            &x,
+            &y,
+            &SplineBoundary::Clamped {
+                left: 1.0,
+                right: -1.0,
+            },
+        )
+        .unwrap();
+
+        let b_v: Vec<f64> = b.to_vec();
+        assert!(
+            (b_v[0] - 1.0).abs() < 1e-10,
+            "left derivative: {} vs 1.0",
+            b_v[0]
+        );
+    }
+
+    #[test]
+    fn test_not_a_knot_spline_continuity() {
+        let (device, client) = setup();
+        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0, 4.0], &[5], &device);
+        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 4.0, 9.0, 16.0], &[5], &device);
+
+        let (a, b, c, d) =
+            cubic_spline_coefficients(&client, &x, &y, &SplineBoundary::NotAKnot).unwrap();
+
+        let a_v: Vec<f64> = a.to_vec();
+        let b_v: Vec<f64> = b.to_vec();
+        let c_v: Vec<f64> = c.to_vec();
+        let d_v: Vec<f64> = d.to_vec();
+
+        for i in 0..4 {
+            let val = a_v[i] + b_v[i] + c_v[i] + d_v[i];
+            assert!(
+                (val - a_v[i + 1]).abs() < 1e-8,
+                "segment {} mismatch: {} vs {}",
+                i,
+                val,
+                a_v[i + 1]
+            );
+        }
     }
 }
