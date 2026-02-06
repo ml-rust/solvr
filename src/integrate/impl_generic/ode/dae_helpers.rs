@@ -9,8 +9,11 @@ use numr::runtime::{Runtime, RuntimeClient};
 use numr::tensor::Tensor;
 
 use crate::integrate::error::{IntegrateError, IntegrateResult};
-use crate::integrate::ode::{DAEResultTensor, DAEVariableType};
+use crate::integrate::ode::DAEResultTensor;
+#[cfg(feature = "sparse")]
+use crate::integrate::ode::DAEVariableType;
 
+#[cfg(feature = "sparse")]
 use super::jacobian::compute_norm_scalar;
 
 // BDF coefficients (shared with dae.rs)
@@ -134,6 +137,7 @@ where
 }
 
 /// Compute normalized error excluding algebraic variables.
+#[cfg(feature = "sparse")]
 pub(super) fn compute_error_with_exclusion<R, C>(
     client: &C,
     y_new: &Tensor<R>,

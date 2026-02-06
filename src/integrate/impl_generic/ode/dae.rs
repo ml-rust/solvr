@@ -33,10 +33,11 @@ use numr::tensor::Tensor;
 use crate::integrate::error::{IntegrateError, IntegrateResult};
 use crate::integrate::ode::{DAEOptions, DAEResultTensor, ODEOptions};
 
+#[cfg(feature = "sparse")]
+use super::dae_helpers::compute_error_with_exclusion;
 use super::dae_helpers::{
-    BDF_ALPHA, BDF_BETA, adjust_order, build_dae_result, compute_error,
-    compute_error_with_exclusion, compute_predictor_with_yp, compute_step_factor,
-    compute_yp_from_bdf, estimate_error, to_integrate_err,
+    BDF_ALPHA, BDF_BETA, adjust_order, build_dae_result, compute_error, compute_predictor_with_yp,
+    compute_step_factor, compute_yp_from_bdf, estimate_error, to_integrate_err,
 };
 use super::dae_ic::compute_consistent_ic;
 use super::dae_jacobian::{compute_dae_jacobian, eval_dae_primal};
