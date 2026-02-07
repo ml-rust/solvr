@@ -55,6 +55,30 @@ pub struct TensorTestResult<R: Runtime> {
     pub pvalue: Tensor<R>,
 }
 
+/// Result of robust regression (Theil-Sen or Siegel slopes).
+#[derive(Debug, Clone)]
+pub struct RobustRegressionResult<R: Runtime> {
+    /// Slope estimate (scalar tensor)
+    pub slope: Tensor<R>,
+    /// Intercept estimate (scalar tensor)
+    pub intercept: Tensor<R>,
+    /// Lower confidence interval bound for slope (scalar tensor)
+    pub low_slope: Tensor<R>,
+    /// Upper confidence interval bound for slope (scalar tensor)
+    pub high_slope: Tensor<R>,
+}
+
+/// Method for computing the center in Levene's test.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LeveneCenter {
+    /// Use the mean (classical Levene's test)
+    Mean,
+    /// Use the median (Brown-Forsythe test, more robust)
+    Median,
+    /// Use the 10% trimmed mean
+    TrimmedMean,
+}
+
 /// Validate that dtype is suitable for statistics operations.
 pub fn validate_stats_dtype(dtype: DType) -> Result<()> {
     use numr::error::Error;

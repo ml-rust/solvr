@@ -19,6 +19,7 @@ pub fn extract_scalar<R: Runtime>(t: &Tensor<R>) -> Result<f64> {
         });
     }
 
+    let t = t.contiguous();
     match t.dtype() {
         DType::F32 => {
             let data: Vec<f32> = t.to_vec();
@@ -36,6 +37,8 @@ pub fn extract_scalar<R: Runtime>(t: &Tensor<R>) -> Result<f64> {
 }
 
 /// Compute ranks for Spearman correlation (works on any Runtime).
+///
+/// Uses scatter to assign ranks on-device — no GPU↔CPU transfers.
 pub fn compute_ranks<R, C>(client: &C, x: &Tensor<R>) -> Result<Tensor<R>>
 where
     R: Runtime,
@@ -43,21 +46,33 @@ where
 {
     let x_contig = x.contiguous();
     let n = x_contig.numel();
+    let device = client.device();
 
-    // Get sorted indices
+    // argsort gives indices that would sort x
     let indices = client.argsort(&x_contig, 0, false)?;
 
-    // Create ranks (1-based)
-    let mut ranks = vec![0.0f64; n];
-    let indices_data: Vec<i64> = indices.to_vec();
+    // ranks = 1-based: arange(1, n+1)
+    let ranks_seq = client.arange(1.0, (n + 1) as f64, 1.0, x.dtype())?;
 
-    for (rank, &idx) in indices_data.iter().enumerate() {
-        ranks[idx as usize] = (rank + 1) as f64;
+    // Scatter ranks into original positions:
+    // output[indices[i]] = ranks_seq[i] → ranks_seq[i] = i+1
+    let zeros = Tensor::<R>::full_scalar(&[n], x.dtype(), 0.0, device);
+    client.scatter(&zeros, 0, &indices, &ranks_seq)
+}
+
+/// Compute median of a 1-D tensor on-device (single scalar transfer at end).
+pub fn tensor_median_scalar<R, C>(client: &C, x: &Tensor<R>) -> Result<f64>
+where
+    R: Runtime,
+    C: TensorOps<R> + RuntimeClient<R>,
+{
+    let sorted = client.sort(x, 0, false)?;
+    let n = sorted.numel();
+    if n % 2 == 1 {
+        extract_scalar(&sorted.narrow(0, n / 2, 1)?)
+    } else {
+        let pair = sorted.narrow(0, n / 2 - 1, 2)?;
+        let all_dims: Vec<usize> = (0..pair.ndim()).collect();
+        extract_scalar(&client.mean(&pair, &all_dims, false)?)
     }
-
-    Ok(Tensor::<R>::from_slice(
-        &ranks,
-        x_contig.shape(),
-        client.device(),
-    ))
 }
