@@ -93,6 +93,7 @@
 
 pub mod cluster;
 pub mod common;
+pub mod graph;
 pub mod integrate;
 pub mod interpolate;
 pub mod morphology;
@@ -103,6 +104,12 @@ pub mod stats;
 pub mod window;
 
 // Re-export main types for convenience
+pub use graph::{
+    AllPairsResult, CentralityAlgorithms, ComponentResult, ConnectivityAlgorithms,
+    EigCentralityOptions, FlowAlgorithms, FlowResult, GraphData, GraphMatrixAlgorithms,
+    MSTAlgorithms, MSTResult, MinCostFlowOptions, PageRankOptions, PathResult,
+    ShortestPathAlgorithms, ShortestPathResult,
+};
 pub use integrate::{
     IntegrateError, IntegrateResult, IntegrationAlgorithms, ODEMethod, ODEOptions, ODEResultTensor,
     QuadOptions, QuadResult, RombergOptions, solve_ivp_impl,
