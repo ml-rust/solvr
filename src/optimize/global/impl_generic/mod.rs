@@ -5,11 +5,13 @@
 pub mod basinhopping;
 pub mod differential_evolution;
 pub mod dual_annealing;
+pub mod shgo;
 pub mod simulated_annealing;
 
 pub use basinhopping::basinhopping_impl;
 pub use differential_evolution::differential_evolution_impl;
 pub use dual_annealing::dual_annealing_impl;
+pub use shgo::shgo_impl;
 pub use simulated_annealing::simulated_annealing_impl;
 
 use numr::ops::{CompareOps, TensorOps};

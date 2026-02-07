@@ -3,6 +3,7 @@
 mod basinhopping;
 mod differential_evolution;
 mod dual_annealing;
+mod shgo;
 mod simulated_annealing;
 
 #[cfg(test)]
