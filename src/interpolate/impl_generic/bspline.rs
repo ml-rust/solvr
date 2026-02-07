@@ -202,7 +202,7 @@ where
 /// Uses the Cox-de Boor recurrence with batched tensor operations:
 /// 1. Degree-0 basis via element-wise comparison (broadcasting)
 /// 2. Recurrence for degrees 1..k via narrow + broadcast + safe division
-fn compute_basis_matrix<R, C>(
+pub(crate) fn compute_basis_matrix<R, C>(
     client: &C,
     x: &Tensor<R>,
     knots: &Tensor<R>,
@@ -341,7 +341,7 @@ where
 // ============ Knot vector construction (on-device) ============
 
 /// Build the B-spline knot vector on-device.
-fn build_knot_vector_tensor<R, C>(
+pub(crate) fn build_knot_vector_tensor<R, C>(
     client: &C,
     x: &Tensor<R>,
     degree: usize,
@@ -641,7 +641,7 @@ where
 ///
 /// c'_i = k * (c_{i+1} - c_i) / (t_{i+k+1} - t_{i+1})
 /// New knots: remove first and last knot each time.
-fn differentiate_bspline_tensor<R, C>(
+pub(crate) fn differentiate_bspline_tensor<R, C>(
     client: &C,
     spline: &BSpline<R>,
     order: usize,
