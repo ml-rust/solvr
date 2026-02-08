@@ -436,7 +436,7 @@ impl ContinuousDistribution for TruncatedNormal {
             Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.phi_alpha, client.device());
         let z_norm_tensor =
             Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.z_norm, client.device());
-        let p_scaled = client.mul(&p, &z_norm_tensor)?;
+        let p_scaled = client.mul(p, &z_norm_tensor)?;
         let p_combined = client.add(&phi_alpha_tensor, &p_scaled)?;
 
         // z = √2 * erfinv(2*p_combined - 1)
@@ -535,7 +535,7 @@ mod tests {
         assert!((tn.cdf(0.0) - 0.5).abs() < 0.01);
 
         // CDF should be monotonically increasing
-        let x_vals = vec![-0.5, 0.0, 0.5];
+        let x_vals = [-0.5, 0.0, 0.5];
         for i in 0..x_vals.len() - 1 {
             assert!(tn.cdf(x_vals[i]) <= tn.cdf(x_vals[i + 1]));
         }

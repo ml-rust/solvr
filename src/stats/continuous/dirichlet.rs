@@ -129,12 +129,12 @@ impl Dirichlet {
         let denom = a0 * a0 * (a0 + 1.0);
         let mut cov = vec![vec![0.0; self.k]; self.k];
 
-        for i in 0..self.k {
-            for j in 0..self.k {
+        for (i, row) in cov.iter_mut().enumerate().take(self.k) {
+            for (j, cell) in row.iter_mut().enumerate().take(self.k) {
                 if i == j {
-                    cov[i][j] = self.alpha[i] * (a0 - self.alpha[i]) / denom;
+                    *cell = self.alpha[i] * (a0 - self.alpha[i]) / denom;
                 } else {
-                    cov[i][j] = -self.alpha[i] * self.alpha[j] / denom;
+                    *cell = -self.alpha[i] * self.alpha[j] / denom;
                 }
             }
         }

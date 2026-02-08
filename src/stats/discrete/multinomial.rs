@@ -174,12 +174,12 @@ impl Multinomial {
         let n_f = self.n as f64;
         let mut cov = vec![vec![0.0; self.k]; self.k];
 
-        for i in 0..self.k {
-            for j in 0..self.k {
+        for (i, row) in cov.iter_mut().enumerate().take(self.k) {
+            for (j, cell) in row.iter_mut().enumerate().take(self.k) {
                 if i == j {
-                    cov[i][j] = n_f * self.p[i] * (1.0 - self.p[i]);
+                    *cell = n_f * self.p[i] * (1.0 - self.p[i]);
                 } else {
-                    cov[i][j] = -n_f * self.p[i] * self.p[j];
+                    *cell = -n_f * self.p[i] * self.p[j];
                 }
             }
         }
@@ -357,7 +357,7 @@ mod tests {
         let m = Multinomial::new(2, vec![0.4, 0.6]).unwrap();
 
         // All possible outcomes for n=2
-        let outcomes = vec![vec![0, 2], vec![1, 1], vec![2, 0]];
+        let outcomes = [vec![0, 2], vec![1, 1], vec![2, 0]];
 
         let total: f64 = outcomes.iter().map(|x| m.pmf(x)).sum();
         assert!((total - 1.0).abs() < 1e-10);
@@ -400,7 +400,6 @@ mod tests {
     #[test]
     fn test_multinomial_uniform() {
         // Uniform distribution over k categories
-        let k = 4;
         let m = Multinomial::new(4, vec![0.25, 0.25, 0.25, 0.25]).unwrap();
 
         // P(X = [1, 1, 1, 1]) = 4! / (1!)^4 * (0.25)^4 = 24 * (1/256) = 3/32

@@ -1,4 +1,5 @@
 //! CPU implementation of statistical algorithms.
+#![allow(unused_imports)]
 
 mod descriptive;
 mod hypothesis;

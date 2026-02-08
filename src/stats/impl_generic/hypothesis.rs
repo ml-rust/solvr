@@ -551,9 +551,9 @@ where
     // since ppf is not a tensor op — these are algorithm coefficients, not data)
     let std_normal = Normal::standard();
     let mut m = vec![0.0f64; n];
-    for i in 0..n {
+    for (i, mi) in m.iter_mut().enumerate().take(n) {
         let p = (i as f64 + 1.0 - 0.375) / (n as f64 + 0.25);
-        m[i] = std_normal.ppf(p).unwrap_or(0.0);
+        *mi = std_normal.ppf(p).unwrap_or(0.0);
     }
 
     // Normalize: a = m / ||m||

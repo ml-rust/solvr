@@ -220,7 +220,7 @@ mod tests {
         let pval = extract_scalar(&result.pvalue).unwrap();
 
         assert!(k2 >= 0.0);
-        assert!(pval >= 0.0 && pval <= 1.0);
+        assert!((0.0..=1.0).contains(&pval));
     }
 
     #[test]
@@ -235,7 +235,7 @@ mod tests {
         let pval = extract_scalar(&result.pvalue).unwrap();
 
         assert!(f_stat > 0.0);
-        assert!(pval >= 0.0 && pval <= 1.0);
+        assert!((0.0..=1.0).contains(&pval));
     }
 
     #[test]
@@ -250,6 +250,6 @@ mod tests {
         let pval = extract_scalar(&result.pvalue).unwrap();
 
         assert!(t_stat > 0.0);
-        assert!(pval >= 0.0 && pval <= 1.0);
+        assert!((0.0..=1.0).contains(&pval));
     }
 }
