@@ -508,6 +508,7 @@ where
     Ok(result)
 }
 
+#[allow(clippy::type_complexity)]
 fn eval_eq_constraints<R, C>(
     client: &C,
     x: &Tensor<R>,

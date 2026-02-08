@@ -3,6 +3,8 @@
 use numr::runtime::Runtime;
 use numr::tensor::Tensor;
 
+pub type ConstraintFn<'a, R> = dyn Fn(&Tensor<R>) -> numr::error::Result<Tensor<R>> + 'a;
+
 /// Type of constraint.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConstraintType {
@@ -20,10 +22,10 @@ pub struct Constraint<'a, R: Runtime> {
     /// Type of constraint (equality or inequality).
     pub kind: ConstraintType,
     /// Constraint function. Returns a tensor of constraint values.
-    pub fun: &'a dyn Fn(&Tensor<R>) -> numr::error::Result<Tensor<R>>,
+    pub fun: &'a ConstraintFn<'a, R>,
     /// Optional Jacobian of the constraint function.
     /// If None, finite differences will be used.
-    pub jac: Option<&'a dyn Fn(&Tensor<R>) -> numr::error::Result<Tensor<R>>>,
+    pub jac: Option<&'a ConstraintFn<'a, R>>,
 }
 
 /// Variable bounds for constrained optimization.

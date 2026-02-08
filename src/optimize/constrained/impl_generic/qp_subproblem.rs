@@ -227,8 +227,8 @@ where
         // Find most violated inactive constraint using tensor operations
         let mut worst_violation = 0.0;
         let mut worst_idx = None;
-        for i in 0..m_ineq {
-            if !active_set[i] {
+        for (i, is_active) in active_set.iter().enumerate().take(m_ineq) {
+            if !*is_active {
                 // Extract single residual value for constraint i
                 let res_narrow =
                     residual
@@ -375,6 +375,7 @@ where
 }
 
 /// Build combined constraint matrix from equality + active inequality constraints.
+#[allow(clippy::type_complexity)]
 fn build_active_constraints<R, C>(
     client: &C,
     a_eq: Option<&Tensor<R>>,

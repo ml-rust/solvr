@@ -17,6 +17,7 @@ use crate::optimize::qp::traits::{QpOptions, QpResult};
 /// Transforms inequality constraints A_ineq*x >= b_ineq into standard form
 /// with slack variables: A_ineq*x - s = b_ineq, s >= 0.
 /// Then solves the barrier KKT system.
+#[allow(clippy::too_many_arguments)]
 pub fn interior_point_qp_impl<R, C>(
     client: &C,
     q: &Tensor<R>,
@@ -356,6 +357,7 @@ where
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn solve_equality_only_qp<R, C>(
     client: &C,
     q: &Tensor<R>,
@@ -521,7 +523,7 @@ where
     Ok(0.5 * xtqx + ctx)
 }
 
-fn compute_step_length<R: Runtime>(
+fn compute_step_length<R>(
     s: &Tensor<R>,
     z: &Tensor<R>,
     ds: &Tensor<R>,

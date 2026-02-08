@@ -11,18 +11,13 @@ use numr::tensor::Tensor;
 use crate::optimize::error::OptimizeResult;
 
 /// QP solver method.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum QpMethod {
     /// Active set method (efficient for small-medium problems).
     ActiveSet,
     /// Interior point method (efficient for larger problems).
+    #[default]
     InteriorPoint,
-}
-
-impl Default for QpMethod {
-    fn default() -> Self {
-        Self::InteriorPoint
-    }
 }
 
 /// Options for QP solver.
@@ -81,6 +76,7 @@ pub trait QpAlgorithms<R: Runtime> {
     /// * `a_ineq` - Inequality constraint matrix [m_ineq, n] (optional)
     /// * `b_ineq` - Inequality constraint RHS [m_ineq] (optional)
     /// * `options` - Solver options
+    #[allow(clippy::too_many_arguments)]
     fn solve_qp(
         &self,
         q: &Tensor<R>,

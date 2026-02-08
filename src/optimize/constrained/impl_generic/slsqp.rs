@@ -221,6 +221,7 @@ where
 /// Evaluate constraints and compute Jacobians.
 ///
 /// Returns (Jacobian [m, n], constraint_values [m]) or (None, None) if no constraints.
+#[allow(clippy::type_complexity)]
 fn evaluate_constraints<R, C>(
     client: &C,
     x: &Tensor<R>,
@@ -303,6 +304,7 @@ where
 ///
 /// Lower bounds: x_i - l_i >= 0  ->  e_i'*d >= -(x_i - l_i)
 /// Upper bounds: u_i - x_i >= 0  ->  -e_i'*d >= -(u_i - x_i)
+#[allow(clippy::type_complexity)]
 fn add_bound_constraints<R, C>(
     client: &C,
     x: &Tensor<R>,

@@ -13,6 +13,7 @@ use crate::optimize::minimize::impl_generic::utils::{tensor_dot, tensor_norm};
 use crate::optimize::qp::traits::{QpOptions, QpResult};
 
 /// Active set QP solver.
+#[allow(clippy::too_many_arguments)]
 pub fn active_set_qp_impl<R, C>(
     client: &C,
     q: &Tensor<R>,

@@ -173,10 +173,8 @@ where
         } else if trial_violation < current_violation {
             // Trial is more feasible
             true
-        } else if trial_violation <= current_violation && f_trial < sim_fvals[0] {
-            true
         } else {
-            false
+            trial_violation <= current_violation && f_trial < sim_fvals[0]
         };
 
         if accept {
@@ -356,6 +354,7 @@ where
 
 /// Find trial point that minimizes objective improvement while satisfying
 /// linearized constraints within the trust region.
+#[allow(clippy::too_many_arguments)]
 fn find_trial_point<R, C>(
     client: &C,
     x0: &Tensor<R>,
@@ -410,6 +409,7 @@ fn find_worst_simplex_point(fvals: &[f64], cvals: &[Vec<f64>]) -> usize {
     worst_idx
 }
 
+#[allow(clippy::too_many_arguments)]
 fn rebuild_simplex<R, C, F>(
     client: &C,
     f: &F,

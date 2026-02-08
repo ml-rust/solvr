@@ -59,7 +59,7 @@ where
     for d in 0..dim {
         let base = PRIMES.get(d).copied().unwrap_or(113);
         let x = van_der_corput(index, base);
-        values.push(x as f64);
+        values.push(x);
     }
 
     let device = client.device();
