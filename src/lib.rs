@@ -93,12 +93,14 @@
 
 pub mod cluster;
 pub mod common;
+#[cfg(feature = "graph")]
 pub mod graph;
 pub mod integrate;
 pub mod interpolate;
 pub mod linalg;
 pub mod morphology;
 pub mod optimize;
+#[cfg(feature = "pde")]
 pub mod pde;
 pub mod signal;
 pub mod spatial;
@@ -106,6 +108,7 @@ pub mod stats;
 pub mod window;
 
 // Re-export main types for convenience
+#[cfg(feature = "graph")]
 pub use graph::{
     AllPairsResult, CentralityAlgorithms, ComponentResult, ConnectivityAlgorithms,
     EigCentralityOptions, FlowAlgorithms, FlowResult, GraphData, GraphMatrixAlgorithms,
@@ -129,6 +132,7 @@ pub use morphology::{
     StructuringElement,
 };
 pub use optimize::{OptimizeError, OptimizeResult, scalar::*};
+#[cfg(feature = "pde")]
 pub use pde::{
     BoundaryCondition, BoundarySide, BoundarySpec, FdmOptions, FdmResult, FemResult,
     FiniteDifferenceAlgorithms, FiniteElementAlgorithms, Grid2D, Grid3D, PdeError, PdeResult,
