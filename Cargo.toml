@@ -2,9 +2,13 @@
 name = "solvr"
 version = "0.0.0-beta.1"
 edition = "2024"
+rust-version = "1.85"
 description = "Advanced computing library for real-world problem solving - optimization, differential equations, interpolation, statistics, and more"
 license = "Apache-2.0"
 repository = "https://github.com/ml-rust/solvr"
+homepage = "https://github.com/ml-rust/solvr"
+documentation = "https://docs.rs/solvr"
+readme = "README.md"
 keywords = ["solver", "optimization", "ode", "interpolation", "statistics"]
 categories = ["algorithms", "mathematics", "science"]
 
@@ -32,3 +36,7 @@ pde = ["sparse"]
 # Precision features
 f16 = ["numr/f16"]
 fp8 = ["numr/fp8"]
+
+[package.metadata.docs.rs]
+no-default-features = true
+features = ["cpu", "graph", "pde"]
