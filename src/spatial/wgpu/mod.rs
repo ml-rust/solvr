@@ -13,6 +13,7 @@ mod delaunay;
 mod distance;
 mod distance_transform;
 mod kdtree;
+mod mesh;
 mod procrustes;
 mod rotation;
 mod voronoi;

@@ -70,6 +70,7 @@ pub use traits::delaunay::{Delaunay, DelaunayAlgorithms};
 pub use traits::distance::{DistanceAlgorithms, DistanceMetric};
 pub use traits::distance_transform::{DistanceTransformAlgorithms, DistanceTransformMetric};
 pub use traits::kdtree::{KDTree, KDTreeAlgorithms, KDTreeOptions, KNNResult, RadiusResult};
+pub use traits::mesh::{Mesh, MeshAlgorithms, SimplificationMethod, SmoothingMethod};
 pub use traits::procrustes::{ProcrustesAlgorithms, ProcrustesResult};
 pub use traits::rotation::{EulerOrder, Rotation, RotationAlgorithms};
 pub use traits::voronoi::{Voronoi, VoronoiAlgorithms};

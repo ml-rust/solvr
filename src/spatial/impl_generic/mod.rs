@@ -18,6 +18,7 @@ mod delaunay;
 mod distance;
 pub mod distance_transform;
 mod kdtree;
+pub mod mesh;
 mod procrustes;
 mod rotation;
 mod voronoi;
@@ -29,6 +30,7 @@ pub use delaunay::{delaunay_find_simplex_impl, delaunay_impl, delaunay_vertex_ne
 pub use distance::{cdist_impl, pdist_impl, squareform_impl, squareform_inverse_impl};
 pub use distance_transform::{distance_transform_edt_impl, distance_transform_impl};
 pub use kdtree::{kdtree_build_impl, kdtree_query_impl, kdtree_query_radius_impl};
+pub use mesh::{mesh_simplify_impl, mesh_smooth_impl, triangulate_polygon_impl};
 pub use procrustes::{orthogonal_procrustes_impl, procrustes_impl};
 pub use rotation::{
     rotation_apply_impl, rotation_as_euler_impl, rotation_as_matrix_impl, rotation_as_quat_impl,
