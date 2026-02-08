@@ -2,7 +2,9 @@
 //!
 //! Uses numr tensor ops - backend-optimized (SIMD on CPU, kernels on GPU).
 
-use crate::signal::impl_generic::helpers::{extract_segments_impl, power_spectrum_impl};
+use crate::signal::impl_generic::helpers::{
+    DetrendMode, detrend_tensor_impl, extract_segments_impl, power_spectrum_impl,
+};
 use crate::signal::impl_generic::spectral::helpers::generate_window;
 use crate::signal::traits::spectral::{Detrend, PsdScaling, WelchParams, WelchResult};
 use numr::algorithm::fft::{FftAlgorithms, FftNormalization};
@@ -73,20 +75,12 @@ where
     let num_segments = segments.shape()[0];
 
     // Apply detrending to each segment
-    let segments_detrended = match params.detrend {
-        Detrend::None => segments,
-        Detrend::Constant => {
-            // Remove mean from each segment
-            let mean = client.mean(&segments, &[1], true)?;
-            client.sub(&segments, &mean)?
-        }
-        Detrend::Linear => {
-            // Linear detrend is more complex - for now just constant
-            // TODO: Implement proper linear detrend
-            let mean = client.mean(&segments, &[1], true)?;
-            client.sub(&segments, &mean)?
-        }
+    let detrend_mode = match params.detrend {
+        Detrend::None => DetrendMode::None,
+        Detrend::Constant => DetrendMode::Constant,
+        Detrend::Linear => DetrendMode::Linear,
     };
+    let segments_detrended = detrend_tensor_impl(client, &segments, detrend_mode)?;
 
     // Apply window to each segment (broadcast window across segments)
     let window_broadcast = window.reshape(&[1, nperseg])?;

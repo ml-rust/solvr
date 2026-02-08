@@ -2,7 +2,9 @@
 //!
 //! Uses numr tensor ops - backend-optimized (SIMD on CPU, kernels on GPU).
 
-use crate::signal::impl_generic::helpers::{extract_segments_impl, power_spectrum_impl};
+use crate::signal::impl_generic::helpers::{
+    DetrendMode, detrend_tensor_impl, extract_segments_impl, power_spectrum_impl,
+};
 use crate::signal::impl_generic::spectral::helpers::generate_window;
 use crate::signal::traits::spectral::{CoherenceResult, Detrend, WelchParams};
 use numr::algorithm::fft::{FftAlgorithms, FftNormalization};
@@ -76,29 +78,13 @@ where
     let y_segments = extract_segments_impl(client, y, nperseg, noverlap)?;
 
     // Apply detrending to each segment
-    let x_detrended = match params.detrend {
-        Detrend::None => x_segments,
-        Detrend::Constant => {
-            let mean = client.mean(&x_segments, &[1], true)?;
-            client.sub(&x_segments, &mean)?
-        }
-        Detrend::Linear => {
-            let mean = client.mean(&x_segments, &[1], true)?;
-            client.sub(&x_segments, &mean)?
-        }
+    let detrend_mode = match params.detrend {
+        Detrend::None => DetrendMode::None,
+        Detrend::Constant => DetrendMode::Constant,
+        Detrend::Linear => DetrendMode::Linear,
     };
-
-    let y_detrended = match params.detrend {
-        Detrend::None => y_segments,
-        Detrend::Constant => {
-            let mean = client.mean(&y_segments, &[1], true)?;
-            client.sub(&y_segments, &mean)?
-        }
-        Detrend::Linear => {
-            let mean = client.mean(&y_segments, &[1], true)?;
-            client.sub(&y_segments, &mean)?
-        }
-    };
+    let x_detrended = detrend_tensor_impl(client, &x_segments, detrend_mode)?;
+    let y_detrended = detrend_tensor_impl(client, &y_segments, detrend_mode)?;
 
     // Apply window to each segment (broadcast window across segments)
     let window_broadcast = window.reshape(&[1, nperseg])?;

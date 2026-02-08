@@ -2,7 +2,7 @@
 //!
 //! Uses numr tensor ops - backend-optimized (SIMD on CPU, kernels on GPU).
 
-use crate::signal::impl_generic::helpers::power_spectrum_impl;
+use crate::signal::impl_generic::helpers::{DetrendMode, detrend_tensor_impl, power_spectrum_impl};
 use crate::signal::impl_generic::spectral::helpers::generate_window;
 use crate::signal::traits::spectral::{Detrend, PeriodogramParams, PeriodogramResult, PsdScaling};
 use numr::algorithm::fft::{FftAlgorithms, FftNormalization};
@@ -52,19 +52,12 @@ where
     let win_sum_sq: f64 = win_sum_sq_tensor.item()?;
 
     // Apply detrending
-    let x_detrended = match params.detrend {
-        Detrend::None => x.clone(),
-        Detrend::Constant => {
-            let mean = client.mean(x, &[0], true)?;
-            client.sub(x, &mean)?
-        }
-        Detrend::Linear => {
-            // Linear detrend - for now use constant
-            // TODO: Implement proper linear detrend
-            let mean = client.mean(x, &[0], true)?;
-            client.sub(x, &mean)?
-        }
+    let detrend_mode = match params.detrend {
+        Detrend::None => DetrendMode::None,
+        Detrend::Constant => DetrendMode::Constant,
+        Detrend::Linear => DetrendMode::Linear,
     };
+    let x_detrended = detrend_tensor_impl(client, x, detrend_mode)?;
 
     // Apply window
     let x_windowed = client.mul(&x_detrended, &window)?;

@@ -136,7 +136,6 @@ where
 /// Detrend a tensor by removing mean (constant) or linear trend.
 ///
 /// This operates on the last dimension of the tensor, allowing batch processing.
-#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum DetrendMode {
     /// No detrending
