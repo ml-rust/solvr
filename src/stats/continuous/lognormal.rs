@@ -282,7 +282,7 @@ impl ContinuousDistribution for LogNormal {
         C: TensorOps<R> + ScalarOps<R> + SpecialFunctions<R> + RuntimeClient<R>,
     {
         // ISF(p) = PPF(1 - p)
-        let one_minus_p = client.sub_scalar(p, -1.0)?;
+        let one_minus_p = client.rsub_scalar(p, 1.0)?;
         self.ppf_tensor(&one_minus_p, client)
     }
 }

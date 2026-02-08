@@ -226,8 +226,8 @@ impl ContinuousDistribution for Cauchy {
         let z = client.mul_scalar(&centered, 1.0 / self.scale)?;
 
         let atan_z = client.atan(&z)?;
-        let scaled = client.mul_scalar(&atan_z, 1.0 / PI)?;
-        client.sub_scalar(&scaled, -0.5)
+        let scaled = client.mul_scalar(&atan_z, -1.0 / PI)?;
+        client.add_scalar(&scaled, 0.5)
     }
 
     fn log_cdf_tensor<R: Runtime, C>(&self, x: &Tensor<R>, client: &C) -> Result<Tensor<R>>
@@ -244,7 +244,7 @@ impl ContinuousDistribution for Cauchy {
         C: TensorOps<R> + ScalarOps<R> + SpecialFunctions<R> + RuntimeClient<R>,
     {
         // PPF(p) = x₀ + γ * tan(π*(p - 0.5))
-        let p_minus_half = client.sub_scalar(p, -0.5)?;
+        let p_minus_half = client.sub_scalar(p, 0.5)?;
         let pi_term = client.mul_scalar(&p_minus_half, PI)?;
         let tan_val = client.tan(&pi_term)?;
         let scaled = client.mul_scalar(&tan_val, self.scale)?;
@@ -256,7 +256,7 @@ impl ContinuousDistribution for Cauchy {
         C: TensorOps<R> + ScalarOps<R> + SpecialFunctions<R> + RuntimeClient<R>,
     {
         // ISF(p) = PPF(1 - p)
-        let one_minus_p = client.sub_scalar(p, -1.0)?;
+        let one_minus_p = client.rsub_scalar(p, 1.0)?;
         self.ppf_tensor(&one_minus_p, client)
     }
 }

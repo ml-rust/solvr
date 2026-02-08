@@ -215,7 +215,7 @@ impl ContinuousDistribution for Exponential {
         // CDF(x) = 1 - exp(-λ*x)
         let neg_lambda_x = client.mul_scalar(x, -self.lambda)?;
         let exp_term = client.exp(&neg_lambda_x)?;
-        client.sub_scalar(&exp_term, -1.0)
+        client.rsub_scalar(&exp_term, 1.0)
     }
 
     fn sf_tensor<R: Runtime, C>(&self, x: &Tensor<R>, client: &C) -> Result<Tensor<R>>
@@ -241,7 +241,7 @@ impl ContinuousDistribution for Exponential {
         C: TensorOps<R> + ScalarOps<R> + SpecialFunctions<R> + RuntimeClient<R>,
     {
         // PPF(p) = -ln(1-p) / λ
-        let one_minus_p = client.sub_scalar(p, -1.0)?;
+        let one_minus_p = client.rsub_scalar(p, 1.0)?;
         let ln_term = client.log(&one_minus_p)?;
         let neg_ln = client.mul_scalar(&ln_term, -1.0)?;
         client.mul_scalar(&neg_ln, 1.0 / self.lambda)

@@ -220,7 +220,7 @@ impl DiscreteDistribution for Geometric {
         let log_q = self.q.ln();
 
         // ln(1 - p)
-        let one_minus_p = client.mul_scalar(&client.mul_scalar(p, -1.0)?, -1.0)?; // Compute 1 - p
+        let one_minus_p = client.rsub_scalar(p, 1.0)?;
         let ln_one_minus_p = client.log(&one_minus_p)?;
 
         // ln(1 - p_val) / ln(1 - p)

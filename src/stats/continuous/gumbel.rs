@@ -186,7 +186,7 @@ impl ContinuousDistribution for Gumbel {
         let neg_z = client.mul_scalar(&z, -1.0)?;
         let exp_neg_z = client.exp(&neg_z)?;
 
-        let result = client.sub(&z, &exp_neg_z)?;
+        let result = client.sub(&neg_z, &exp_neg_z)?;
         client.add_scalar(&result, -self.scale.ln())
     }
 
@@ -210,7 +210,7 @@ impl ContinuousDistribution for Gumbel {
     {
         // SF(x) = 1 - CDF(x)
         let cdf = self.cdf_tensor(x, client)?;
-        client.sub_scalar(&cdf, -1.0)
+        client.rsub_scalar(&cdf, 1.0)
     }
 
     fn log_cdf_tensor<R: Runtime, C>(&self, x: &Tensor<R>, client: &C) -> Result<Tensor<R>>
@@ -222,7 +222,8 @@ impl ContinuousDistribution for Gumbel {
         let z = client.mul_scalar(&centered, 1.0 / self.scale)?;
 
         let neg_z = client.mul_scalar(&z, -1.0)?;
-        client.exp(&neg_z)
+        let exp_neg_z = client.exp(&neg_z)?;
+        client.mul_scalar(&exp_neg_z, -1.0)
     }
 
     fn ppf_tensor<R: Runtime, C>(&self, p: &Tensor<R>, client: &C) -> Result<Tensor<R>>
@@ -242,7 +243,7 @@ impl ContinuousDistribution for Gumbel {
         C: TensorOps<R> + ScalarOps<R> + SpecialFunctions<R> + RuntimeClient<R>,
     {
         // ISF(p) = PPF(1 - p)
-        let one_minus_p = client.sub_scalar(p, -1.0)?;
+        let one_minus_p = client.rsub_scalar(p, 1.0)?;
         self.ppf_tensor(&one_minus_p, client)
     }
 }
@@ -405,7 +406,7 @@ impl ContinuousDistribution for GumbelMin {
         let exp_z = client.exp(&z)?;
         let neg_exp_z = client.mul_scalar(&exp_z, -1.0)?;
         let exp_neg_exp_z = client.exp(&neg_exp_z)?;
-        client.sub_scalar(&exp_neg_exp_z, -1.0)
+        client.rsub_scalar(&exp_neg_exp_z, 1.0)
     }
 
     fn sf_tensor<R: Runtime, C>(&self, x: &Tensor<R>, client: &C) -> Result<Tensor<R>>
@@ -435,7 +436,7 @@ impl ContinuousDistribution for GumbelMin {
         C: TensorOps<R> + ScalarOps<R> + SpecialFunctions<R> + RuntimeClient<R>,
     {
         // PPF(p) = μ + β * ln(-ln(1-p))
-        let one_minus_p = client.sub_scalar(p, -1.0)?;
+        let one_minus_p = client.rsub_scalar(p, 1.0)?;
         let ln_term = client.log(&one_minus_p)?;
         let neg_ln = client.mul_scalar(&ln_term, -1.0)?;
         let ln_ln = client.log(&neg_ln)?;
@@ -448,7 +449,7 @@ impl ContinuousDistribution for GumbelMin {
         C: TensorOps<R> + ScalarOps<R> + SpecialFunctions<R> + RuntimeClient<R>,
     {
         // ISF(p) = PPF(1 - p)
-        let one_minus_p = client.sub_scalar(p, -1.0)?;
+        let one_minus_p = client.rsub_scalar(p, 1.0)?;
         self.ppf_tensor(&one_minus_p, client)
     }
 }
