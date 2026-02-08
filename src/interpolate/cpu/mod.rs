@@ -1,10 +1,16 @@
 mod akima;
+mod bezier_curve;
+mod bezier_surface;
 mod bspline;
+mod bspline_curve;
+mod bspline_surface;
 mod clough_tocher;
 mod cubic_spline;
 mod geometric;
 mod interp1d;
 mod interpnd;
+mod nurbs_curve;
+mod nurbs_surface;
 mod pchip;
 mod rbf;
 mod rect_bivariate_spline;

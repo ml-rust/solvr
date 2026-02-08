@@ -303,7 +303,7 @@ where
 /// Select 3 distinct random indices, none equal to exclude.
 ///
 /// Uses tensor random ops to generate random values, then extracts as scalars.
-/// Single-scalar extraction is acceptable (not arrays) - see CLAUDE.md.
+/// Single-scalar extraction is acceptable (not arrays).
 fn select_random_indices<R, C>(
     client: &C,
     pop_size: usize,

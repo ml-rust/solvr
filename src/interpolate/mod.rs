@@ -59,12 +59,18 @@ pub mod traits;
 
 // Public API: traits and types
 pub use error::{InterpolateError, InterpolateResult};
+pub use traits::bezier_curve::{BezierCurve, BezierCurveAlgorithms};
+pub use traits::bezier_surface::{BezierSurface, BezierSurfaceAlgorithms};
 pub use traits::bspline::{BSpline, BSplineBoundary};
+pub use traits::bspline_curve::{BSplineCurve, BSplineCurveAlgorithms};
+pub use traits::bspline_surface::{BSplineSurface, BSplineSurfaceAlgorithms};
 pub use traits::clough_tocher::CloughTocher2D;
 pub use traits::cubic_spline::SplineBoundary;
 pub use traits::geometric::{GeometricTransformAlgorithms, InterpolationOrder};
 pub use traits::interp1d::InterpMethod;
 pub use traits::interpnd::{ExtrapolateMode, InterpNdMethod};
+pub use traits::nurbs_curve::{NurbsCurve, NurbsCurveAlgorithms};
+pub use traits::nurbs_surface::{NurbsSurface, NurbsSurfaceAlgorithms};
 pub use traits::rbf::{RbfKernel, RbfModel};
 pub use traits::rect_bivariate_spline::BivariateSpline;
 pub use traits::scattered::ScatteredMethod;
