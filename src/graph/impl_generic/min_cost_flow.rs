@@ -69,10 +69,10 @@ where
     // Successive shortest path: repeatedly find min-cost augmenting path
     loop {
         // Check if we've reached max_flow limit
-        if let Some(max_flow_limit) = options.max_flow {
-            if total_flow >= max_flow_limit {
-                break;
-            }
+        if let Some(max_flow_limit) = options.max_flow
+            && total_flow >= max_flow_limit
+        {
+            break;
         }
 
         // Bellman-Ford to find shortest path (allowing negative costs due to backward edges)
@@ -154,10 +154,8 @@ where
 
     // Create output tensor: flatten [n, n] -> [n*n]
     let mut flow_flat = Vec::with_capacity(n * n);
-    for i in 0..n {
-        for j in 0..n {
-            flow_flat.push(flow[i][j]);
-        }
+    for row in flow.iter().take(n) {
+        flow_flat.extend(row.iter().take(n).copied());
     }
 
     let flow_tensor = Tensor::<R>::from_slice(&flow_flat, &[n * n], &device);

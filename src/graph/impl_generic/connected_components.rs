@@ -46,8 +46,8 @@ where
     for u in 0..n {
         let start = row_ptrs[u] as usize;
         let end = row_ptrs[u + 1] as usize;
-        for i in start..end {
-            let v = col_indices[i] as usize;
+        for &v_idx in col_indices.iter().take(end).skip(start) {
+            let v = v_idx as usize;
             adj[u].push(v);
         }
     }

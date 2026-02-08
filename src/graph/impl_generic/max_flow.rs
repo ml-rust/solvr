@@ -105,10 +105,8 @@ where
 
     // Create output tensor: flatten [n, n] -> [n*n]
     let mut flow_flat = Vec::with_capacity(n * n);
-    for i in 0..n {
-        for j in 0..n {
-            flow_flat.push(flow[i][j]);
-        }
+    for row in flow.iter().take(n) {
+        flow_flat.extend(row.iter().take(n).copied());
     }
 
     let flow_tensor = Tensor::<R>::from_slice(&flow_flat, &[n * n], &device);

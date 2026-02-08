@@ -56,8 +56,8 @@ where
 
             let start = row_ptrs[v] as usize;
             let end = row_ptrs[v + 1] as usize;
-            for idx in start..end {
-                let w = col_indices[idx] as usize;
+            for &w_idx in col_indices.iter().take(end).skip(start) {
+                let w = w_idx as usize;
 
                 // First visit?
                 if dist[w] < 0 {

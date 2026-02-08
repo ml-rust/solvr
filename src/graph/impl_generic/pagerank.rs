@@ -43,8 +43,8 @@ where
     for i in 0..n {
         let start = row_ptrs[i] as usize;
         let end = row_ptrs[i + 1] as usize;
-        for idx in start..end {
-            out_degree[i] += values[idx];
+        for &val in values.iter().take(end).skip(start) {
+            out_degree[i] += val;
         }
     }
 

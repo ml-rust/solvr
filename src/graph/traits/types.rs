@@ -210,20 +210,11 @@ impl Default for PageRankOptions {
 }
 
 /// Options for min-cost flow.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct MinCostFlowOptions {
     /// Cost per unit flow on each edge (sparse matrix [n, n]).
     /// If None, all costs are 1.
     pub costs: Option<Vec<f64>>,
     /// Maximum flow to push. If None, finds min-cost max flow.
     pub max_flow: Option<f64>,
-}
-
-impl Default for MinCostFlowOptions {
-    fn default() -> Self {
-        Self {
-            costs: None,
-            max_flow: None,
-        }
-    }
 }

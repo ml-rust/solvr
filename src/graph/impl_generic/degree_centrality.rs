@@ -48,5 +48,5 @@ where
 
     // centrality = degrees / (n - 1)
     let scale = 1.0 / (n - 1) as f64;
-    Ok(client.mul_scalar(&degrees, scale)?)
+    client.mul_scalar(&degrees, scale)
 }

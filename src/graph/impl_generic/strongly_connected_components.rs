@@ -34,8 +34,8 @@ where
     for u in 0..n {
         let start = row_ptrs[u] as usize;
         let end = row_ptrs[u + 1] as usize;
-        for i in start..end {
-            let v = col_indices[i] as usize;
+        for &v_idx in col_indices.iter().take(end).skip(start) {
+            let v = v_idx as usize;
             adj[u].push(v);
         }
     }
@@ -50,6 +50,7 @@ where
     let mut num_components = 0;
 
     // DFS helper (inline)
+    #[allow(clippy::too_many_arguments)]
     fn tarjan_dfs(
         u: usize,
         index_counter: &mut i64,
@@ -91,9 +92,7 @@ where
         // If u is a root node, pop the stack and assign component
         if lowlinks[u] == indices[u] {
             let comp_id = *num_components as i64;
-            loop {
-                // Safety: u is always on the stack when we reach this point
-                let Some(w) = stack.pop() else { break };
+            while let Some(w) = stack.pop() {
                 on_stack[w] = false;
                 labels[w] = comp_id;
                 if w == u {

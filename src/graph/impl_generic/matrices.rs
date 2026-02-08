@@ -60,8 +60,8 @@ where
             lap_values.push(degrees[u]);
 
             // Add off-diagonal entries: -1 for each edge (negated adjacency)
-            for i in start..end {
-                let v = col_indices[i] as usize;
+            for &v_idx in col_indices.iter().take(end).skip(start) {
+                let v = v_idx as usize;
                 if v != u {
                     lap_col_indices.push(v as i64);
                     lap_values.push(-1.0);
@@ -98,8 +98,8 @@ where
 
             let start = row_ptrs[u] as usize;
             let end = row_ptrs[u + 1] as usize;
-            for i in start..end {
-                let v = col_indices[i] as usize;
+            for &v_idx in col_indices.iter().take(end).skip(start) {
+                let v = v_idx as usize;
                 if u != v {
                     lap[u][v] -= deg_inv_sqrt[u] * deg_inv_sqrt[v];
                 }
@@ -111,12 +111,12 @@ where
         let mut coo_cols = Vec::new();
         let mut coo_vals = Vec::new();
 
-        for i in 0..n {
-            for j in 0..n {
-                if lap[i][j].abs() > 1e-15 {
+        for (i, row) in lap.iter().enumerate().take(n) {
+            for (j, &val) in row.iter().enumerate().take(n) {
+                if val.abs() > 1e-15 {
                     coo_rows.push(i as i64);
                     coo_cols.push(j as i64);
-                    coo_vals.push(lap[i][j]);
+                    coo_vals.push(val);
                 }
             }
         }
@@ -162,8 +162,8 @@ where
     for u in 0..n {
         let start = row_ptrs[u] as usize;
         let end = row_ptrs[u + 1] as usize;
-        for i in start..end {
-            let v = col_indices[i] as usize;
+        for &v_idx in col_indices.iter().take(end).skip(start) {
+            let v = v_idx as usize;
             // For undirected graphs, only take u < v to avoid duplicate edges
             if graph.directed || u < v {
                 edge_list.push((u, v));
@@ -174,13 +174,7 @@ where
     let m = edge_list.len(); // Number of edges
     if m == 0 {
         // Empty incidence matrix
-        return Ok(SparseTensor::<R>::from_coo_slices::<f64>(
-            &[],
-            &[],
-            &[],
-            [n, 1],
-            &device,
-        )?);
+        return SparseTensor::<R>::from_coo_slices::<f64>(&[], &[], &[], [n, 1], &device);
     }
 
     // Build incidence matrix: B[i, e]
@@ -204,8 +198,5 @@ where
         inc_vals.push(1.0);
     }
 
-    Ok(
-        SparseTensor::<R>::from_coo_slices(&inc_rows, &inc_cols, &inc_vals, [n, m], &device)?
-            .to_csr()?,
-    )
+    SparseTensor::<R>::from_coo_slices(&inc_rows, &inc_cols, &inc_vals, [n, m], &device)?.to_csr()
 }
