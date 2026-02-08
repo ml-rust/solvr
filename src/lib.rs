@@ -96,6 +96,7 @@ pub mod common;
 pub mod graph;
 pub mod integrate;
 pub mod interpolate;
+pub mod linalg;
 pub mod morphology;
 pub mod optimize;
 pub mod signal;
@@ -118,6 +119,7 @@ pub use interpolate::{
     AkimaAlgorithms, CubicSplineAlgorithms, ExtrapolateMode, Interp1dAlgorithms, InterpMethod,
     InterpNdAlgorithms, InterpNdMethod, PchipAlgorithms, SplineBoundary,
 };
+pub use linalg::MatrixEquationAlgorithms;
 pub use morphology::{
     BinaryMorphologyAlgorithms, GreyMorphologyAlgorithms, MeasurementAlgorithms, RegionProperties,
     StructuringElement,
