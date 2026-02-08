@@ -92,8 +92,8 @@ mod tests {
     #[test]
     #[ignore] // CUDA tests require GPU
     fn test_hann_window_cuda() {
-        let device = CudaDevice::new(0).expect("CUDA device not available");
-        let client = CudaClient::new(device.clone());
+        let device = CudaDevice::new(0);
+        let client = CudaClient::new(device.clone()).expect("CUDA client initialization failed");
         let window = client
             .hann_window(8, DType::F64, &device)
             .expect("hann_window failed");

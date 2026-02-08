@@ -145,7 +145,8 @@ where
         .filter(|&&v| v < inf_val)
         .copied()
         .collect();
-    unique_labels.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    // NaN labels are treated as greater (pushed to end)
+    unique_labels.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Greater));
     unique_labels.dedup();
 
     let num_labels = unique_labels.len();

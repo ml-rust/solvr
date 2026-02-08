@@ -41,8 +41,8 @@ mod tests {
     use numr::runtime::cuda::CudaDevice;
 
     fn setup() -> Option<(CudaClient, CudaDevice)> {
-        let device = CudaDevice::new(0).ok()?;
-        let client = CudaClient::new(device.clone());
+        let device = CudaDevice::new(0);
+        let client = CudaClient::new(device.clone()).ok()?;
         Some((client, device))
     }
 

@@ -212,7 +212,8 @@ where
             })
             .collect();
 
-        vert_angles.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        // NaN angles are treated as greater (pushed to end)
+        vert_angles.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Greater));
 
         for (vi, _) in &vert_angles {
             new_indices.push(*vi);
