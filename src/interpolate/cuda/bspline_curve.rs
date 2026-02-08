@@ -3,46 +3,32 @@ use crate::interpolate::impl_generic::bspline_curve::{
     bspline_curve_derivative_impl, bspline_curve_evaluate_impl, bspline_curve_subdivide_impl,
 };
 use crate::interpolate::traits::bspline_curve::{BSplineCurve, BSplineCurveAlgorithms};
-use numr::ops::{
-    CompareOps, ConditionalOps, ReduceOps, ScalarOps, SortingOps, TensorOps, TypeConversionOps,
-};
-use numr::runtime::{Runtime, RuntimeClient};
+use numr::runtime::cuda::{CudaClient, CudaRuntime};
 use numr::tensor::Tensor;
 
-impl<
-    R: Runtime,
-    C: TensorOps<R>
-        + ScalarOps<R>
-        + CompareOps<R>
-        + ConditionalOps<R>
-        + SortingOps<R>
-        + ReduceOps<R>
-        + TypeConversionOps<R>
-        + RuntimeClient<R>,
-> BSplineCurveAlgorithms<R> for C
-{
+impl BSplineCurveAlgorithms<CudaRuntime> for CudaClient {
     fn bspline_curve_evaluate(
         &self,
-        curve: &BSplineCurve<R>,
-        t: &Tensor<R>,
-    ) -> InterpolateResult<Tensor<R>> {
+        curve: &BSplineCurve<CudaRuntime>,
+        t: &Tensor<CudaRuntime>,
+    ) -> InterpolateResult<Tensor<CudaRuntime>> {
         bspline_curve_evaluate_impl(self, curve, t)
     }
 
     fn bspline_curve_derivative(
         &self,
-        curve: &BSplineCurve<R>,
-        t: &Tensor<R>,
+        curve: &BSplineCurve<CudaRuntime>,
+        t: &Tensor<CudaRuntime>,
         order: usize,
-    ) -> InterpolateResult<Tensor<R>> {
+    ) -> InterpolateResult<Tensor<CudaRuntime>> {
         bspline_curve_derivative_impl(self, curve, t, order)
     }
 
     fn bspline_curve_subdivide(
         &self,
-        curve: &BSplineCurve<R>,
+        curve: &BSplineCurve<CudaRuntime>,
         t: f64,
-    ) -> InterpolateResult<(BSplineCurve<R>, BSplineCurve<R>)> {
+    ) -> InterpolateResult<(BSplineCurve<CudaRuntime>, BSplineCurve<CudaRuntime>)> {
         bspline_curve_subdivide_impl(self, curve, t)
     }
 }

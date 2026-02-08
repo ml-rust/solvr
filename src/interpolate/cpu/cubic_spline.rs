@@ -1,20 +1,21 @@
 use crate::interpolate::error::InterpolateResult;
 use crate::interpolate::impl_generic::cubic_spline::cubic_spline_coefficients;
 use crate::interpolate::traits::cubic_spline::{CubicSplineAlgorithms, SplineBoundary};
-use numr::algorithm::linalg::LinearAlgebraAlgorithms;
-use numr::ops::ScalarOps;
-use numr::runtime::{Runtime, RuntimeClient};
+use numr::runtime::cpu::{CpuClient, CpuRuntime};
 use numr::tensor::Tensor;
 
-impl<R: Runtime, C: ScalarOps<R> + LinearAlgebraAlgorithms<R> + RuntimeClient<R>>
-    CubicSplineAlgorithms<R> for C
-{
+impl CubicSplineAlgorithms<CpuRuntime> for CpuClient {
     fn cubic_spline_coefficients(
         &self,
-        x: &Tensor<R>,
-        y: &Tensor<R>,
+        x: &Tensor<CpuRuntime>,
+        y: &Tensor<CpuRuntime>,
         boundary: &SplineBoundary,
-    ) -> InterpolateResult<(Tensor<R>, Tensor<R>, Tensor<R>, Tensor<R>)> {
+    ) -> InterpolateResult<(
+        Tensor<CpuRuntime>,
+        Tensor<CpuRuntime>,
+        Tensor<CpuRuntime>,
+        Tensor<CpuRuntime>,
+    )> {
         cubic_spline_coefficients(self, x, y, boundary)
     }
 }

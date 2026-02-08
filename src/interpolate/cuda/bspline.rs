@@ -3,49 +3,43 @@ use crate::interpolate::impl_generic::bspline::{
     bspline_derivative_impl, bspline_evaluate_impl, bspline_integrate_impl, make_interp_spline_impl,
 };
 use crate::interpolate::traits::bspline::{BSpline, BSplineAlgorithms, BSplineBoundary};
-use numr::algorithm::linalg::LinearAlgebraAlgorithms;
-use numr::ops::{CompareOps, ScalarOps, TensorOps};
-use numr::runtime::{Runtime, RuntimeClient};
+use numr::runtime::cuda::{CudaClient, CudaRuntime};
 use numr::tensor::Tensor;
 
-impl<
-    R: Runtime,
-    C: TensorOps<R> + ScalarOps<R> + CompareOps<R> + LinearAlgebraAlgorithms<R> + RuntimeClient<R>,
-> BSplineAlgorithms<R> for C
-{
+impl BSplineAlgorithms<CudaRuntime> for CudaClient {
     fn make_interp_spline(
         &self,
-        x: &Tensor<R>,
-        y: &Tensor<R>,
+        x: &Tensor<CudaRuntime>,
+        y: &Tensor<CudaRuntime>,
         degree: usize,
         boundary: &BSplineBoundary,
-    ) -> InterpolateResult<BSpline<R>> {
+    ) -> InterpolateResult<BSpline<CudaRuntime>> {
         make_interp_spline_impl(self, x, y, degree, boundary)
     }
 
     fn bspline_evaluate(
         &self,
-        spline: &BSpline<R>,
-        x_new: &Tensor<R>,
-    ) -> InterpolateResult<Tensor<R>> {
+        spline: &BSpline<CudaRuntime>,
+        x_new: &Tensor<CudaRuntime>,
+    ) -> InterpolateResult<Tensor<CudaRuntime>> {
         bspline_evaluate_impl(self, spline, x_new)
     }
 
     fn bspline_derivative(
         &self,
-        spline: &BSpline<R>,
-        x_new: &Tensor<R>,
+        spline: &BSpline<CudaRuntime>,
+        x_new: &Tensor<CudaRuntime>,
         order: usize,
-    ) -> InterpolateResult<Tensor<R>> {
+    ) -> InterpolateResult<Tensor<CudaRuntime>> {
         bspline_derivative_impl(self, spline, x_new, order)
     }
 
     fn bspline_integrate(
         &self,
-        spline: &BSpline<R>,
+        spline: &BSpline<CudaRuntime>,
         a: f64,
         b: f64,
-    ) -> InterpolateResult<Tensor<R>> {
+    ) -> InterpolateResult<Tensor<CudaRuntime>> {
         bspline_integrate_impl(self, spline, a, b)
     }
 }

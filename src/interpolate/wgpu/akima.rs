@@ -3,14 +3,15 @@
 use crate::interpolate::error::InterpolateResult;
 use crate::interpolate::impl_generic::akima::akima_slopes;
 use crate::interpolate::traits::akima::AkimaAlgorithms;
-use numr::ops::{CompareOps, ScalarOps, TensorOps};
-use numr::runtime::{Runtime, RuntimeClient};
+use numr::runtime::wgpu::{WgpuClient, WgpuRuntime};
 use numr::tensor::Tensor;
 
-impl<R: Runtime, C: TensorOps<R> + ScalarOps<R> + CompareOps<R> + RuntimeClient<R>>
-    AkimaAlgorithms<R> for C
-{
-    fn akima_slopes(&self, x: &Tensor<R>, y: &Tensor<R>) -> InterpolateResult<Tensor<R>> {
+impl AkimaAlgorithms<WgpuRuntime> for WgpuClient {
+    fn akima_slopes(
+        &self,
+        x: &Tensor<WgpuRuntime>,
+        y: &Tensor<WgpuRuntime>,
+    ) -> InterpolateResult<Tensor<WgpuRuntime>> {
         akima_slopes(self, x, y)
     }
 }

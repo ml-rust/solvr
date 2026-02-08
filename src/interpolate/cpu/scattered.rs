@@ -1,22 +1,17 @@
 use crate::interpolate::error::InterpolateResult;
 use crate::interpolate::impl_generic::scattered::griddata_impl;
 use crate::interpolate::traits::scattered::{ScatteredInterpAlgorithms, ScatteredMethod};
-use numr::ops::{CompareOps, MatmulOps, ScalarOps, ShapeOps, TensorOps};
-use numr::runtime::{Runtime, RuntimeClient};
+use numr::runtime::cpu::{CpuClient, CpuRuntime};
 use numr::tensor::Tensor;
 
-impl<
-    R: Runtime,
-    C: TensorOps<R> + ScalarOps<R> + CompareOps<R> + MatmulOps<R> + ShapeOps<R> + RuntimeClient<R>,
-> ScatteredInterpAlgorithms<R> for C
-{
+impl ScatteredInterpAlgorithms<CpuRuntime> for CpuClient {
     fn griddata(
         &self,
-        points: &Tensor<R>,
-        values: &Tensor<R>,
-        xi: &Tensor<R>,
+        points: &Tensor<CpuRuntime>,
+        values: &Tensor<CpuRuntime>,
+        xi: &Tensor<CpuRuntime>,
         method: ScatteredMethod,
-    ) -> InterpolateResult<Tensor<R>> {
+    ) -> InterpolateResult<Tensor<CpuRuntime>> {
         griddata_impl(self, points, values, xi, method)
     }
 }

@@ -3,20 +3,17 @@
 use crate::interpolate::error::InterpolateResult;
 use crate::interpolate::impl_generic::interp1d::interp1d_evaluate;
 use crate::interpolate::traits::interp1d::{Interp1dAlgorithms, InterpMethod};
-use numr::ops::{CompareOps, ScalarOps, TensorOps};
-use numr::runtime::{Runtime, RuntimeClient};
+use numr::runtime::wgpu::{WgpuClient, WgpuRuntime};
 use numr::tensor::Tensor;
 
-impl<R: Runtime, C: TensorOps<R> + ScalarOps<R> + CompareOps<R> + RuntimeClient<R>>
-    Interp1dAlgorithms<R> for C
-{
+impl Interp1dAlgorithms<WgpuRuntime> for WgpuClient {
     fn interp1d(
         &self,
-        x: &Tensor<R>,
-        y: &Tensor<R>,
-        x_new: &Tensor<R>,
+        x: &Tensor<WgpuRuntime>,
+        y: &Tensor<WgpuRuntime>,
+        x_new: &Tensor<WgpuRuntime>,
         method: InterpMethod,
-    ) -> InterpolateResult<Tensor<R>> {
+    ) -> InterpolateResult<Tensor<WgpuRuntime>> {
         interp1d_evaluate(self, x, y, x_new, method)
     }
 }

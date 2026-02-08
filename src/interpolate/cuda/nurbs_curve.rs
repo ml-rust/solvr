@@ -3,35 +3,32 @@ use crate::interpolate::impl_generic::nurbs_curve::{
     nurbs_curve_derivative_impl, nurbs_curve_evaluate_impl, nurbs_curve_subdivide_impl,
 };
 use crate::interpolate::traits::nurbs_curve::{NurbsCurve, NurbsCurveAlgorithms};
-use numr::ops::{CompareOps, ScalarOps, TensorOps};
-use numr::runtime::{Runtime, RuntimeClient};
+use numr::runtime::cuda::{CudaClient, CudaRuntime};
 use numr::tensor::Tensor;
 
-impl<R: Runtime, C: TensorOps<R> + ScalarOps<R> + CompareOps<R> + RuntimeClient<R>>
-    NurbsCurveAlgorithms<R> for C
-{
+impl NurbsCurveAlgorithms<CudaRuntime> for CudaClient {
     fn nurbs_curve_evaluate(
         &self,
-        curve: &NurbsCurve<R>,
-        t: &Tensor<R>,
-    ) -> InterpolateResult<Tensor<R>> {
+        curve: &NurbsCurve<CudaRuntime>,
+        t: &Tensor<CudaRuntime>,
+    ) -> InterpolateResult<Tensor<CudaRuntime>> {
         nurbs_curve_evaluate_impl(self, curve, t)
     }
 
     fn nurbs_curve_derivative(
         &self,
-        curve: &NurbsCurve<R>,
-        t: &Tensor<R>,
+        curve: &NurbsCurve<CudaRuntime>,
+        t: &Tensor<CudaRuntime>,
         order: usize,
-    ) -> InterpolateResult<Tensor<R>> {
+    ) -> InterpolateResult<Tensor<CudaRuntime>> {
         nurbs_curve_derivative_impl(self, curve, t, order)
     }
 
     fn nurbs_curve_subdivide(
         &self,
-        curve: &NurbsCurve<R>,
+        curve: &NurbsCurve<CudaRuntime>,
         t: f64,
-    ) -> InterpolateResult<(NurbsCurve<R>, NurbsCurve<R>)> {
+    ) -> InterpolateResult<(NurbsCurve<CudaRuntime>, NurbsCurve<CudaRuntime>)> {
         nurbs_curve_subdivide_impl(self, curve, t)
     }
 }
