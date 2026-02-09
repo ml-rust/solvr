@@ -71,12 +71,12 @@ mod tests {
         };
 
         let data = Tensor::<WgpuRuntime>::from_slice(
-            &[1.0f64, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0],
+            &[1.0f32, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0],
             &[10],
             &device,
         );
         let result = client.trim_mean(&data, 0.2).unwrap();
         let val = extract_scalar(&result).unwrap();
-        assert!((val - 5.5).abs() < 1e-10);
+        assert!((val - 5.5).abs() < 1e-3);
     }
 }

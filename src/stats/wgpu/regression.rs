@@ -36,12 +36,12 @@ mod tests {
             return;
         };
 
-        let x = Tensor::<WgpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device);
-        let y = Tensor::<WgpuRuntime>::from_slice(&[2.0f64, 4.0, 6.0, 8.0, 10.0], &[5], &device);
+        let x = Tensor::<WgpuRuntime>::from_slice(&[1.0f32, 2.0, 3.0, 4.0, 5.0], &[5], &device);
+        let y = Tensor::<WgpuRuntime>::from_slice(&[2.0f32, 4.0, 6.0, 8.0, 10.0], &[5], &device);
 
         let result = client.linregress(&x, &y).unwrap();
 
-        assert!((result.slope - 2.0).abs() < 1e-10);
-        assert!((result.intercept - 0.0).abs() < 1e-10);
+        assert!((result.slope - 2.0).abs() < 1e-3);
+        assert!((result.intercept - 0.0).abs() < 1e-3);
     }
 }

@@ -59,12 +59,12 @@ mod tests {
             return;
         };
 
-        let data = Tensor::<WgpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device);
+        let data = Tensor::<WgpuRuntime>::from_slice(&[1.0f32, 2.0, 3.0, 4.0, 5.0], &[5], &device);
         let stats = client.describe(&data).unwrap();
 
         assert_eq!(stats.nobs, 5);
 
         let mean_val = extract_scalar(&stats.mean).unwrap();
-        assert!((mean_val - 3.0).abs() < 1e-10);
+        assert!((mean_val - 3.0).abs() < 1e-3);
     }
 }
