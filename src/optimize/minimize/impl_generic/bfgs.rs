@@ -47,7 +47,7 @@ where
     nfev += n;
 
     // Initialize inverse Hessian approximation as identity matrix tensor [n, n]
-    let mut h_inv = create_identity_matrix::<R, C>(client, n)?;
+    let mut h_inv = create_identity_matrix::<R, C>(client, n, x0.dtype())?;
 
     for iter in 0..options.max_iter {
         let grad_norm = tensor_norm(client, &grad).map_err(|e| OptimizeError::NumericalError {
@@ -276,13 +276,13 @@ where
 }
 
 /// Create an n x n identity matrix using tensor ops.
-fn create_identity_matrix<R, C>(client: &C, n: usize) -> OptimizeResult<Tensor<R>>
+fn create_identity_matrix<R, C>(client: &C, n: usize, dtype: DType) -> OptimizeResult<Tensor<R>>
 where
     R: Runtime,
     C: TensorOps<R> + RuntimeClient<R>,
 {
     client
-        .eye(n, None, DType::F64)
+        .eye(n, None, dtype)
         .map_err(|e| OptimizeError::NumericalError {
             message: format!("bfgs: create identity - {}", e),
         })
