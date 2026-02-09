@@ -101,10 +101,6 @@ cargo check --all-features
 cargo test --lib
 ```
 
-## Security
-
-Please report vulnerabilities according to `SECURITY.md`.
-
 ## Contributing
 
 See `CONTRIBUTING.md` for local workflow and pull request guidance.
