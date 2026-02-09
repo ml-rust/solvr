@@ -193,10 +193,8 @@ impl<R: Runtime> DirectSparseSolver<R> {
         // Apply equilibration to cached CSC if enabled
         let factored_csc = if self.equilibrate {
             let csc_ref = self.cached_permuted_csc.as_ref().unwrap();
-            if self.row_scales.is_some() {
+            if let (Some(row_scales), Some(col_scales)) = (&self.row_scales, &self.col_scales) {
                 // Reuse cached scales
-                let row_scales = self.row_scales.as_ref().unwrap();
-                let col_scales = self.col_scales.as_ref().unwrap();
                 let scaled = csc_ref.scale_rows(row_scales)?;
                 scaled.scale_cols(col_scales)?
             } else {

@@ -104,9 +104,6 @@ impl WindowFunctions<WgpuRuntime> for WgpuClient {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use numr::dtype::DType;
-
     #[test]
     #[ignore] // WebGPU tests require GPU
     fn test_hann_window_wgpu() {
