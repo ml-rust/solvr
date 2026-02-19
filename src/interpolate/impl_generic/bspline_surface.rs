@@ -12,7 +12,7 @@ use numr::runtime::{Runtime, RuntimeClient};
 use numr::tensor::Tensor;
 
 /// Validate B-spline surface parameters.
-fn validate<R: Runtime>(surface: &BSplineSurface<R>) -> InterpolateResult<()> {
+fn validate<R: Runtime<DType = DType>>(surface: &BSplineSurface<R>) -> InterpolateResult<()> {
     let shape = surface.control_points.shape();
     if shape.len() != 3 {
         return Err(InterpolateError::InvalidParameter {
@@ -56,7 +56,7 @@ pub fn bspline_surface_evaluate_impl<R, C>(
     v: &Tensor<R>,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     validate(surface)?;
@@ -112,7 +112,7 @@ pub fn bspline_surface_partial_impl<R, C>(
     dv: usize,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     if du == 0 && dv == 0 {
@@ -239,7 +239,7 @@ pub fn bspline_surface_normal_impl<R, C>(
     v: &Tensor<R>,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     let n_dims = surface.control_points.shape()[2];

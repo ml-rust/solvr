@@ -1,4 +1,5 @@
 //! Smooth bivariate spline trait — smoothing spline for scattered 2D data.
+use crate::DType;
 
 use crate::interpolate::error::InterpolateResult;
 use crate::interpolate::traits::rect_bivariate_spline::BivariateSpline;
@@ -11,7 +12,7 @@ use numr::tensor::Tensor;
 /// optional smoothing. When `smoothing = 0`, interpolates exactly through all
 /// points. When `smoothing > 0`, trades off closeness to data against surface
 /// smoothness.
-pub trait SmoothBivariateSplineAlgorithms<R: Runtime> {
+pub trait SmoothBivariateSplineAlgorithms<R: Runtime<DType = DType>> {
     /// Fit a smoothing bivariate spline to scattered data.
     ///
     /// # Arguments

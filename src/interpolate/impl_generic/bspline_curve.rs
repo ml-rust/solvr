@@ -15,7 +15,9 @@ use numr::runtime::{Runtime, RuntimeClient};
 use numr::tensor::Tensor;
 
 /// Validate B-spline curve parameters.
-fn validate_bspline_curve<R: Runtime>(curve: &BSplineCurve<R>) -> InterpolateResult<()> {
+fn validate_bspline_curve<R: Runtime<DType = DType>>(
+    curve: &BSplineCurve<R>,
+) -> InterpolateResult<()> {
     let n_points = curve.control_points.shape()[0];
     let n_knots = curve.knots.shape()[0];
     let expected_knots = n_points + curve.degree + 1;
@@ -50,7 +52,7 @@ pub fn bspline_curve_evaluate_impl<R, C>(
     t: &Tensor<R>,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     validate_bspline_curve(curve)?;
@@ -75,7 +77,7 @@ pub fn bspline_curve_derivative_impl<R, C>(
     order: usize,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     if order == 0 {
@@ -148,7 +150,7 @@ pub fn bspline_curve_subdivide_impl<R, C>(
     t: f64,
 ) -> InterpolateResult<(BSplineCurve<R>, BSplineCurve<R>)>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R>
         + CompareOps<R>
         + ConditionalOps<R>

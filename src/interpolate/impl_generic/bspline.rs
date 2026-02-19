@@ -25,7 +25,7 @@ pub fn make_interp_spline_impl<R, C>(
     boundary: &BSplineBoundary,
 ) -> InterpolateResult<BSpline<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + LinearAlgebraAlgorithms<R> + RuntimeClient<R>,
 {
     let device = client.device();
@@ -100,7 +100,7 @@ pub fn bspline_evaluate_impl<R, C>(
     x_new: &Tensor<R>,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     let m = x_new.shape()[0];
@@ -127,7 +127,7 @@ pub fn bspline_derivative_impl<R, C>(
     order: usize,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     if order == 0 {
@@ -154,7 +154,7 @@ pub fn bspline_integrate_impl<R, C>(
     b: f64,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     let device = client.device();
@@ -210,7 +210,7 @@ pub(crate) fn compute_basis_matrix<R, C>(
     n_coeffs: usize,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     let device = client.device();
@@ -349,7 +349,7 @@ pub(crate) fn build_knot_vector_tensor<R, C>(
     n: usize,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + RuntimeClient<R>,
 {
     let k = degree;
@@ -405,7 +405,7 @@ fn build_collocation_tensor<R, C>(
     n_coeffs: usize,
 ) -> InterpolateResult<(Tensor<R>, Tensor<R>)>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     let device = client.device();
@@ -485,7 +485,7 @@ fn compute_deriv_basis<R, C>(
     n_coeffs: usize,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     if degree == 0 {
@@ -567,7 +567,7 @@ fn compute_deriv2_basis<R, C>(
     n_coeffs: usize,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     if degree < 2 {
@@ -647,7 +647,7 @@ pub(crate) fn differentiate_bspline_tensor<R, C>(
     order: usize,
 ) -> InterpolateResult<BSpline<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     let mut current_knots = spline.knots.clone();

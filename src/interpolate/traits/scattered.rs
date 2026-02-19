@@ -1,4 +1,5 @@
 //! Scattered data interpolation algorithm trait.
+use crate::DType;
 
 use crate::interpolate::error::InterpolateResult;
 use numr::runtime::Runtime;
@@ -14,7 +15,7 @@ pub enum ScatteredMethod {
 }
 
 /// Scattered data interpolation algorithms.
-pub trait ScatteredInterpAlgorithms<R: Runtime> {
+pub trait ScatteredInterpAlgorithms<R: Runtime<DType = DType>> {
     /// Interpolate scattered data at query points.
     ///
     /// # Arguments

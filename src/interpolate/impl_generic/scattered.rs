@@ -18,7 +18,7 @@ pub fn griddata_impl<R, C>(
     method: ScatteredMethod,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R> + ScalarOps<R> + CompareOps<R> + MatmulOps<R> + ShapeOps<R> + RuntimeClient<R>,
 {
     let p_shape = points.shape().to_vec();
@@ -65,7 +65,7 @@ fn nearest_interp<R, C>(
     d: usize,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R> + ScalarOps<R> + CompareOps<R> + MatmulOps<R> + RuntimeClient<R>,
 {
     let m = xi.shape()[0];
@@ -106,7 +106,7 @@ fn linear_interp<R, C>(
     d: usize,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R> + ScalarOps<R> + CompareOps<R> + MatmulOps<R> + ShapeOps<R> + RuntimeClient<R>,
 {
     let device = client.device();
@@ -164,7 +164,7 @@ where
 /// Compute sum of squared values along rows: [n, d] -> [n, 1].
 fn sum_sq_rows<R, C>(client: &C, a: &Tensor<R>, d: usize) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R> + ScalarOps<R> + RuntimeClient<R>,
 {
     let a2 = client.mul(a, a)?;

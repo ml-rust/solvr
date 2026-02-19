@@ -1,4 +1,5 @@
 //! B-spline curve trait definitions.
+use crate::DType;
 
 use crate::interpolate::error::InterpolateResult;
 use numr::runtime::Runtime;
@@ -6,7 +7,7 @@ use numr::tensor::Tensor;
 
 /// A parametric B-spline curve defined by control points and knot vector.
 #[derive(Debug, Clone)]
-pub struct BSplineCurve<R: Runtime> {
+pub struct BSplineCurve<R: Runtime<DType = DType>> {
     /// Control points, shape `[n_points, n_dims]`.
     pub control_points: Tensor<R>,
     /// Knot vector, shape `[n_knots]`. Must be non-decreasing.
@@ -16,7 +17,7 @@ pub struct BSplineCurve<R: Runtime> {
 }
 
 /// B-spline curve algorithms.
-pub trait BSplineCurveAlgorithms<R: Runtime> {
+pub trait BSplineCurveAlgorithms<R: Runtime<DType = DType>> {
     /// Evaluate the B-spline curve at parameter values t.
     ///
     /// # Arguments

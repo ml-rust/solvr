@@ -1,4 +1,5 @@
 //! PCHIP interpolation algorithm trait.
+use crate::DType;
 
 use crate::interpolate::error::InterpolateResult;
 use numr::runtime::Runtime;
@@ -8,7 +9,7 @@ use numr::tensor::Tensor;
 ///
 /// PCHIP is a shape-preserving interpolation method that preserves monotonicity
 /// and avoids overshoot. It has continuous first derivative (C1).
-pub trait PchipAlgorithms<R: Runtime> {
+pub trait PchipAlgorithms<R: Runtime<DType = DType>> {
     /// Compute PCHIP slopes from data points using Fritsch-Carlson method.
     ///
     /// # Arguments

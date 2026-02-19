@@ -22,6 +22,7 @@
 // NOTE: This module contains shared Hermite primitives for potential future use.
 // PCHIP and Akima are already implemented in their own modules.
 #![allow(dead_code)]
+use crate::DType;
 
 use crate::interpolate::error::{InterpolateError, InterpolateResult};
 use numr::ops::{CompareOps, ScalarOps, TensorOps};
@@ -29,7 +30,7 @@ use numr::runtime::{Runtime, RuntimeClient};
 use numr::tensor::Tensor;
 
 /// Validated input data from 1D interpolation tensors.
-pub struct ValidatedData<R: Runtime> {
+pub struct ValidatedData<R: Runtime<DType = DType>> {
     /// X coordinates as tensor (stays on device).
     pub x: Tensor<R>,
     /// Y values as tensor (stays on device).
@@ -43,7 +44,7 @@ pub struct ValidatedData<R: Runtime> {
 }
 
 /// Data required for Hermite interpolation evaluation.
-pub struct HermiteDataTensor<'a, R: Runtime> {
+pub struct HermiteDataTensor<'a, R: Runtime<DType = DType>> {
     /// X coordinates (knots).
     pub x: &'a Tensor<R>,
     /// Y values at knots.
@@ -61,7 +62,7 @@ pub struct HermiteDataTensor<'a, R: Runtime> {
 /// - x and y have the same length
 /// - At least 2 data points are provided
 /// - x values are strictly increasing
-pub fn validate_inputs<R: Runtime>(
+pub fn validate_inputs<R: Runtime<DType = DType>>(
     x: &Tensor<R>,
     y: &Tensor<R>,
     context: &str,
@@ -128,7 +129,7 @@ pub fn evaluate_hermite_tensor<R, C>(
     data: &HermiteDataTensor<'_, R>,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R> + ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     let x_new_shape = x_new.shape();
@@ -266,7 +267,7 @@ pub fn derivative_hermite_tensor<R, C>(
     data: &HermiteDataTensor<'_, R>,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R> + ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     let x_new_shape = x_new.shape();
@@ -401,7 +402,7 @@ fn create_constant_tensor_i64<R, C>(
     value: i64,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: RuntimeClient<R>,
 {
     // Create constant I64 tensor for index operations

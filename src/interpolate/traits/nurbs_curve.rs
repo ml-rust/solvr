@@ -1,4 +1,5 @@
 //! NURBS (Non-Uniform Rational B-Spline) curve trait definitions.
+use crate::DType;
 
 use crate::interpolate::error::InterpolateResult;
 use numr::runtime::Runtime;
@@ -6,7 +7,7 @@ use numr::tensor::Tensor;
 
 /// A NURBS curve defined by weighted control points and knot vector.
 #[derive(Debug, Clone)]
-pub struct NurbsCurve<R: Runtime> {
+pub struct NurbsCurve<R: Runtime<DType = DType>> {
     /// Control points, shape `[n_points, n_dims]`.
     pub control_points: Tensor<R>,
     /// Weights for each control point, shape `[n_points]`.
@@ -18,7 +19,7 @@ pub struct NurbsCurve<R: Runtime> {
 }
 
 /// NURBS curve algorithms.
-pub trait NurbsCurveAlgorithms<R: Runtime> {
+pub trait NurbsCurveAlgorithms<R: Runtime<DType = DType>> {
     /// Evaluate the NURBS curve at parameter values t.
     ///
     /// Uses rational B-spline evaluation: C(t) = sum(w_i * N_i(t) * P_i) / sum(w_i * N_i(t))

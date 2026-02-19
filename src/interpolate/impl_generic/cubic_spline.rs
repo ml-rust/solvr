@@ -26,7 +26,7 @@ pub fn cubic_spline_coefficients<R, C>(
     boundary: &SplineBoundary,
 ) -> InterpolateResult<SplineCoefficients<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + LinearAlgebraAlgorithms<R> + RuntimeClient<R>,
 {
     let device = client.device();
@@ -120,7 +120,7 @@ fn build_boundary_diagonals<R, C>(
     n: usize,
 ) -> InterpolateResult<DiagonalSystem<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + RuntimeClient<R>,
 {
     let device = client.device();
@@ -219,7 +219,7 @@ fn build_tridiagonal<R, C>(
     lower_diag: &Tensor<R>,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + RuntimeClient<R>,
 {
     let device = client.device();

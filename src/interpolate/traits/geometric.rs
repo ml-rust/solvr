@@ -2,6 +2,7 @@
 //!
 //! Provides coordinate mapping and affine transformation algorithms for
 //! N-dimensional arrays, equivalent to scipy.ndimage geometric transforms.
+use crate::DType;
 
 use crate::interpolate::error::InterpolateResult;
 use numr::runtime::Runtime;
@@ -21,7 +22,7 @@ pub enum InterpolationOrder {
 ///
 /// All backends implementing geometric transforms MUST implement this trait
 /// using the EXACT SAME ALGORITHMS to ensure numerical parity.
-pub trait GeometricTransformAlgorithms<R: Runtime> {
+pub trait GeometricTransformAlgorithms<R: Runtime<DType = DType>> {
     /// Map coordinates through interpolation.
     ///
     /// Given arrays of coordinates, interpolates values from the input at those

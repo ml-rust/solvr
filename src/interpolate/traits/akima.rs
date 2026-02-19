@@ -1,4 +1,5 @@
 //! Akima interpolation algorithm trait.
+use crate::DType;
 
 use crate::interpolate::error::InterpolateResult;
 use numr::runtime::Runtime;
@@ -8,7 +9,7 @@ use numr::tensor::Tensor;
 ///
 /// Akima interpolation is a locally-weighted cubic interpolation method that
 /// is robust to outliers. It has continuous first derivative (C1).
-pub trait AkimaAlgorithms<R: Runtime> {
+pub trait AkimaAlgorithms<R: Runtime<DType = DType>> {
     /// Compute Akima interpolator from data points.
     ///
     /// # Arguments

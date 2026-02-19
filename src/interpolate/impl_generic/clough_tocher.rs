@@ -28,7 +28,7 @@ pub fn clough_tocher_fit_impl<R, C>(
     fill_value: f64,
 ) -> InterpolateResult<CloughTocher2D<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R>
         + CompareOps<R>
         + ConditionalOps<R>
@@ -87,7 +87,7 @@ pub fn clough_tocher_evaluate_impl<R, C>(
     xi: &Tensor<R>,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R>
         + CompareOps<R>
         + ConditionalOps<R>
@@ -289,7 +289,7 @@ fn estimate_gradients<R, C>(
     values: &Tensor<R>,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + ConditionalOps<R> + IndexingOps<R> + RuntimeClient<R>,
 {
     let device = client.device();

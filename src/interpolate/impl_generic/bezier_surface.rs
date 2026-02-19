@@ -24,7 +24,7 @@ pub fn bezier_surface_evaluate_impl<R, C>(
     v: &Tensor<R>,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + SpecialFunctions<R> + RuntimeClient<R>,
 {
     let shape = surface.control_points.shape();
@@ -89,7 +89,7 @@ pub fn bezier_surface_partial_impl<R, C>(
     dv: usize,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + SpecialFunctions<R> + RuntimeClient<R>,
 {
     if du == 0 && dv == 0 {
@@ -157,7 +157,7 @@ pub fn bezier_surface_normal_impl<R, C>(
     v: &Tensor<R>,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + SpecialFunctions<R> + RuntimeClient<R>,
 {
     let n_dims = surface.control_points.shape()[2];
@@ -182,7 +182,7 @@ pub(crate) fn cross_product_3d<R, C>(
     b: &Tensor<R>,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + RuntimeClient<R>,
 {
     let a0 = a.narrow(1, 0, 1)?.contiguous();

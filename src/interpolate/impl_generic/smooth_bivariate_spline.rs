@@ -28,7 +28,7 @@ fn on_device_linspace<R, C>(
     n: usize,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + UtilityOps<R> + RuntimeClient<R>,
 {
     let device = client.device();
@@ -65,7 +65,7 @@ pub fn smooth_bivariate_spline_fit_impl<R, C>(
     ky: usize,
 ) -> InterpolateResult<BivariateSpline<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + UtilityOps<R> + LinearAlgebraAlgorithms<R> + RuntimeClient<R>,
 {
     let device = client.device();
@@ -193,7 +193,7 @@ pub fn smooth_bivariate_spline_evaluate_impl<R, C>(
     yi: &Tensor<R>,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     rect_bivariate_spline_evaluate_impl(client, spline, xi, yi)

@@ -22,7 +22,7 @@ pub fn rbf_fit_impl<R, C>(
     smoothing: f64,
 ) -> InterpolateResult<RbfModel<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R>
         + ScalarOps<R>
         + CompareOps<R>
@@ -175,7 +175,7 @@ pub fn rbf_evaluate_impl<R, C>(
     query: &Tensor<R>,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R>
         + ScalarOps<R>
         + CompareOps<R>
@@ -227,7 +227,7 @@ where
 /// a: [n, d], b: [m, d] -> result: [n, m]
 fn cdist_euclidean<R, C>(client: &C, a: &Tensor<R>, b: &Tensor<R>) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R> + ScalarOps<R> + MatmulOps<R> + RuntimeClient<R>,
 {
     let device = client.device();
@@ -284,7 +284,7 @@ fn apply_kernel<R, C>(
     epsilon: f64,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R> + ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     let device = client.device();
@@ -345,7 +345,7 @@ where
 /// Auto-select epsilon as mean nearest-neighbor distance (fully on-device).
 fn auto_epsilon<R, C>(client: &C, points: &Tensor<R>, n: usize) -> InterpolateResult<f64>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R> + ScalarOps<R> + MatmulOps<R> + RuntimeClient<R>,
 {
     if n < 2 {

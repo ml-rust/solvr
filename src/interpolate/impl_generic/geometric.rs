@@ -2,6 +2,7 @@
 //!
 //! All transforms generate output coordinates, apply coordinate mapping,
 //! then interpolate values from the input using map_coordinates.
+use crate::DType;
 
 use crate::interpolate::error::{InterpolateError, InterpolateResult};
 use crate::interpolate::traits::geometric::InterpolationOrder;
@@ -24,7 +25,7 @@ pub fn map_coordinates_impl<R, C>(
     _cval: f64,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R>
         + UnaryOps<R>
         + CompareOps<R>
@@ -157,7 +158,7 @@ pub fn affine_transform_impl<R, C>(
     cval: f64,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R>
         + UnaryOps<R>
         + CompareOps<R>
@@ -207,7 +208,7 @@ fn generate_coordinate_grid<R, C>(
     dtype: numr::dtype::DType,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + UtilityOps<R> + ShapeOps<R> + TypeConversionOps<R> + RuntimeClient<R>,
 {
     let total: usize = shape.iter().product();
@@ -240,7 +241,7 @@ pub fn zoom_impl<R, C>(
     order: InterpolationOrder,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R>
         + UnaryOps<R>
         + CompareOps<R>
@@ -309,7 +310,7 @@ pub fn rotate_impl<R, C>(
     cval: f64,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R>
         + UnaryOps<R>
         + CompareOps<R>
@@ -429,7 +430,7 @@ pub fn shift_impl<R, C>(
     cval: f64,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R>
         + UnaryOps<R>
         + CompareOps<R>

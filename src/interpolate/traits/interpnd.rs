@@ -1,4 +1,5 @@
 //! N-dimensional grid interpolation algorithm trait.
+use crate::DType;
 
 use crate::interpolate::error::InterpolateResult;
 use numr::runtime::Runtime;
@@ -30,7 +31,7 @@ pub enum ExtrapolateMode {
 ///
 /// Supports interpolation on rectilinear (orthogonal) N-dimensional grids
 /// with various extrapolation modes.
-pub trait InterpNdAlgorithms<R: Runtime> {
+pub trait InterpNdAlgorithms<R: Runtime<DType = DType>> {
     /// Evaluate N-dimensional interpolation at query points.
     ///
     /// # Arguments

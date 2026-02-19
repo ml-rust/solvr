@@ -1,4 +1,5 @@
 //! Rect bivariate spline trait — tensor-product B-spline on rectangular grid.
+use crate::DType;
 
 use crate::interpolate::error::InterpolateResult;
 use crate::interpolate::traits::bspline::BSplineBoundary;
@@ -10,7 +11,7 @@ use numr::tensor::Tensor;
 /// Represents `S(x,y) = Σᵢ Σⱼ cᵢⱼ Bᵢ(x) Bⱼ(y)` where Bᵢ, Bⱼ are 1D B-spline
 /// basis functions along x and y axes respectively.
 #[derive(Debug, Clone)]
-pub struct BivariateSpline<R: Runtime> {
+pub struct BivariateSpline<R: Runtime<DType = DType>> {
     /// Knot vector for x-axis, shape `[n_knots_x]`.
     pub knots_x: Tensor<R>,
     /// Knot vector for y-axis, shape `[n_knots_y]`.
@@ -28,7 +29,7 @@ pub struct BivariateSpline<R: Runtime> {
 /// Given a regular grid of (x, y) values and corresponding z values,
 /// fits a smooth bivariate B-spline surface. Supports evaluation,
 /// partial derivatives, and integration over rectangular domains.
-pub trait RectBivariateSplineAlgorithms<R: Runtime> {
+pub trait RectBivariateSplineAlgorithms<R: Runtime<DType = DType>> {
     /// Fit a tensor-product B-spline to data on a rectangular grid.
     ///
     /// # Arguments

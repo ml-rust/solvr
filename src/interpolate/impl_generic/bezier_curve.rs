@@ -21,7 +21,7 @@ pub(crate) fn bernstein_basis_matrix<R, C>(
     degree: usize,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + SpecialFunctions<R> + RuntimeClient<R>,
 {
     let device = client.device();
@@ -83,7 +83,7 @@ pub fn bezier_evaluate_impl<R, C>(
     t: &Tensor<R>,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + SpecialFunctions<R> + RuntimeClient<R>,
 {
     let n_points = curve.control_points.shape()[0];
@@ -115,7 +115,7 @@ pub fn bezier_derivative_impl<R, C>(
     order: usize,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + SpecialFunctions<R> + RuntimeClient<R>,
 {
     if order == 0 {
@@ -166,7 +166,7 @@ pub fn bezier_subdivide_impl<R, C>(
     t: f64,
 ) -> InterpolateResult<(BezierCurve<R>, BezierCurve<R>)>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + SpecialFunctions<R> + RuntimeClient<R>,
 {
     let n = curve.degree;

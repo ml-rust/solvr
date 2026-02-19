@@ -1,6 +1,7 @@
 //! Akima spline interpolation generic implementation using tensor operations.
 //!
 //! All computation uses tensor ops - data stays on device.
+use crate::DType;
 
 use crate::interpolate::error::InterpolateResult;
 use numr::ops::{CompareOps, ScalarOps, TensorOps};
@@ -15,7 +16,7 @@ use numr::tensor::Tensor;
 /// All computation stays on device - no to_vec() calls.
 pub fn akima_slopes<R, C>(client: &C, x: &Tensor<R>, y: &Tensor<R>) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R> + ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     let n = x.shape()[0];

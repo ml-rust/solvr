@@ -1,4 +1,5 @@
 //! Bezier surface trait definitions.
+use crate::DType;
 
 use crate::interpolate::error::InterpolateResult;
 use numr::runtime::Runtime;
@@ -6,7 +7,7 @@ use numr::tensor::Tensor;
 
 /// A Bezier surface defined by a 2D grid of control points.
 #[derive(Debug, Clone)]
-pub struct BezierSurface<R: Runtime> {
+pub struct BezierSurface<R: Runtime<DType = DType>> {
     /// Control points, shape `[nu, nv, n_dims]`.
     pub control_points: Tensor<R>,
     /// Degree in u direction (nu - 1).
@@ -16,7 +17,7 @@ pub struct BezierSurface<R: Runtime> {
 }
 
 /// Bezier surface algorithms.
-pub trait BezierSurfaceAlgorithms<R: Runtime> {
+pub trait BezierSurfaceAlgorithms<R: Runtime<DType = DType>> {
     /// Evaluate the Bezier surface at parameter values (u, v) in [0, 1]^2.
     ///
     /// # Arguments

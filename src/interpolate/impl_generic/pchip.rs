@@ -1,6 +1,7 @@
 //! PCHIP (Piecewise Cubic Hermite Interpolating Polynomial) generic implementation.
 //!
 //! Uses tensor operations for GPU-accelerated computation.
+use crate::DType;
 
 use crate::interpolate::error::InterpolateResult;
 use numr::ops::{ScalarOps, TensorOps};
@@ -16,7 +17,7 @@ use numr::tensor::Tensor;
 /// All computation stays on device - no to_vec() calls.
 pub fn pchip_slopes<R, C>(client: &C, x: &Tensor<R>, y: &Tensor<R>) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R> + ScalarOps<R> + RuntimeClient<R>,
 {
     let n = x.shape()[0];
@@ -138,7 +139,7 @@ fn compute_endpoint_slope_tensor<R, C>(
     h2: &Tensor<R>,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R> + ScalarOps<R> + RuntimeClient<R>,
 {
     let device = client.device();

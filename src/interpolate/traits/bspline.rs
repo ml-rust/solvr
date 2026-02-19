@@ -1,4 +1,5 @@
 //! B-spline interpolation algorithm trait.
+use crate::DType;
 
 use crate::interpolate::error::InterpolateResult;
 use numr::runtime::Runtime;
@@ -6,7 +7,7 @@ use numr::tensor::Tensor;
 
 /// A B-spline curve represented by its knot vector and coefficients.
 #[derive(Debug, Clone)]
-pub struct BSpline<R: Runtime> {
+pub struct BSpline<R: Runtime<DType = DType>> {
     /// Knot vector, shape `[n_knots]`. Must be non-decreasing.
     pub knots: Tensor<R>,
     /// Spline coefficients, shape `[n_coeffs]` for 1D values.
@@ -31,7 +32,7 @@ pub enum BSplineBoundary {
 ///
 /// Provides construction, evaluation, differentiation, integration, and
 /// root-finding for B-spline curves.
-pub trait BSplineAlgorithms<R: Runtime> {
+pub trait BSplineAlgorithms<R: Runtime<DType = DType>> {
     /// Construct an interpolating B-spline from data points.
     ///
     /// Builds a B-spline of the given degree that passes through all (x, y) points.

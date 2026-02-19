@@ -2,6 +2,7 @@
 //!
 //! Provides linear, nearest neighbor, and cubic interpolation for 1D data.
 //! All computation uses tensor operations.
+use crate::DType;
 
 use crate::interpolate::error::InterpolateResult;
 use crate::interpolate::traits::interp1d::InterpMethod;
@@ -20,7 +21,7 @@ pub fn interp1d_evaluate<R, C>(
     method: InterpMethod,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R> + ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     match method {
@@ -38,7 +39,7 @@ fn evaluate_nearest<R, C>(
     x_new: &Tensor<R>,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R> + ScalarOps<R> + RuntimeClient<R>,
 {
     let m = x_new.shape()[0];
@@ -95,7 +96,7 @@ fn evaluate_linear<R, C>(
     x_new: &Tensor<R>,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R> + ScalarOps<R> + RuntimeClient<R>,
 {
     let m = x_new.shape()[0];
@@ -145,7 +146,7 @@ fn evaluate_cubic<R, C>(
     x_new: &Tensor<R>,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R> + ScalarOps<R> + RuntimeClient<R>,
 {
     let m = x_new.shape()[0];

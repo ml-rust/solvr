@@ -1,4 +1,5 @@
 //! Cubic spline interpolation algorithm trait.
+use crate::DType;
 
 use crate::interpolate::error::InterpolateResult;
 use numr::runtime::Runtime;
@@ -23,7 +24,7 @@ pub type SplineCoefficients<R> = (Tensor<R>, Tensor<R>, Tensor<R>, Tensor<R>);
 ///
 /// Cubic splines provide C2 (continuous second derivative) interpolation
 /// with various boundary conditions.
-pub trait CubicSplineAlgorithms<R: Runtime> {
+pub trait CubicSplineAlgorithms<R: Runtime<DType = DType>> {
     /// Compute cubic spline coefficients from data points.
     ///
     /// # Arguments

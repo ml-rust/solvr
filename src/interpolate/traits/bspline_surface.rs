@@ -1,4 +1,5 @@
 //! B-spline surface trait definitions.
+use crate::DType;
 
 use crate::interpolate::error::InterpolateResult;
 use numr::runtime::Runtime;
@@ -6,7 +7,7 @@ use numr::tensor::Tensor;
 
 /// A B-spline surface defined by a 2D grid of control points and two knot vectors.
 #[derive(Debug, Clone)]
-pub struct BSplineSurface<R: Runtime> {
+pub struct BSplineSurface<R: Runtime<DType = DType>> {
     /// Control points, shape `[nu, nv, n_dims]`.
     pub control_points: Tensor<R>,
     /// Knot vector in u direction, shape `[n_knots_u]`.
@@ -20,7 +21,7 @@ pub struct BSplineSurface<R: Runtime> {
 }
 
 /// B-spline surface algorithms.
-pub trait BSplineSurfaceAlgorithms<R: Runtime> {
+pub trait BSplineSurfaceAlgorithms<R: Runtime<DType = DType>> {
     /// Evaluate the B-spline surface at parameter values (u, v).
     fn bspline_surface_evaluate(
         &self,

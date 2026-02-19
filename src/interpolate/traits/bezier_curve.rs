@@ -1,4 +1,5 @@
 //! Bezier curve trait definitions.
+use crate::DType;
 
 use crate::interpolate::error::InterpolateResult;
 use numr::runtime::Runtime;
@@ -6,7 +7,7 @@ use numr::tensor::Tensor;
 
 /// A Bezier curve defined by control points.
 #[derive(Debug, Clone)]
-pub struct BezierCurve<R: Runtime> {
+pub struct BezierCurve<R: Runtime<DType = DType>> {
     /// Control points, shape `[n_points, n_dims]`.
     pub control_points: Tensor<R>,
     /// Polynomial degree (n_points - 1).
@@ -14,7 +15,7 @@ pub struct BezierCurve<R: Runtime> {
 }
 
 /// Bezier curve algorithms.
-pub trait BezierCurveAlgorithms<R: Runtime> {
+pub trait BezierCurveAlgorithms<R: Runtime<DType = DType>> {
     /// Evaluate the Bezier curve at parameter values t in [0, 1].
     ///
     /// # Arguments

@@ -16,7 +16,7 @@ use numr::runtime::{Runtime, RuntimeClient};
 use numr::tensor::Tensor;
 
 /// Validate NURBS curve parameters.
-fn validate_nurbs_curve<R: Runtime>(curve: &NurbsCurve<R>) -> InterpolateResult<()> {
+fn validate_nurbs_curve<R: Runtime<DType = DType>>(curve: &NurbsCurve<R>) -> InterpolateResult<()> {
     let n_points = curve.control_points.shape()[0];
     let n_weights = curve.weights.shape()[0];
     let n_knots = curve.knots.shape()[0];
@@ -53,7 +53,7 @@ pub fn nurbs_curve_evaluate_impl<R, C>(
     t: &Tensor<R>,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     validate_nurbs_curve(curve)?;
@@ -95,7 +95,7 @@ pub fn nurbs_curve_derivative_impl<R, C>(
     order: usize,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     if order == 0 {
@@ -170,7 +170,7 @@ pub fn nurbs_curve_subdivide_impl<R, C>(
     t: f64,
 ) -> InterpolateResult<(NurbsCurve<R>, NurbsCurve<R>)>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     validate_nurbs_curve(curve)?;
@@ -212,7 +212,7 @@ fn dehomogenize<R, C>(
     n_dims: usize,
 ) -> InterpolateResult<NurbsCurve<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     let n_points = homo_curve.control_points.shape()[0];

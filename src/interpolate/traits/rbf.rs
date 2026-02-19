@@ -1,4 +1,5 @@
 //! Radial Basis Function interpolation algorithm trait.
+use crate::DType;
 
 use crate::interpolate::error::InterpolateResult;
 use numr::runtime::Runtime;
@@ -25,7 +26,7 @@ pub enum RbfKernel {
 
 /// A fitted RBF interpolation model.
 #[derive(Debug, Clone)]
-pub struct RbfModel<R: Runtime> {
+pub struct RbfModel<R: Runtime<DType = DType>> {
     /// Center points, shape `[n, d]`.
     pub centers: Tensor<R>,
     /// Weights for each center, shape `[n]` or `[n, m]` for multi-output.
@@ -41,7 +42,7 @@ pub struct RbfModel<R: Runtime> {
 }
 
 /// Radial Basis Function interpolation algorithms.
-pub trait RbfAlgorithms<R: Runtime> {
+pub trait RbfAlgorithms<R: Runtime<DType = DType>> {
     /// Fit an RBF interpolant to scattered data.
     ///
     /// # Arguments

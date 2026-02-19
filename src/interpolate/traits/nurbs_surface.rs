@@ -1,4 +1,5 @@
 //! NURBS surface trait definitions.
+use crate::DType;
 
 use crate::interpolate::error::InterpolateResult;
 use numr::runtime::Runtime;
@@ -6,7 +7,7 @@ use numr::tensor::Tensor;
 
 /// A NURBS surface defined by weighted control points and two knot vectors.
 #[derive(Debug, Clone)]
-pub struct NurbsSurface<R: Runtime> {
+pub struct NurbsSurface<R: Runtime<DType = DType>> {
     /// Control points, shape `[nu, nv, n_dims]`.
     pub control_points: Tensor<R>,
     /// Weights, shape `[nu, nv]`.
@@ -22,7 +23,7 @@ pub struct NurbsSurface<R: Runtime> {
 }
 
 /// NURBS surface algorithms.
-pub trait NurbsSurfaceAlgorithms<R: Runtime> {
+pub trait NurbsSurfaceAlgorithms<R: Runtime<DType = DType>> {
     /// Evaluate the NURBS surface at parameter values (u, v).
     fn nurbs_surface_evaluate(
         &self,

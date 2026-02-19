@@ -1,4 +1,5 @@
 //! 1D interpolation algorithm trait.
+use crate::DType;
 
 use crate::interpolate::error::InterpolateResult;
 use numr::runtime::Runtime;
@@ -18,7 +19,7 @@ pub enum InterpMethod {
 /// 1D interpolation algorithm.
 ///
 /// Provides multiple interpolation methods: nearest neighbor, linear, and cubic.
-pub trait Interp1dAlgorithms<R: Runtime> {
+pub trait Interp1dAlgorithms<R: Runtime<DType = DType>> {
     /// Evaluate 1D interpolation at new x coordinates.
     ///
     /// # Arguments

@@ -33,7 +33,7 @@ pub fn rect_bivariate_spline_fit_impl<R, C>(
     boundary: &BSplineBoundary,
 ) -> InterpolateResult<BivariateSpline<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + LinearAlgebraAlgorithms<R> + RuntimeClient<R>,
 {
     let nx = x.shape()[0];
@@ -112,7 +112,7 @@ pub fn rect_bivariate_spline_evaluate_impl<R, C>(
     yi: &Tensor<R>,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     let m = xi.shape()[0];
@@ -150,7 +150,7 @@ pub fn rect_bivariate_spline_evaluate_grid_impl<R, C>(
     yi: &Tensor<R>,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     let ncx = spline.knots_x.shape()[0] - spline.degree_x - 1;
@@ -183,7 +183,7 @@ pub fn rect_bivariate_spline_partial_derivative_impl<R, C>(
     dy: usize,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     let m = xi.shape()[0];
@@ -242,7 +242,7 @@ pub fn rect_bivariate_spline_integrate_impl<R, C>(
     yb: f64,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + LinearAlgebraAlgorithms<R> + RuntimeClient<R>,
 {
     let ncx = spline.knots_x.shape()[0] - spline.degree_x - 1;
@@ -274,7 +274,7 @@ fn differentiate_2d_x<R, C>(
     order: usize,
 ) -> InterpolateResult<(Tensor<R>, Tensor<R>, usize)>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     if order == 0 {
@@ -339,7 +339,7 @@ fn differentiate_2d_y<R, C>(
     order: usize,
 ) -> InterpolateResult<(Tensor<R>, Tensor<R>, usize)>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
     if order == 0 {
@@ -370,7 +370,7 @@ fn integrate_basis<R, C>(
     b: f64,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + CompareOps<R> + LinearAlgebraAlgorithms<R> + RuntimeClient<R>,
 {
     let device = client.device();

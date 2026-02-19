@@ -1,6 +1,7 @@
 //! Clough-Tocher 2D interpolator trait.
 //!
 //! C1-continuous piecewise cubic interpolation on a Delaunay triangulation.
+use crate::DType;
 
 use crate::interpolate::error::InterpolateResult;
 use crate::spatial::traits::delaunay::Delaunay;
@@ -11,7 +12,7 @@ use numr::tensor::Tensor;
 ///
 /// Stores the Delaunay triangulation, vertex values, and estimated gradients.
 #[derive(Debug, Clone)]
-pub struct CloughTocher2D<R: Runtime> {
+pub struct CloughTocher2D<R: Runtime<DType = DType>> {
     /// Delaunay triangulation of the input points.
     pub triangulation: Delaunay<R>,
     /// Function values at vertices, shape `[n]`.
@@ -26,7 +27,7 @@ pub struct CloughTocher2D<R: Runtime> {
 ///
 /// Given scattered points and values, constructs a C1-continuous interpolant
 /// using the Clough-Tocher split of each Delaunay triangle.
-pub trait CloughTocher2DAlgorithms<R: Runtime> {
+pub trait CloughTocher2DAlgorithms<R: Runtime<DType = DType>> {
     /// Fit a Clough-Tocher interpolant to scattered 2D data.
     ///
     /// # Arguments

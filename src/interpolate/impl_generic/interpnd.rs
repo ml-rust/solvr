@@ -1,6 +1,7 @@
 //! N-dimensional grid interpolation generic implementation.
 //!
 //! Uses vectorized operations for batch evaluation on device.
+use crate::DType;
 
 use crate::interpolate::error::InterpolateResult;
 use crate::interpolate::traits::interpnd::{ExtrapolateMode, InterpNdMethod};
@@ -30,7 +31,7 @@ pub fn interpnd_evaluate<R, C>(
     extrapolate: ExtrapolateMode,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R> + ScalarOps<R> + RuntimeClient<R>,
 {
     let xi_shape = xi.shape();
@@ -131,7 +132,7 @@ fn evaluate_nearest_tensor<R, C>(
     extrapolate: ExtrapolateMode,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R> + ScalarOps<R> + RuntimeClient<R>,
 {
     let device = client.device();
@@ -279,7 +280,7 @@ fn evaluate_linear_tensor<R, C>(
     extrapolate: ExtrapolateMode,
 ) -> InterpolateResult<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R> + ScalarOps<R> + RuntimeClient<R>,
 {
     let device = client.device();
@@ -438,7 +439,7 @@ where
     Ok(result)
 }
 
-fn extract_column<R: Runtime>(
+fn extract_column<R: Runtime<DType = DType>>(
     xi: &Tensor<R>,
     d: usize,
     n_points: usize,
