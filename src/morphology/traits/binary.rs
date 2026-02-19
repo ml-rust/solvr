@@ -1,4 +1,5 @@
 //! Binary morphology algorithm traits.
+use crate::DType;
 
 use numr::error::Result;
 use numr::runtime::Runtime;
@@ -18,7 +19,7 @@ pub enum StructuringElement {
 ///
 /// Input tensors are treated as binary: nonzero = true, zero = false.
 /// Results are binary tensors with values 0.0 and 1.0.
-pub trait BinaryMorphologyAlgorithms<R: Runtime> {
+pub trait BinaryMorphologyAlgorithms<R: Runtime<DType = DType>> {
     /// Binary erosion.
     ///
     /// A pixel in the output is 1 only if ALL pixels in the structuring element

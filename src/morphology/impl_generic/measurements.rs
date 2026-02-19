@@ -22,7 +22,7 @@ fn pad_single_axis<R, C>(
     value: f64,
 ) -> Result<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ShapeOps<R> + RuntimeClient<R>,
 {
     let ndim = tensor.ndim();
@@ -44,7 +44,7 @@ pub fn label_impl<R, C>(
     structure: StructuringElement,
 ) -> Result<(Tensor<R>, usize)>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R>
         + BinaryOps<R>
         + UnaryOps<R>
@@ -181,7 +181,7 @@ pub fn find_objects_impl<R, C>(
     num_labels: usize,
 ) -> Result<Vec<RegionProperties>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: RuntimeClient<R>,
 {
     let ndim = labels.ndim();
@@ -230,7 +230,7 @@ pub fn sum_labels_impl<R, C>(
     num_labels: usize,
 ) -> Result<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + IndexingOps<R> + TypeConversionOps<R> + UtilityOps<R> + RuntimeClient<R>,
 {
     let device = input.device();
@@ -262,7 +262,7 @@ pub fn mean_labels_impl<R, C>(
     num_labels: usize,
 ) -> Result<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R> + IndexingOps<R> + TypeConversionOps<R> + UtilityOps<R> + RuntimeClient<R>,
 {
     let device = input.device();
@@ -293,7 +293,7 @@ pub fn center_of_mass_impl<R, C>(
     num_labels: usize,
 ) -> Result<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: ScalarOps<R>
         + BinaryOps<R>
         + UnaryOps<R>

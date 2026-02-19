@@ -18,7 +18,7 @@ pub fn generate_structuring_element<R, C>(
     dtype: DType,
 ) -> Result<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TypeConversionOps<R> + RuntimeClient<R>,
 {
     let size = 3usize; // 3x3x...x3

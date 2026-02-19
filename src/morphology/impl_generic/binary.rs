@@ -2,6 +2,7 @@
 //!
 //! Binary erosion = minimum filter on binary input, then threshold.
 //! Binary dilation = maximum filter on binary input, then threshold.
+use crate::DType;
 
 use crate::morphology::traits::binary::StructuringElement;
 use crate::signal::traits::nd_filters::{BoundaryMode, NdFilterAlgorithms};
@@ -18,7 +19,7 @@ pub fn binary_erosion_impl<R, C>(
     iterations: usize,
 ) -> Result<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: NdFilterAlgorithms<R>
         + ScalarOps<R>
         + CompareOps<R>
@@ -61,7 +62,7 @@ pub fn binary_dilation_impl<R, C>(
     iterations: usize,
 ) -> Result<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: NdFilterAlgorithms<R>
         + ScalarOps<R>
         + CompareOps<R>
@@ -101,7 +102,7 @@ pub fn binary_opening_impl<R, C>(
     iterations: usize,
 ) -> Result<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: NdFilterAlgorithms<R>
         + ScalarOps<R>
         + CompareOps<R>
@@ -121,7 +122,7 @@ pub fn binary_closing_impl<R, C>(
     iterations: usize,
 ) -> Result<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: NdFilterAlgorithms<R>
         + ScalarOps<R>
         + CompareOps<R>
@@ -140,7 +141,7 @@ where
 /// repeat until convergence.
 pub fn binary_fill_holes_impl<R, C>(client: &C, input: &Tensor<R>) -> Result<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: NdFilterAlgorithms<R>
         + ScalarOps<R>
         + CompareOps<R>

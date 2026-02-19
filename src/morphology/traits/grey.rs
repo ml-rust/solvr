@@ -1,11 +1,12 @@
 //! Grey-scale morphology algorithm traits.
+use crate::DType;
 
 use numr::error::Result;
 use numr::runtime::Runtime;
 use numr::tensor::Tensor;
 
 /// Algorithmic contract for grey-scale morphological operations.
-pub trait GreyMorphologyAlgorithms<R: Runtime> {
+pub trait GreyMorphologyAlgorithms<R: Runtime<DType = DType>> {
     /// Grey-scale erosion (local minimum filter).
     fn grey_erosion(&self, input: &Tensor<R>, size: &[usize]) -> Result<Tensor<R>>;
 

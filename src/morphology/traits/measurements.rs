@@ -1,4 +1,5 @@
 //! Connected component labeling and region measurement traits.
+use crate::DType;
 
 use numr::error::Result;
 use numr::runtime::Runtime;
@@ -19,7 +20,7 @@ pub struct RegionProperties {
 }
 
 /// Algorithmic contract for connected component labeling and measurements.
-pub trait MeasurementAlgorithms<R: Runtime> {
+pub trait MeasurementAlgorithms<R: Runtime<DType = DType>> {
     /// Label connected components in a binary array.
     ///
     /// Each connected component gets a unique integer label starting from 1.
