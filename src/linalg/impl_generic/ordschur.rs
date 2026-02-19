@@ -11,6 +11,7 @@
 //! Each swap depends on the previous one, so GPU parallelism cannot help.
 //! Prefer `CpuRuntime` for matrix equation solvers — GPU transfers add
 //! overhead with no computational benefit at typical problem sizes.
+use crate::DType;
 
 use numr::algorithm::linalg::LinearAlgebraAlgorithms;
 use numr::error::{Error, Result};
@@ -28,7 +29,7 @@ pub enum EigenvalueSelector {
 }
 
 /// Result of ordered Schur decomposition.
-pub struct OrderedSchur<R: Runtime> {
+pub struct OrderedSchur<R: Runtime<DType = DType>> {
     /// Orthogonal matrix Z (reordered).
     pub z: Tensor<R>,
     /// Upper quasi-triangular T (reordered).
@@ -50,7 +51,7 @@ pub fn ordschur_impl<R, C>(
     selector: EigenvalueSelector,
 ) -> Result<OrderedSchur<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R>
         + ScalarOps<R>
         + ShapeOps<R>
@@ -516,7 +517,7 @@ fn apply_householder_both(
 /// generalized eigenvalues appear in the top-left block.
 ///
 /// The generalized eigenvalues are α_i / β_i where α = diag(S) and β = diag(T).
-pub struct OrderedQZ<R: Runtime> {
+pub struct OrderedQZ<R: Runtime<DType = DType>> {
     pub q: Tensor<R>,
     pub z: Tensor<R>,
     pub s: Tensor<R>,
@@ -534,7 +535,7 @@ pub fn ordqz_impl<R, C>(
     selector: EigenvalueSelector,
 ) -> Result<OrderedQZ<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R>
         + ScalarOps<R>
         + ShapeOps<R>

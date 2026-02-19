@@ -12,6 +12,7 @@
 //! For GPU runtimes or large matrices, use the iterative alternatives
 //! `solve_care_iterative` and `solve_dare_iterative` in the `iterative`
 //! module, which use only matmul + inverse per iteration.
+use crate::DType;
 
 use super::ordschur::{EigenvalueSelector, ordschur_impl};
 use numr::algorithm::linalg::LinearAlgebraAlgorithms;
@@ -35,7 +36,7 @@ pub fn solve_care_impl<R, C>(
     r: &Tensor<R>,
 ) -> Result<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R>
         + ScalarOps<R>
         + ShapeOps<R>
@@ -143,7 +144,7 @@ pub fn solve_dare_impl<R, C>(
     r: &Tensor<R>,
 ) -> Result<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R>
         + ScalarOps<R>
         + ShapeOps<R>

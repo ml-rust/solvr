@@ -6,6 +6,7 @@
 //!
 //! These use only matmul + inverse per iteration, making them ideal for GPU
 //! runtimes where Schur-based methods incur expensive CPU round-trips.
+use crate::DType;
 
 use numr::algorithm::linalg::{LinearAlgebraAlgorithms, MatrixNormOrder};
 use numr::error::{Error, Result};
@@ -29,7 +30,7 @@ pub fn solve_care_iterative_impl<R, C>(
     r: &Tensor<R>,
 ) -> Result<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R>
         + ScalarOps<R>
         + ShapeOps<R>
@@ -135,7 +136,7 @@ pub fn solve_dare_iterative_impl<R, C>(
     r: &Tensor<R>,
 ) -> Result<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R>
         + ScalarOps<R>
         + ShapeOps<R>
@@ -266,7 +267,7 @@ pub fn solve_discrete_lyapunov_iterative_impl<R, C>(
     q: &Tensor<R>,
 ) -> Result<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R>
         + ScalarOps<R>
         + ShapeOps<R>

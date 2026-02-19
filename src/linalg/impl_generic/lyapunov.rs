@@ -6,6 +6,7 @@
 //! For GPU runtimes or large matrices, the discrete equation also has an
 //! iterative alternative `solve_discrete_lyapunov_iterative` via Smith
 //! doubling (see `iterative` module).
+use crate::DType;
 
 use super::sylvester::sylvester_impl;
 use numr::algorithm::linalg::LinearAlgebraAlgorithms;
@@ -19,7 +20,7 @@ use numr::tensor::Tensor;
 /// This is AX + XB = C with B = A^T and C = Q.
 pub fn continuous_lyapunov_impl<R, C>(client: &C, a: &Tensor<R>, q: &Tensor<R>) -> Result<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R>
         + ScalarOps<R>
         + ShapeOps<R>
@@ -58,7 +59,7 @@ where
 /// This is valid when A has no eigenvalue at +1.
 pub fn discrete_lyapunov_impl<R, C>(client: &C, a: &Tensor<R>, q: &Tensor<R>) -> Result<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R>
         + ScalarOps<R>
         + ShapeOps<R>

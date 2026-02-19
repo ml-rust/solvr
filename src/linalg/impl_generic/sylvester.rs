@@ -29,7 +29,7 @@ pub fn sylvester_impl<R, C>(
     c: &Tensor<R>,
 ) -> Result<Tensor<R>>
 where
-    R: Runtime,
+    R: Runtime<DType = DType>,
     C: TensorOps<R>
         + ScalarOps<R>
         + ShapeOps<R>

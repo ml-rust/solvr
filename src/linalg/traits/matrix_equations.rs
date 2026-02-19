@@ -1,4 +1,5 @@
 //! Matrix equation solver traits.
+use crate::DType;
 
 use numr::error::Result;
 use numr::runtime::Runtime;
@@ -8,7 +9,7 @@ use numr::tensor::Tensor;
 ///
 /// All methods require square matrix inputs. Matrices A, B, Q must have
 /// compatible dimensions as specified per method.
-pub trait MatrixEquationAlgorithms<R: Runtime> {
+pub trait MatrixEquationAlgorithms<R: Runtime<DType = DType>> {
     /// Solve the Sylvester equation AX + XB = C.
     ///
     /// Uses the Bartels-Stewart algorithm (real Schur decomposition).
