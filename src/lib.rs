@@ -126,6 +126,8 @@ pub use interpolate::{
     NurbsSurface, NurbsSurfaceAlgorithms, PchipAlgorithms, SplineBoundary,
 };
 pub use linalg::MatrixEquationAlgorithms;
+#[cfg(feature = "sparse")]
+pub use linalg::SparseQrAlgorithms;
 pub use morphology::{
     BinaryMorphologyAlgorithms, GreyMorphologyAlgorithms, MeasurementAlgorithms, RegionProperties,
     StructuringElement,

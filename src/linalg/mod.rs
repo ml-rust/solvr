@@ -18,3 +18,5 @@ mod cuda;
 mod wgpu;
 
 pub use traits::matrix_equations::MatrixEquationAlgorithms;
+#[cfg(feature = "sparse")]
+pub use traits::sparse_qr::SparseQrAlgorithms;
