@@ -543,30 +543,33 @@ where
         // vectors: [m, 3], matrix: [3, 3] or [n, 3, 3]
         // result: [m, 3] or [n, m, 3]
         if rot.is_batch {
-            // Batch rotation on batch vectors - not implemented for simplicity
-            return Err(Error::InvalidArgument {
-                arg: "vectors",
-                reason: "Batch rotation on batch vectors not yet supported".to_string(),
-            });
+            // Batch rotation on batch vectors:
+            // matrix: [n,3,3], vectors: [m,3] -> result: [n,m,3]
+            // Strategy: compute matrix @ vectors.T -> [n,3,m], then transpose -> [n,m,3]
+            //
+            // Step 1: vectors [m,3] -> transpose -> [3,m] -> unsqueeze -> [1,3,m]
+            //         -> broadcast_to [n,3,m]
+            let n = matrix.shape()[0];
+            let m = vec_shape[0];
+            let vt = vectors.transpose(0, 1)?; // [3, m]
+            let vt1 = vt.unsqueeze(0)?; // [1, 3, m]
+            let vt_b = vt1.broadcast_to(&[n, 3, m])?.contiguous()?; // [n, 3, m]
+            // Step 2: [n,3,3] @ [n,3,m] -> [n,3,m]
+            let rotated = client.matmul(&matrix, &vt_b)?;
+            // Step 3: [n,3,m] -> transpose last two dims -> [n,m,3]
+            // Make contiguous so the returned tensor matches the layout of the
+            // other rotation-apply paths (which return matmul output directly).
+            return rotated.transpose(1, 2)?.contiguous();
         }
         // Single rotation, batch vectors: vectors @ matrix.T
         let matrix_t = matrix.transpose(0, 1)?;
         client.matmul(vectors, &matrix_t)
     } else {
-        // Single vector
-        let matrix_t = if rot.is_batch {
-            matrix.transpose(1, 2)?
-        } else {
-            matrix.transpose(0, 1)?
-        };
-        // Reshape vector for matmul
+        // Single vector: apply the active rotation R @ v, consistent with the
+        // batch-vector path above (which computes `vectors @ R.T` = R @ v).
+        // `matrix` is the standard rotation matrix from `rotation_as_matrix_impl`.
         let v = vectors.reshape(&[3, 1])?;
-        let result = if rot.is_batch {
-            // Need to handle batch case
-            client.matmul(&matrix_t, &v)?
-        } else {
-            client.matmul(&matrix_t, &v)?
-        };
+        let result = client.matmul(&matrix, &v)?;
         result.reshape(&[3])
     }
 }
@@ -831,4 +834,165 @@ where
     let shape = if rot.is_batch { vec![n] } else { vec![] };
 
     Ok(Tensor::<R>::from_slice(&angles, &shape, device))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use numr::runtime::cpu::{CpuClient, CpuDevice, CpuRuntime};
+
+    fn cpu_client() -> CpuClient {
+        CpuClient::new(CpuDevice::new())
+    }
+
+    /// Asserts two f64 values are approximately equal within tolerance.
+    fn assert_approx(a: f64, b: f64, tol: f64, label: &str) {
+        assert!(
+            (a - b).abs() < tol,
+            "{}: expected {}, got {} (diff={})",
+            label,
+            b,
+            a,
+            (a - b).abs()
+        );
+    }
+
+    /// Test batch rotation on batch vectors produces shape [n, m, 3] with correct values.
+    ///
+    /// Rotation 0: identity (quaternion [1, 0, 0, 0])
+    /// Rotation 1: 90° about Z (quaternion [cos45°, 0, 0, sin45°])
+    ///
+    /// Vectors:
+    ///   v0 = [1, 0, 0]
+    ///   v1 = [0, 1, 0]
+    ///   v2 = [0, 0, 1]
+    ///
+    /// Expected result[0, j, :] = identity applied to v_j = v_j
+    /// Expected result[1, 0, :] = 90°Z applied to [1,0,0] = [0,  1, 0]
+    /// Expected result[1, 1, :] = 90°Z applied to [0,1,0] = [-1, 0, 0]
+    /// Expected result[1, 2, :] = 90°Z applied to [0,0,1] = [0,  0, 1]
+    #[test]
+    fn test_batch_rotation_batch_vectors_shape_and_values() {
+        let client = cpu_client();
+
+        let s = (std::f64::consts::FRAC_PI_4).cos(); // cos(45°) = sin(45°) for 90° rotation
+        // Batch of 2 quaternions: identity, 90° about Z
+        let quats = Tensor::<CpuRuntime>::from_slice(
+            &[1.0, 0.0, 0.0, 0.0, s, 0.0, 0.0, s],
+            &[2, 4],
+            client.device(),
+        );
+        let rot = rotation_from_quat_impl(&client, &quats).expect("quat");
+        assert!(rot.is_batch);
+
+        // 3 vectors: basis vectors
+        let vecs = Tensor::<CpuRuntime>::from_slice(
+            &[1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
+            &[3, 3],
+            client.device(),
+        );
+
+        let result = rotation_apply_impl(&client, &rot, &vecs).expect("apply");
+        let shape = result.shape();
+        assert_eq!(shape, vec![2, 3, 3], "result shape should be [n, m, 3]");
+
+        let data: Vec<f64> = result.to_vec();
+        // data layout: [rotation_idx, vector_idx, component]
+        // result[i, j, k] = data[i*3*3 + j*3 + k]
+        let at = |i: usize, j: usize, k: usize| data[i * 9 + j * 3 + k];
+
+        let tol = 1e-10;
+
+        // Rotation 0 (identity): result[0,j,:] == v_j
+        assert_approx(at(0, 0, 0), 1.0, tol, "R0@v0[0]");
+        assert_approx(at(0, 0, 1), 0.0, tol, "R0@v0[1]");
+        assert_approx(at(0, 0, 2), 0.0, tol, "R0@v0[2]");
+        assert_approx(at(0, 1, 0), 0.0, tol, "R0@v1[0]");
+        assert_approx(at(0, 1, 1), 1.0, tol, "R0@v1[1]");
+        assert_approx(at(0, 1, 2), 0.0, tol, "R0@v1[2]");
+        assert_approx(at(0, 2, 0), 0.0, tol, "R0@v2[0]");
+        assert_approx(at(0, 2, 1), 0.0, tol, "R0@v2[1]");
+        assert_approx(at(0, 2, 2), 1.0, tol, "R0@v2[2]");
+
+        // Rotation 1 (90° about Z): [x,y,z] -> [-y, x, z]
+        // R1 @ [1,0,0] = [0, 1, 0]
+        assert_approx(at(1, 0, 0), 0.0, tol, "R1@v0[0]");
+        assert_approx(at(1, 0, 1), 1.0, tol, "R1@v0[1]");
+        assert_approx(at(1, 0, 2), 0.0, tol, "R1@v0[2]");
+        // R1 @ [0,1,0] = [-1, 0, 0]
+        assert_approx(at(1, 1, 0), -1.0, tol, "R1@v1[0]");
+        assert_approx(at(1, 1, 1), 0.0, tol, "R1@v1[1]");
+        assert_approx(at(1, 1, 2), 0.0, tol, "R1@v1[2]");
+        // R1 @ [0,0,1] = [0, 0, 1]
+        assert_approx(at(1, 2, 0), 0.0, tol, "R1@v2[0]");
+        assert_approx(at(1, 2, 1), 0.0, tol, "R1@v2[1]");
+        assert_approx(at(1, 2, 2), 1.0, tol, "R1@v2[2]");
+    }
+
+    /// Consistency test: result[i, j, :] from batch-on-batch must equal applying rotation i
+    /// to vector j individually (single rotation, single vector path).
+    #[test]
+    fn test_batch_rotation_batch_vectors_consistency_with_single() {
+        let client = cpu_client();
+
+        let s = (std::f64::consts::FRAC_PI_4).cos();
+        // Two rotations: identity and 90° about Z
+        let quats = Tensor::<CpuRuntime>::from_slice(
+            &[1.0, 0.0, 0.0, 0.0, s, 0.0, 0.0, s],
+            &[2, 4],
+            client.device(),
+        );
+        let rot_batch = rotation_from_quat_impl(&client, &quats).expect("quat batch");
+
+        // Two vectors
+        let vectors_batch = Tensor::<CpuRuntime>::from_slice(
+            &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            &[2, 3],
+            client.device(),
+        );
+
+        let batch_result =
+            rotation_apply_impl(&client, &rot_batch, &vectors_batch).expect("batch apply");
+        let batch_data: Vec<f64> = batch_result.to_vec();
+        let at = |i: usize, j: usize, k: usize| batch_data[i * 2 * 3 + j * 3 + k];
+
+        let tol = 1e-10;
+
+        // Check each (rotation i, vector j) pair individually
+        for rot_idx in 0..2usize {
+            let q_offset = rot_idx * 4;
+            let quats_vec: Vec<f64> = quats.to_vec();
+            let single_quat_data = &[
+                quats_vec[q_offset],
+                quats_vec[q_offset + 1],
+                quats_vec[q_offset + 2],
+                quats_vec[q_offset + 3],
+            ];
+            let single_quat =
+                Tensor::<CpuRuntime>::from_slice(single_quat_data, &[4], client.device());
+            let rot_single = rotation_from_quat_impl(&client, &single_quat).expect("single quat");
+
+            for vec_idx in 0..2usize {
+                let v_offset = vec_idx * 3;
+                let vd: Vec<f64> = vectors_batch.to_vec();
+                let single_vec = Tensor::<CpuRuntime>::from_slice(
+                    &[vd[v_offset], vd[v_offset + 1], vd[v_offset + 2]],
+                    &[3],
+                    client.device(),
+                );
+                let single_result =
+                    rotation_apply_impl(&client, &rot_single, &single_vec).expect("single apply");
+                let sr: Vec<f64> = single_result.to_vec();
+
+                for (k, &sr_k) in sr.iter().enumerate().take(3) {
+                    assert_approx(
+                        at(rot_idx, vec_idx, k),
+                        sr_k,
+                        tol,
+                        &format!("consistency R{rot_idx}@v{vec_idx}[{k}]"),
+                    );
+                }
+            }
+        }
+    }
 }
