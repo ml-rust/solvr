@@ -12,6 +12,7 @@
 //! Each state x[k+1] depends on the previous state x[k]. This data dependency
 //! makes parallelization impossible - GPU acceleration provides ZERO benefit.
 
+use crate::signal::filter::traits::conversions::FilterConversions;
 use crate::signal::filter::traits::lti_system::{DiscreteTimeLtiAlgorithms, DlsimResult};
 use crate::signal::filter::traits::state_space::StateSpaceConversions;
 use crate::signal::filter::types::{DiscreteTimeSystem, StateSpace, SystemRepresentation};
@@ -57,10 +58,9 @@ fn dlsim_impl(
     let ss = match &system.system {
         SystemRepresentation::StateSpace(ss) => ss.clone(),
         SystemRepresentation::TransferFunction(tf) => client.tf2ss(tf)?,
-        SystemRepresentation::ZeroPoleGain(_zpk) => {
-            return Err(Error::NotImplemented {
-                feature: "ZPK to state-space conversion in dlsim",
-            });
+        SystemRepresentation::ZeroPoleGain(zpk) => {
+            let tf = client.zpk2tf(zpk)?;
+            client.tf2ss(&tf)?
         }
     };
 
@@ -321,6 +321,108 @@ mod tests {
         // Impulse response should match the direct implementation
         // However, there's a one-sample delay due to state-space representation
         assert_eq!(y.len(), 4);
+    }
+
+    #[test]
+    fn test_dlsim_from_zpk_matches_tf() {
+        // Verify that simulating a ZPK system produces the same output as the
+        // equivalent TF system. System: zero at z=0, pole at z=0.5, gain=1.
+        // TF: H(z) = z / (z - 0.5) = 1 / (1 - 0.5z^-1)  [num=[1,0], den=[1,-0.5]]
+        // ZPK: zeros=[], poles=[0.5], gain=1 (no zero needed for H(z) = 1/(z-0.5))
+        // Use a simple pole-only system: ZPK zeros=[], poles=[0.5], gain=1
+        // corresponds to TF b=[1], a=[1, -0.5].
+        let (client, device) = setup();
+        use crate::signal::filter::types::ZpkFilter;
+
+        // ZPK: no zeros, one real pole at 0.5, gain=1
+        let zeros_re = Tensor::<CpuRuntime>::from_slice(&[] as &[f64], &[0], &device);
+        let zeros_im = Tensor::<CpuRuntime>::from_slice(&[] as &[f64], &[0], &device);
+        let poles_re = Tensor::<CpuRuntime>::from_slice(&[0.5f64], &[1], &device);
+        let poles_im = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1], &device);
+        let zpk = ZpkFilter::new(zeros_re, zeros_im, poles_re, poles_im, 1.0);
+
+        let system_zpk =
+            DiscreteTimeSystem::new(SystemRepresentation::ZeroPoleGain(zpk), Some(1.0));
+
+        // Equivalent TF: b=[1], a=[1, -0.5]
+        let b_tf = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
+        let a_tf = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -0.5], &[2], &device);
+        let tf = TransferFunction::new(b_tf, a_tf);
+        let system_tf =
+            DiscreteTimeSystem::new(SystemRepresentation::TransferFunction(tf), Some(1.0));
+
+        // Impulse input
+        let u = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0, 0.0, 0.0, 0.0], &[5], &device);
+
+        let result_zpk = client.dlsim(&system_zpk, &u, None, &device).unwrap();
+        let result_tf = client.dlsim(&system_tf, &u, None, &device).unwrap();
+
+        let y_zpk: Vec<f64> = result_zpk.y.to_vec();
+        let y_tf: Vec<f64> = result_tf.y.to_vec();
+
+        assert_eq!(y_zpk.len(), y_tf.len());
+        for (a, b) in y_zpk.iter().zip(y_tf.iter()) {
+            assert!((a - b).abs() < 1e-10, "ZPK y={a} != TF y={b}");
+        }
+    }
+
+    #[test]
+    fn test_dlsim_from_zpk_complex_conjugate_poles() {
+        // System with a complex-conjugate pole pair: poles at 0.5 ± 0.5i.
+        // These must produce real polynomial coefficients.
+        // H(z) = gain / ((z - (0.5+0.5i))(z - (0.5-0.5i)))
+        //      = gain / (z^2 - z + 0.5)
+        // In z^-1 form: den = [1, -1, 0.5], num = [gain]
+        //
+        // Verify dlsim doesn't error and produces real (finite) output.
+        let (client, device) = setup();
+        use crate::signal::filter::types::ZpkFilter;
+
+        let gain = 0.5_f64;
+        let zeros_re = Tensor::<CpuRuntime>::from_slice(&[] as &[f64], &[0], &device);
+        let zeros_im = Tensor::<CpuRuntime>::from_slice(&[] as &[f64], &[0], &device);
+        // Complex conjugate pair: 0.5 + 0.5i, 0.5 - 0.5i
+        let poles_re = Tensor::<CpuRuntime>::from_slice(&[0.5f64, 0.5], &[2], &device);
+        let poles_im = Tensor::<CpuRuntime>::from_slice(&[0.5f64, -0.5], &[2], &device);
+        let zpk = ZpkFilter::new(zeros_re, zeros_im, poles_re, poles_im, gain);
+
+        let system_zpk =
+            DiscreteTimeSystem::new(SystemRepresentation::ZeroPoleGain(zpk), Some(1.0));
+
+        // Impulse input
+        let u = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0, 0.0, 0.0, 0.0, 0.0], &[6], &device);
+
+        let result = client.dlsim(&system_zpk, &u, None, &device).unwrap();
+        let y: Vec<f64> = result.y.to_vec();
+
+        // All outputs must be finite and real (no NaN/inf)
+        for (k, &yk) in y.iter().enumerate() {
+            assert!(yk.is_finite(), "y[{k}] = {yk} is not finite");
+        }
+
+        // Cross-check against equivalent TF: H(z) = 0.5 / (z^2 - z + 0.5)
+        // Numerator: 0.5 (strictly proper — no direct feedthrough), denominator: z^2 - z + 0.5.
+        // In descending coefficient form: b=[0.5], a=[1, -1, 0.5].
+        // NOTE: b=[0.5, 0, 0] would be WRONG — that encodes 0.5*z^2/(z^2-z+0.5) which
+        // is improper and has D=0.5 feedthrough. The ZPK system has no zeros, so no feedthrough.
+        let b_tf = Tensor::<CpuRuntime>::from_slice(&[gain], &[1], &device);
+        let a_tf = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -1.0, 0.5], &[3], &device);
+        let tf = TransferFunction::new(b_tf, a_tf);
+        let system_tf =
+            DiscreteTimeSystem::new(SystemRepresentation::TransferFunction(tf), Some(1.0));
+
+        let u2 =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0, 0.0, 0.0, 0.0, 0.0], &[6], &device);
+        let result_tf = client.dlsim(&system_tf, &u2, None, &device).unwrap();
+        let y_tf: Vec<f64> = result_tf.y.to_vec();
+
+        for (k, (&yz, &yt)) in y.iter().zip(y_tf.iter()).enumerate() {
+            assert!(
+                (yz - yt).abs() < 1e-9,
+                "sample {k}: ZPK y={yz}, TF y={yt}, diff={}",
+                (yz - yt).abs()
+            );
+        }
     }
 
     #[test]
