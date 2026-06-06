@@ -8,6 +8,48 @@ covers the architecture conventions and quality gates the project expects.
 - A recent stable Rust toolchain.
 - A clean working tree before opening a pull request.
 
+## What to contribute
+
+The most valuable contributions are usually **missing algorithms** — coverage
+that SciPy/scikit-learn/scikit-image have but solvr does not yet, or new methods
+within an existing module. Bug fixes, numerical-accuracy improvements, and
+additional backend coverage are equally welcome.
+
+Before writing a non-trivial algorithm, **open an issue first** describing what
+you want to add, the method/reference, and which crate it belongs in (see
+below). This avoids duplicated effort and lets us agree on placement and API up
+front. Small, self-contained fixes can go straight to a pull request.
+
+## Which crate: numr, solvr, or boostr
+
+solvr is one layer of a stack, and a contribution only belongs here if it fits
+this layer. Place new work by what it _is_, not where it's convenient:
+
+- **[numr](https://github.com/ml-rust/numr)** — foundational primitives that
+  everything else builds on: tensor ops, dtypes, the `Runtime`/backend
+  abstraction (and **new backends** themselves), FFT, core linear algebra
+  (matmul, LU/QR/SVD/eigen, `solve`), special functions, and basic descriptive
+  statistics. If it's a building block reused across domains, or it adds/touches
+  a hardware backend, it goes in numr.
+- **solvr** (this crate) — complete _scientific/solving_ algorithms composed
+  from numr primitives: optimization, ODE/DAE/BVP/PDE, interpolation, advanced
+  statistics (distributions, tests, regression), signal processing, spatial,
+  clustering, graphs, morphology, and matrix-equation solvers.
+- **[boostr](https://github.com/ml-rust/boostr)** — AI/ML-specific building
+  blocks: attention, positional encodings, mixture-of-experts, quantization,
+  neural-network layers, and training/inference machinery.
+
+Quick test:
+
+- Is it a low-level primitive (a tensor op, an FFT, a linear-algebra
+  factorization, a special function) or a new backend? → **numr**.
+- Is it a domain solver a scientist/engineer would reach for? → **solvr**.
+- Does it only make sense for neural networks / LLMs? → **boostr**.
+
+When in doubt, propose it in an issue and we'll help place it. A primitive that
+several higher layers would reuse should live in numr so the whole stack
+benefits, rather than being duplicated in solvr.
+
 ## Architecture
 
 solvr is backend-agnostic: the same algorithm runs on CPU, CUDA, and WebGPU
