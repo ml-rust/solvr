@@ -1,8 +1,8 @@
 [package]
 name = "solvr"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.88"
 description = "Advanced computing library for real-world problem solving - optimization, differential equations, interpolation, statistics, and more"
 license = "Apache-2.0"
 repository = "https://github.com/ml-rust/solvr"
