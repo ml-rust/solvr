@@ -40,7 +40,7 @@ fn medfilt_cpu(x: &Tensor<CpuRuntime>, kernel_size: usize) -> Result<Tensor<CpuR
         });
     }
 
-    if kernel_size % 2 == 0 {
+    if kernel_size.is_multiple_of(2) {
         return Err(Error::InvalidArgument {
             arg: "kernel_size",
             reason: "Kernel size must be odd".to_string(),

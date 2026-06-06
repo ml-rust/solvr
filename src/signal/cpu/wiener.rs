@@ -59,7 +59,7 @@ fn wiener_cpu(
             reason: "Kernel size must be positive".to_string(),
         });
     }
-    if ksize % 2 == 0 {
+    if ksize.is_multiple_of(2) {
         return Err(Error::InvalidArgument {
             arg: "kernel_size",
             reason: "Kernel size must be odd".to_string(),

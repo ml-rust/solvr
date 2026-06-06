@@ -216,7 +216,7 @@ fn savgol_filter_cpu(
     let n = x_data.len();
     let device = x.device();
 
-    if window_length % 2 == 0 {
+    if window_length.is_multiple_of(2) {
         return Err(Error::InvalidArgument {
             arg: "window_length",
             reason: "window_length must be odd".to_string(),
