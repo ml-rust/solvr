@@ -23,7 +23,7 @@ where
         });
     }
 
-    let x_contig = x.contiguous();
+    let x_contig = x.contiguous()?;
     let n = x_contig.numel();
 
     if n < 2 {
@@ -43,7 +43,7 @@ where
         });
     }
 
-    let trimmed = sorted.narrow(0, ncut, n - 2 * ncut)?;
+    let trimmed = sorted.narrow(0, ncut, n - 2 * ncut)?.contiguous()?;
     let all_dims: Vec<usize> = (0..trimmed.ndim()).collect();
     client.mean(&trimmed, &all_dims, false)
 }
@@ -67,7 +67,7 @@ where
         });
     }
 
-    let x_contig = x.contiguous();
+    let x_contig = x.contiguous()?;
     let n = x_contig.numel();
 
     if n < 2 {
@@ -104,7 +104,7 @@ where
 {
     validate_stats_dtype(x.dtype())?;
 
-    let x_contig = x.contiguous();
+    let x_contig = x.contiguous()?;
     let n = x_contig.numel();
 
     if n == 0 {
@@ -166,8 +166,8 @@ where
 
     let device = client.device();
     let dtype = x.dtype();
-    let x_contig = x.contiguous();
-    let y_contig = y.contiguous();
+    let x_contig = x.contiguous()?;
+    let y_contig = y.contiguous()?;
 
     // Reshape to [n,1] and [1,n] for broadcasting → [n,n] pairwise diffs
     let x_col = x_contig.reshape(&[n, 1])?;
@@ -274,8 +274,8 @@ where
 
     let device = client.device();
     let dtype = x.dtype();
-    let x_contig = x.contiguous();
-    let y_contig = y.contiguous();
+    let x_contig = x.contiguous()?;
+    let y_contig = y.contiguous()?;
 
     // Build full n×n pairwise slope matrix via broadcasting
     let x_col = x_contig.reshape(&[n, 1])?;

@@ -35,8 +35,12 @@
 //! ```
 
 pub mod cpu;
+#[cfg(feature = "cuda")]
+pub mod cuda;
 pub mod impl_generic;
 pub mod traits;
+#[cfg(feature = "wgpu")]
+pub mod wgpu;
 
 // Re-exports
 pub use impl_generic::adjoint_ode::adjoint_sensitivity_impl;
