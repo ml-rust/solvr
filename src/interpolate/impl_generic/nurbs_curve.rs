@@ -68,7 +68,7 @@ where
     // Weighted control points: w_i * P_i for each point
     // weights [n_points] → [n_points, 1], broadcast to [n_points, n_dims]
     let w_col = curve.weights.reshape(&[n_points, 1])?;
-    let w_broad = w_col.broadcast_to(&[n_points, n_dims])?.contiguous();
+    let w_broad = w_col.broadcast_to(&[n_points, n_dims])?.contiguous()?;
     let weighted_cp = client.mul(&curve.control_points, &w_broad)?; // [n_points, n_dims]
 
     // Numerator: basis @ weighted_cp → [m, n_dims]
@@ -79,7 +79,7 @@ where
     let denominator = client.matmul(&basis, &w_column)?; // [m, 1]
 
     // Result = numerator / denominator (broadcast denominator)
-    let denom_broad = denominator.broadcast_to(&[m, n_dims])?.contiguous();
+    let denom_broad = denominator.broadcast_to(&[m, n_dims])?.contiguous()?;
     let result = client.div(&numerator, &denom_broad)?;
     Ok(result)
 }
@@ -110,7 +110,7 @@ where
 
     // Build weighted B-spline curve for the numerator: A(t) = sum(w_i * N_i(t) * P_i)
     let w_col = curve.weights.reshape(&[n_points, 1])?;
-    let w_broad = w_col.broadcast_to(&[n_points, n_dims])?.contiguous();
+    let w_broad = w_col.broadcast_to(&[n_points, n_dims])?.contiguous()?;
     let weighted_cp = client.mul(&curve.control_points, &w_broad)?;
 
     let a_curve = BSplineCurve {
@@ -133,8 +133,8 @@ where
         let w_val = bspline_curve_evaluate_impl(client, &w_curve, t)?; // [m, 1]
         let w_deriv = bspline_curve_derivative_impl(client, &w_curve, t, 1)?; // [m, 1]
 
-        let w_broad2 = w_val.broadcast_to(&[m, n_dims])?.contiguous();
-        let wd_broad = w_deriv.broadcast_to(&[m, n_dims])?.contiguous();
+        let w_broad2 = w_val.broadcast_to(&[m, n_dims])?.contiguous()?;
+        let wd_broad = w_deriv.broadcast_to(&[m, n_dims])?.contiguous()?;
 
         let num = client.sub(
             &client.mul(&a_deriv, &w_broad2)?,
@@ -180,7 +180,7 @@ where
 
     // Build homogeneous coordinates: [w*P | w] → [n_points, n_dims+1]
     let w_col = curve.weights.reshape(&[n_points, 1])?;
-    let w_broad = w_col.broadcast_to(&[n_points, n_dims])?.contiguous();
+    let w_broad = w_col.broadcast_to(&[n_points, n_dims])?.contiguous()?;
     let weighted_cp = client.mul(&curve.control_points, &w_broad)?;
     let homo_cp = client.cat(&[&weighted_cp, &w_col], 1)?; // [n_points, n_dims+1]
 
@@ -221,13 +221,16 @@ where
     let weights = homo_curve
         .control_points
         .narrow(1, n_dims, 1)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[n_points])?;
 
     // Extract weighted coordinates and divide by weights
-    let weighted_cp = homo_curve.control_points.narrow(1, 0, n_dims)?.contiguous();
+    let weighted_cp = homo_curve
+        .control_points
+        .narrow(1, 0, n_dims)?
+        .contiguous()?;
     let w_col = weights.reshape(&[n_points, 1])?;
-    let w_broad = w_col.broadcast_to(&[n_points, n_dims])?.contiguous();
+    let w_broad = w_col.broadcast_to(&[n_points, n_dims])?.contiguous()?;
     let control_points = client.div(&weighted_cp, &w_broad)?;
 
     Ok(NurbsCurve {

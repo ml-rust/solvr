@@ -53,10 +53,10 @@ where
     //   If s0*s1 <= 0: slope = 0 (monotonicity preservation)
     //   Else: slope = (w1 + w2) / (w1/s0 + w2/s1) where w1 = 2*h1 + h0, w2 = h1 + 2*h0
 
-    let s0 = secants.narrow(0, 0, n - 2)?.contiguous(); // secants[0..n-2]
-    let s1 = secants.narrow(0, 1, n - 2)?.contiguous(); // secants[1..n-1]
-    let h0 = dx.narrow(0, 0, n - 2)?.contiguous(); // dx[0..n-2]
-    let h1 = dx.narrow(0, 1, n - 2)?.contiguous(); // dx[1..n-1]
+    let s0 = secants.narrow(0, 0, n - 2)?.contiguous()?; // secants[0..n-2]
+    let s1 = secants.narrow(0, 1, n - 2)?.contiguous()?; // secants[1..n-1]
+    let h0 = dx.narrow(0, 0, n - 2)?.contiguous()?; // dx[0..n-2]
+    let h1 = dx.narrow(0, 1, n - 2)?.contiguous()?; // dx[1..n-1]
 
     let interior_len = n - 2;
     let epsilon_data = vec![1e-14; interior_len];
@@ -146,10 +146,10 @@ where
     let epsilon = Tensor::<R>::from_slice(&[1e-14], &[1], device);
 
     // Make inputs contiguous
-    let s1 = s1.contiguous();
-    let s2 = s2.contiguous();
-    let h1 = h1.contiguous();
-    let h2 = h2.contiguous();
+    let s1 = s1.contiguous()?;
+    let s2 = s2.contiguous()?;
+    let h1 = h1.contiguous()?;
+    let h2 = h2.contiguous()?;
 
     // d = ((2*h1 + h2) * s1 - h1 * s2) / (h1 + h2)
     let h1_2 = client.mul_scalar(&h1, 2.0)?;

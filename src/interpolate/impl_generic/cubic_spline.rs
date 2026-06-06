@@ -56,12 +56,12 @@ where
     // upper[i] = h[i]              for i=1..n-2  → h[1:n-1]
     // lower[i-1] = h[i-1]          for i=1..n-2  → h[0:n-2]
     // rhs[i] = 3*(slopes[i] - slopes[i-1])
-    let h_lo_int = h.narrow(0, 0, n - 2)?.contiguous();
-    let h_hi_int = h.narrow(0, 1, n - 2)?.contiguous();
+    let h_lo_int = h.narrow(0, 0, n - 2)?.contiguous()?;
+    let h_hi_int = h.narrow(0, 1, n - 2)?.contiguous()?;
     let main_interior = client.mul_scalar(&client.add(&h_lo_int, &h_hi_int)?, 2.0)?;
 
-    let s_lo = slopes.narrow(0, 0, n - 2)?.contiguous();
-    let s_hi = slopes.narrow(0, 1, n - 2)?.contiguous();
+    let s_lo = slopes.narrow(0, 0, n - 2)?.contiguous()?;
+    let s_hi = slopes.narrow(0, 1, n - 2)?.contiguous()?;
     let rhs_interior = client.mul_scalar(&client.sub(&s_hi, &s_lo)?, 3.0)?;
 
     // Build boundary-dependent diagonals and rhs
@@ -126,8 +126,8 @@ where
     let device = client.device();
     let one = Tensor::full_scalar(&[1], DType::F64, 1.0, device);
     let zero_1 = Tensor::zeros(&[1], DType::F64, device);
-    let h_lo_int = h.narrow(0, 0, n - 2)?.contiguous();
-    let h_hi_int = h.narrow(0, 1, n - 2)?.contiguous();
+    let h_lo_int = h.narrow(0, 0, n - 2)?.contiguous()?;
+    let h_hi_int = h.narrow(0, 1, n - 2)?.contiguous()?;
 
     match boundary {
         SplineBoundary::Natural => {
@@ -138,8 +138,8 @@ where
             Ok((main, upper, lower, rhs))
         }
         SplineBoundary::Clamped { left, right } => {
-            let h_first = h.narrow(0, 0, 1)?.contiguous();
-            let h_last = h.narrow(0, n - 2, 1)?.contiguous();
+            let h_first = h.narrow(0, 0, 1)?.contiguous()?;
+            let h_last = h.narrow(0, n - 2, 1)?.contiguous()?;
             let two_h_first = client.mul_scalar(&h_first, 2.0)?;
             let two_h_last = client.mul_scalar(&h_last, 2.0)?;
 
@@ -147,8 +147,8 @@ where
             let upper = client.cat(&[&h_first, &h_hi_int], 0)?;
             let lower = client.cat(&[&h_lo_int, &h_last], 0)?;
 
-            let s_first = slopes.narrow(0, 0, 1)?.contiguous();
-            let s_last = slopes.narrow(0, n - 2, 1)?.contiguous();
+            let s_first = slopes.narrow(0, 0, 1)?.contiguous()?;
+            let s_last = slopes.narrow(0, n - 2, 1)?.contiguous()?;
             let left_t = Tensor::full_scalar(&[1], DType::F64, *left, device);
             let right_t = Tensor::full_scalar(&[1], DType::F64, *right, device);
             let rhs_first = client.mul_scalar(&client.sub(&s_first, &left_t)?, 3.0)?;
@@ -167,10 +167,10 @@ where
                 Ok((main, upper, lower, rhs))
             } else {
                 // Not-a-knot boundary conditions
-                let h0 = h.narrow(0, 0, 1)?.contiguous();
-                let h1 = h.narrow(0, 1, 1)?.contiguous();
-                let hn3 = h.narrow(0, n - 3, 1)?.contiguous();
-                let hn2 = h.narrow(0, n - 2, 1)?.contiguous();
+                let h0 = h.narrow(0, 0, 1)?.contiguous()?;
+                let h1 = h.narrow(0, 1, 1)?.contiguous()?;
+                let hn3 = h.narrow(0, n - 3, 1)?.contiguous()?;
+                let hn2 = h.narrow(0, n - 2, 1)?.contiguous()?;
 
                 // Main diagonal: [h1²*h0, interior..., hn3²*hn2]
                 let h1_sq = client.mul(&h1, &h1)?;
@@ -194,11 +194,11 @@ where
                 let lower = client.cat(&[&h_lo_int, &lower_last], 0)?;
 
                 // RHS: [h0²*h1*(s1-s0), interior..., hn2²*hn3*(sn2-sn3)]
-                let s0 = slopes.narrow(0, 0, 1)?.contiguous();
-                let s1 = slopes.narrow(0, 1, 1)?.contiguous();
+                let s0 = slopes.narrow(0, 0, 1)?.contiguous()?;
+                let s1 = slopes.narrow(0, 1, 1)?.contiguous()?;
                 let rhs_first = client.mul(&h0_sq_h1, &client.sub(&s1, &s0)?)?;
-                let sn3 = slopes.narrow(0, n - 3, 1)?.contiguous();
-                let sn2 = slopes.narrow(0, n - 2, 1)?.contiguous();
+                let sn3 = slopes.narrow(0, n - 3, 1)?.contiguous()?;
+                let sn2 = slopes.narrow(0, n - 2, 1)?.contiguous()?;
                 let rhs_last = client.mul(&hn2_sq_hn3, &client.sub(&sn2, &sn3)?)?;
                 let rhs = client.cat(&[&rhs_first, rhs_interior, &rhs_last], 0)?;
 

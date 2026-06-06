@@ -74,9 +74,9 @@ where
     // ||xi_i - p_j||^2 = ||xi_i||^2 + ||p_j||^2 - 2*xi_i.p_j
     let xi_sq = sum_sq_rows(client, xi, d)?; // [m, 1]
     let p_sq = sum_sq_rows(client, points, d)?; // [n, 1]
-    let p_sq_t = p_sq.transpose(0, 1)?.contiguous(); // [1, n]
+    let p_sq_t = p_sq.transpose(0, 1)?.contiguous()?; // [1, n]
 
-    let p_t = points.transpose(0, 1)?.contiguous();
+    let p_t = points.transpose(0, 1)?.contiguous()?;
     let dot = client.matmul(xi, &p_t)?; // [m, n]
     let two_dot = client.mul_scalar(&dot, 2.0)?;
 
@@ -119,8 +119,8 @@ where
     // Compute distance matrix [m, n]
     let xi_sq = sum_sq_rows(client, xi, d)?;
     let p_sq = sum_sq_rows(client, points, d)?;
-    let p_sq_t = p_sq.transpose(0, 1)?.contiguous();
-    let p_t = points.transpose(0, 1)?.contiguous();
+    let p_sq_t = p_sq.transpose(0, 1)?.contiguous()?;
+    let p_t = points.transpose(0, 1)?.contiguous()?;
     let dot = client.matmul(xi, &p_t)?;
     let two_dot = client.mul_scalar(&dot, 2.0)?;
     let sum = client.add(

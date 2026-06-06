@@ -76,7 +76,7 @@ where
     perm.push(axis);
 
     let permuted = padded.permute(&perm)?;
-    let permuted_contig = permuted.contiguous();
+    let permuted_contig = permuted.contiguous()?;
 
     // Reshape to (batch, 1, axis_len)
     let reshaped = permuted_contig.reshape(&[batch_size, 1, axis_len])?;
@@ -102,7 +102,7 @@ where
     }
     let result = reshaped_back.permute(&inv_perm)?;
 
-    Ok(result.contiguous())
+    result.contiguous()
 }
 
 /// Generic Gaussian filter implementation.
@@ -395,7 +395,7 @@ where
 
             let selected = sorted.narrow(window_dim, idx, 1)?;
             let squeezed = selected.squeeze(Some(window_dim));
-            Ok(squeezed.contiguous())
+            Ok(squeezed.contiguous()?)
         }
     }
 }

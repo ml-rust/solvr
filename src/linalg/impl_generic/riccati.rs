@@ -77,11 +77,11 @@ where
 
     // S = B R^{-1} B^T
     let r_inv = LinearAlgebraAlgorithms::inverse(client, r)?;
-    let bt = b.transpose(0, 1)?.contiguous();
+    let bt = b.transpose(0, 1)?.contiguous()?;
     let s = client.matmul(&client.matmul(b, &r_inv)?, &bt)?;
 
     // Build Hamiltonian: H = [[A, -S], [-Q, -A^T]]
-    let at = a.transpose(0, 1)?.contiguous();
+    let at = a.transpose(0, 1)?.contiguous()?;
     let neg_s = client.neg(&s)?;
     let neg_q = client.neg(q)?;
     let neg_at = client.neg(&at)?;
@@ -111,14 +111,14 @@ where
 
     // First n columns of reordered Z span stable invariant subspace
     // X = U21 @ U11^{-1}
-    let u11 = ordered.z.narrow(0, 0, n)?.narrow(1, 0, n)?.contiguous();
-    let u21 = ordered.z.narrow(0, n, n)?.narrow(1, 0, n)?.contiguous();
+    let u11 = ordered.z.narrow(0, 0, n)?.narrow(1, 0, n)?.contiguous()?;
+    let u21 = ordered.z.narrow(0, n, n)?.narrow(1, 0, n)?.contiguous()?;
 
     let u11_inv = LinearAlgebraAlgorithms::inverse(client, &u11)?;
     let x = client.matmul(&u21, &u11_inv)?;
 
     // Symmetrize: X = (X + X^T) / 2
-    let xt = x.transpose(0, 1)?.contiguous();
+    let xt = x.transpose(0, 1)?.contiguous()?;
     let x_sym = client.mul_scalar(&client.add(&x, &xt)?, 0.5)?;
 
     Ok(x_sym)
@@ -185,12 +185,12 @@ where
 
     // S = B R^{-1} B^T
     let r_inv = LinearAlgebraAlgorithms::inverse(client, r)?;
-    let bt = b.transpose(0, 1)?.contiguous();
+    let bt = b.transpose(0, 1)?.contiguous()?;
     let s = client.matmul(&client.matmul(b, &r_inv)?, &bt)?;
 
     // A^{-T} = (A^{-1})^T = (A^T)^{-1}
     let a_inv = LinearAlgebraAlgorithms::inverse(client, a)?;
-    let a_inv_t = a_inv.transpose(0, 1)?.contiguous();
+    let a_inv_t = a_inv.transpose(0, 1)?.contiguous()?;
 
     // Build symplectic matrix:
     // Z = [[A + S A^{-T} Q, -S A^{-T}], [-A^{-T} Q, A^{-T}]]
@@ -226,14 +226,14 @@ where
     }
 
     // First n columns of reordered Z span stable invariant subspace
-    let w11 = ordered.z.narrow(0, 0, n)?.narrow(1, 0, n)?.contiguous();
-    let w21 = ordered.z.narrow(0, n, n)?.narrow(1, 0, n)?.contiguous();
+    let w11 = ordered.z.narrow(0, 0, n)?.narrow(1, 0, n)?.contiguous()?;
+    let w21 = ordered.z.narrow(0, n, n)?.narrow(1, 0, n)?.contiguous()?;
 
     let w11_inv = LinearAlgebraAlgorithms::inverse(client, &w11)?;
     let x = client.matmul(&w21, &w11_inv)?;
 
     // Symmetrize
-    let xt = x.transpose(0, 1)?.contiguous();
+    let xt = x.transpose(0, 1)?.contiguous()?;
     let x_sym = client.mul_scalar(&client.add(&x, &xt)?, 0.5)?;
 
     Ok(x_sym)

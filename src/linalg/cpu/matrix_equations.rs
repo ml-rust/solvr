@@ -169,7 +169,7 @@ mod tests {
         let x = client.solve_continuous_lyapunov(&a, &q).unwrap();
 
         // Verify: AX + XA^T - Q ≈ 0
-        let at = a.transpose(0, 1).unwrap().contiguous();
+        let at = a.transpose(0, 1).unwrap().contiguous().unwrap();
         let ax = client.matmul(&a, &x).unwrap();
         let xat = client.matmul(&x, &at).unwrap();
         let residual = client.sub(&client.add(&ax, &xat).unwrap(), &q).unwrap();
@@ -193,7 +193,7 @@ mod tests {
         let x = client.solve_discrete_lyapunov(&a, &q).unwrap();
 
         // Verify: AXA^T - X + Q ≈ 0
-        let at = a.transpose(0, 1).unwrap().contiguous();
+        let at = a.transpose(0, 1).unwrap().contiguous().unwrap();
         let axat = client.matmul(&client.matmul(&a, &x).unwrap(), &at).unwrap();
         let residual = client.add(&client.sub(&axat, &x).unwrap(), &q).unwrap();
 
@@ -217,13 +217,13 @@ mod tests {
         let r = Tensor::from_slice(&[1.0], &[1, 1], &device);
 
         let r_inv = LinearAlgebraAlgorithms::inverse(&client, &r).unwrap();
-        let bt = b.transpose(0, 1).unwrap().contiguous();
+        let bt = b.transpose(0, 1).unwrap().contiguous().unwrap();
         let s = client
             .matmul(&client.matmul(&b, &r_inv).unwrap(), &bt)
             .unwrap();
         eprintln!("S = {:?}", s.to_vec::<f64>());
 
-        let at = a.transpose(0, 1).unwrap().contiguous();
+        let at = a.transpose(0, 1).unwrap().contiguous().unwrap();
         let neg_s = client.neg(&s).unwrap();
         let neg_q = client.neg(&q).unwrap();
         let neg_at = client.neg(&at).unwrap();
@@ -249,7 +249,7 @@ mod tests {
         }
 
         // Verify Schur convention: is H = Z T Z^T or H = Z^T T Z?
-        let zt = schur.z.transpose(0, 1).unwrap().contiguous();
+        let zt = schur.z.transpose(0, 1).unwrap().contiguous().unwrap();
         let ztzt = client
             .matmul(&client.matmul(&schur.z, &schur.t).unwrap(), &zt)
             .unwrap();
@@ -292,17 +292,17 @@ mod tests {
         }
 
         // Try extracting X from stable columns (2,3)
-        let stable_z = schur.z.narrow(1, 2, 2).unwrap().contiguous();
-        let u1 = stable_z.narrow(0, 0, 2).unwrap().contiguous();
-        let u2 = stable_z.narrow(0, 2, 2).unwrap().contiguous();
+        let stable_z = schur.z.narrow(1, 2, 2).unwrap().contiguous().unwrap();
+        let u1 = stable_z.narrow(0, 0, 2).unwrap().contiguous().unwrap();
+        let u2 = stable_z.narrow(0, 2, 2).unwrap().contiguous().unwrap();
         let u1_inv = LinearAlgebraAlgorithms::inverse(&client, &u1).unwrap();
         let x_stable = client.matmul(&u2, &u1_inv).unwrap();
         eprintln!("X from stable subspace: {:?}", x_stable.to_vec::<f64>());
 
         // Try unstable columns (0,1)
-        let unstable_z = schur.z.narrow(1, 0, 2).unwrap().contiguous();
-        let u1u = unstable_z.narrow(0, 0, 2).unwrap().contiguous();
-        let u2u = unstable_z.narrow(0, 2, 2).unwrap().contiguous();
+        let unstable_z = schur.z.narrow(1, 0, 2).unwrap().contiguous().unwrap();
+        let u1u = unstable_z.narrow(0, 0, 2).unwrap().contiguous().unwrap();
+        let u2u = unstable_z.narrow(0, 2, 2).unwrap().contiguous().unwrap();
         let u1u_inv = LinearAlgebraAlgorithms::inverse(&client, &u1u).unwrap();
         let x_unstable = client.matmul(&u2u, &u1u_inv).unwrap();
         eprintln!("X from unstable subspace: {:?}", x_unstable.to_vec::<f64>());
@@ -319,7 +319,7 @@ mod tests {
             ("unstable", &x_unstable),
             ("neg_stable", &x_neg),
         ] {
-            let at_loc = a.transpose(0, 1).unwrap().contiguous();
+            let at_loc = a.transpose(0, 1).unwrap().contiguous().unwrap();
             let atx = client.matmul(&at_loc, x_candidate).unwrap();
             let xa = client.matmul(x_candidate, &a).unwrap();
             let xsx = client
@@ -337,7 +337,7 @@ mod tests {
         // Check with known solution
         let x_true = Tensor::from_slice(&[1.732050808, 1.0, 1.0, 1.732050808], &[2, 2], &device);
         {
-            let at_loc = a.transpose(0, 1).unwrap().contiguous();
+            let at_loc = a.transpose(0, 1).unwrap().contiguous().unwrap();
             let atx = client.matmul(&at_loc, &x_true).unwrap();
             let xa = client.matmul(&x_true, &a).unwrap();
             let xsx = client
@@ -391,8 +391,8 @@ mod tests {
         eprintln!("CARE X = {:?}", x.to_vec::<f64>());
 
         // Verify CARE residual: A^T X + X A - X B R^{-1} B^T X + Q ≈ 0
-        let at = a.transpose(0, 1).unwrap().contiguous();
-        let bt = b.transpose(0, 1).unwrap().contiguous();
+        let at = a.transpose(0, 1).unwrap().contiguous().unwrap();
+        let bt = b.transpose(0, 1).unwrap().contiguous().unwrap();
         let r_inv = Tensor::from_slice(&[1.0], &[1, 1], &device);
 
         let atx = client.matmul(&at, &x).unwrap();
@@ -527,7 +527,7 @@ mod tests {
         );
 
         // Verify residual: AXA^T - X + Q ≈ 0
-        let at = a.transpose(0, 1).unwrap().contiguous();
+        let at = a.transpose(0, 1).unwrap().contiguous().unwrap();
         let axat = client
             .matmul(&client.matmul(&a, &x_iter).unwrap(), &at)
             .unwrap();
@@ -554,14 +554,14 @@ mod tests {
         let r = Tensor::from_slice(&[1.0], &[1, 1], &device);
 
         let r_inv = LinearAlgebraAlgorithms::inverse(&client, &r).unwrap();
-        let bt = b.transpose(0, 1).unwrap().contiguous();
+        let bt = b.transpose(0, 1).unwrap().contiguous().unwrap();
         let s = client
             .matmul(&client.matmul(&b, &r_inv).unwrap(), &bt)
             .unwrap();
         eprintln!("S = {:?}", s.to_vec::<f64>());
 
         let eye = client.eye(2, None, numr::dtype::DType::F64).unwrap();
-        let at = a.transpose(0, 1).unwrap().contiguous();
+        let at = a.transpose(0, 1).unwrap().contiguous().unwrap();
         let neg_q = client.neg(&q).unwrap();
         let zeros = Tensor::zeros(&[2, 2], numr::dtype::DType::F64, &device);
 
@@ -645,8 +645,8 @@ mod tests {
         let x = client.solve_dare(&a, &b, &q, &r).unwrap();
 
         // Verify DARE residual: A^T X A - X - A^T X B (R + B^T X B)^{-1} B^T X A + Q ≈ 0
-        let at = a.transpose(0, 1).unwrap().contiguous();
-        let bt = b.transpose(0, 1).unwrap().contiguous();
+        let at = a.transpose(0, 1).unwrap().contiguous().unwrap();
+        let bt = b.transpose(0, 1).unwrap().contiguous().unwrap();
 
         let atx = client.matmul(&at, &x).unwrap();
         let atxa = client.matmul(&atx, &a).unwrap();

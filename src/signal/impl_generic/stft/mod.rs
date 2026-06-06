@@ -42,7 +42,7 @@ where
     let hop = hop_length.unwrap_or(n_fft / 4);
     validate_stft_params(n_fft, hop, "stft")?;
 
-    let signal_contig = signal.contiguous();
+    let signal_contig = signal.contiguous()?;
     let ndim = signal_contig.ndim();
 
     if ndim == 0 {
@@ -144,12 +144,12 @@ where
 
         let frame = if frame_len == n_fft && frame_start + n_fft <= signal_len {
             // Normal case: full frame available
-            signal.narrow(0, frame_start, n_fft)?.contiguous()
+            signal.narrow(0, frame_start, n_fft)?.contiguous()?
         } else {
             // Edge case: need to pad with zeros
             // Extract what we can and pad the rest
             if frame_len > 0 {
-                let partial = signal.narrow(0, frame_start, frame_len)?.contiguous();
+                let partial = signal.narrow(0, frame_start, frame_len)?.contiguous()?;
                 let pad_amount = n_fft - frame_len;
                 client.pad(&partial, &[0, pad_amount], 0.0)?
             } else {
@@ -210,11 +210,11 @@ where
 
         let frames = if frame_len == n_fft && frame_start + n_fft <= signal_len {
             // Normal case: full frame available
-            signal_2d.narrow(1, frame_start, n_fft)?.contiguous()
+            signal_2d.narrow(1, frame_start, n_fft)?.contiguous()?
         } else {
             // Edge case: need to pad with zeros
             if frame_len > 0 {
-                let partial = signal_2d.narrow(1, frame_start, frame_len)?.contiguous();
+                let partial = signal_2d.narrow(1, frame_start, frame_len)?.contiguous()?;
                 let pad_amount = n_fft - frame_len;
                 client.pad(&partial, &[0, pad_amount], 0.0)?
             } else {

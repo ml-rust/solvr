@@ -99,8 +99,8 @@ where
         });
     }
 
-    let x_contig = x.contiguous();
-    let y_contig = y.contiguous();
+    let x_contig = x.contiguous()?;
+    let y_contig = y.contiguous()?;
 
     let all_dims: Vec<usize> = (0..x_contig.ndim()).collect();
 

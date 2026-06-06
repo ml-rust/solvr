@@ -5,7 +5,7 @@
 
 use numr::dtype::DType;
 use numr::error::Result;
-use numr::ops::{CompareOps, ScalarOps, TensorOps};
+use numr::ops::{CompareOps, RandomOps, ScalarOps, TensorOps};
 use numr::runtime::{Runtime, RuntimeClient};
 use numr::tensor::Tensor;
 
@@ -37,7 +37,7 @@ pub fn differential_evolution_impl<R, C, F>(
 ) -> OptimizeResult<DifferentialEvolutionTensorResult<R>>
 where
     R: Runtime<DType = DType>,
-    C: TensorOps<R> + ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
+    C: TensorOps<R> + ScalarOps<R> + CompareOps<R> + RandomOps<R> + RuntimeClient<R>,
     F: Fn(&Tensor<R>) -> Result<f64>,
 {
     let n = lower_bounds.shape()[0];
@@ -167,7 +167,7 @@ fn init_population<R, C>(
 ) -> OptimizeResult<Vec<Tensor<R>>>
 where
     R: Runtime<DType = DType>,
-    C: TensorOps<R> + ScalarOps<R> + RuntimeClient<R>,
+    C: TensorOps<R> + ScalarOps<R> + RandomOps<R> + RuntimeClient<R>,
 {
     let mut population = Vec::with_capacity(pop_size);
 
@@ -228,7 +228,7 @@ fn crossover<R, C>(
 ) -> OptimizeResult<Tensor<R>>
 where
     R: Runtime<DType = DType>,
-    C: TensorOps<R> + ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
+    C: TensorOps<R> + ScalarOps<R> + CompareOps<R> + RandomOps<R> + RuntimeClient<R>,
 {
     // Generate random mask [n] in [0, 1)
     let rand_mask = client
@@ -311,7 +311,7 @@ fn select_random_indices<R, C>(
 ) -> OptimizeResult<(usize, usize, usize)>
 where
     R: Runtime<DType = DType>,
-    C: TensorOps<R> + RuntimeClient<R>,
+    C: TensorOps<R> + RandomOps<R> + RuntimeClient<R>,
 {
     // Generate 6 random values to select 3 distinct indices (with buffer for collision retry).
     // We need 3 unique indices != exclude; 6 gives ~99% success rate for typical pop_size >= 10.

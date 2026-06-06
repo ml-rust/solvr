@@ -446,6 +446,6 @@ fn extract_column<R: Runtime<DType = DType>>(
 ) -> Result<Tensor<R>, crate::interpolate::error::InterpolateError> {
     // Use narrow to get column, then make contiguous before reshape
     let col = xi.narrow(1, d, 1)?;
-    let col_contig = col.contiguous();
+    let col_contig = col.contiguous()?;
     Ok(col_contig.reshape(&[n_points])?)
 }

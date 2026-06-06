@@ -75,7 +75,7 @@ where
     // kron(By, Bx) @ vec(C) = vec(Z) where vec() is column-major (Fortran order)
     // For row-major: we need `z_flat[j*nx + i]` = `z[i, j]`
     // Transpose z to `[ny, nx]`, then flatten
-    let z_t = z.transpose(0, 1)?.contiguous(); // `[ny, nx]`
+    let z_t = z.transpose(0, 1)?.contiguous()?; // `[ny, nx]`
     let z_flat = z_t.reshape(&[nx * ny, 1])?;
 
     // Solve the system
@@ -88,7 +88,7 @@ where
     let coefficients = coeffs_flat
         .reshape(&[ncy, ncx])?
         .transpose(0, 1)?
-        .contiguous(); // [ncx, ncy]
+        .contiguous()?; // [ncx, ncy]
 
     Ok(BivariateSpline {
         knots_x,
@@ -162,7 +162,7 @@ where
 
     // Z = Bx @ C @ By^T → [mx, my]
     let tmp = client.matmul(&bx, &spline.coefficients)?; // [mx, ncy]
-    let by_t = by.transpose(0, 1)?.contiguous(); // [ncy, my]
+    let by_t = by.transpose(0, 1)?.contiguous()?; // [ncy, my]
     let result = client.matmul(&tmp, &by_t)?; // [mx, my]
 
     Ok(result)
@@ -296,19 +296,19 @@ where
         let n_knots = current_knots.shape()[0];
 
         // c'_i = k * (c_{i+1} - c_i) / (t_{i+k+1} - t_{i+1})
-        let c_hi = current_coeffs.narrow(0, 1, n - 1)?.contiguous(); // [n-1, ncy]
-        let c_lo = current_coeffs.narrow(0, 0, n - 1)?.contiguous(); // [n-1, ncy]
+        let c_hi = current_coeffs.narrow(0, 1, n - 1)?.contiguous()?; // [n-1, ncy]
+        let c_lo = current_coeffs.narrow(0, 0, n - 1)?.contiguous()?; // [n-1, ncy]
         let dc = client.sub(&c_hi, &c_lo)?; // [n-1, ncy]
 
-        let t_hi = current_knots.narrow(0, k + 1, n - 1)?.contiguous(); // [n-1]
-        let t_lo = current_knots.narrow(0, 1, n - 1)?.contiguous(); // [n-1]
+        let t_hi = current_knots.narrow(0, k + 1, n - 1)?.contiguous()?; // [n-1]
+        let t_lo = current_knots.narrow(0, 1, n - 1)?.contiguous()?; // [n-1]
         let dt = client.sub(&t_hi, &t_lo)?; // [n-1]
 
         // Safe division: broadcast dt to [n-1, ncy]
         let dt_col = dt
             .reshape(&[n - 1, 1])?
             .broadcast_to(&[n - 1, ncy])?
-            .contiguous();
+            .contiguous()?;
         let eps = Tensor::full_scalar(&[n - 1, ncy], DType::F64, 1e-300, client.device());
         let abs_dt = client.abs(&dt_col)?;
         let dt_safe = client.maximum(&abs_dt, &eps)?;
@@ -318,7 +318,7 @@ where
         let new_coeffs =
             client.mul_scalar(&client.mul(&client.div(&dc, &dt_safe)?, &mask)?, k as f64)?;
 
-        let new_knots = current_knots.narrow(0, 1, n_knots - 2)?.contiguous();
+        let new_knots = current_knots.narrow(0, 1, n_knots - 2)?.contiguous()?;
 
         current_coeffs = new_coeffs;
         current_knots = new_knots;
@@ -347,9 +347,9 @@ where
     }
 
     // Transpose: [ncx, ncy] → [ncy, ncx], differentiate along "x" (which is really y), transpose back
-    let c_t = coefficients.transpose(0, 1)?.contiguous();
+    let c_t = coefficients.transpose(0, 1)?.contiguous()?;
     let (knots_d, c_d, degree_d) = differentiate_2d_x(client, knots_y, &c_t, degree_y, order)?;
-    let c_result = c_d.transpose(0, 1)?.contiguous();
+    let c_result = c_d.transpose(0, 1)?.contiguous()?;
 
     Ok((knots_d, c_result, degree_d))
 }
@@ -378,14 +378,14 @@ where
     let n_knots = knots.shape()[0];
 
     // Anti-derivative B-spline knots: prepend first, append last
-    let first = knots.narrow(0, 0, 1)?.contiguous();
-    let last = knots.narrow(0, n_knots - 1, 1)?.contiguous();
+    let first = knots.narrow(0, 0, 1)?.contiguous()?;
+    let last = knots.narrow(0, n_knots - 1, 1)?.contiguous()?;
     let anti_knots = client.cat(&[&first, knots, &last], 0)?;
     let ncx_anti = anti_knots.shape()[0] - (k + 1) - 1;
 
     // Knot differences: dt[i] = t[i+k+1] - t[i], scaled by 1/(k+1)
-    let t_hi = knots.narrow(0, k + 1, n_coeffs)?.contiguous();
-    let t_lo = knots.narrow(0, 0, n_coeffs)?.contiguous();
+    let t_hi = knots.narrow(0, k + 1, n_coeffs)?.contiguous()?;
+    let t_lo = knots.narrow(0, 0, n_coeffs)?.contiguous()?;
     let dt_scaled = client.mul_scalar(&client.sub(&t_hi, &t_lo)?, 1.0 / (k + 1) as f64)?;
 
     // For basis function i with coefficient vector e_i (identity column):
@@ -409,8 +409,8 @@ where
     let vals = client.matmul(&basis_ab, &anti_coeffs_all)?; // [2, n_coeffs]
 
     // Integral = F(b) - F(a) for each basis function
-    let vals_b = vals.narrow(0, 0, 1)?.contiguous().reshape(&[n_coeffs])?;
-    let vals_a = vals.narrow(0, 1, 1)?.contiguous().reshape(&[n_coeffs])?;
+    let vals_b = vals.narrow(0, 0, 1)?.contiguous()?.reshape(&[n_coeffs])?;
+    let vals_a = vals.narrow(0, 1, 1)?.contiguous()?.reshape(&[n_coeffs])?;
     Ok(client.sub(&vals_b, &vals_a)?)
 }
 

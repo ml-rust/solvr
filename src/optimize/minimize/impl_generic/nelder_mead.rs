@@ -307,13 +307,20 @@ where
     // Make x0 contiguous and reshape to [1, n] for concatenation
     let x0_row = x0
         .contiguous()
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("nelder_mead: contiguous x0 - {}", e),
+        })?
         .unsqueeze(0)
         .map_err(|e| OptimizeError::NumericalError {
             message: format!("nelder_mead: x0 row - {}", e),
         })?;
 
     // Make perturbed contiguous for cat
-    let perturbed_contig = perturbed.contiguous();
+    let perturbed_contig = perturbed
+        .contiguous()
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("nelder_mead: contiguous perturbed - {}", e),
+        })?;
 
     // Concatenate: [x0_row, perturbed] along dim 0 -> [n+1, n]
     client
@@ -343,6 +350,9 @@ where
             message: format!("nelder_mead: narrow row - {}", e),
         })?
         .contiguous()
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("nelder_mead: contiguous row - {}", e),
+        })?
         .reshape(&[n])
         .map_err(|e| OptimizeError::NumericalError {
             message: format!("nelder_mead: reshape row - {}", e),

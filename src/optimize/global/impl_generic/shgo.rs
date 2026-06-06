@@ -122,6 +122,9 @@ where
                     message: format!("refine: narrow e_dim - {}", e),
                 })?
                 .contiguous()
+                .map_err(|e| OptimizeError::NumericalError {
+                    message: format!("refine: contiguous e_dim - {}", e),
+                })?
                 .reshape(&[n])
                 .map_err(|e| OptimizeError::NumericalError {
                     message: format!("refine: reshape e_dim - {}", e),

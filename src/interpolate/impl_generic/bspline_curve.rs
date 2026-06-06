@@ -100,7 +100,7 @@ where
     let n_dims = curve.control_points.shape()[1];
 
     // Build a reference 1D spline (dimension 0) to get derivative knots/degree
-    let coeffs_0 = curve.control_points.narrow(1, 0, 1)?.contiguous();
+    let coeffs_0 = curve.control_points.narrow(1, 0, 1)?.contiguous()?;
     let coeffs_0_1d = coeffs_0.reshape(&[n_points])?;
     let ref_spline = BSpline {
         knots: curve.knots.clone(),
@@ -121,7 +121,7 @@ where
 
     // Remaining dimensions reuse the same derivative knots/degree
     for d in 1..n_dims {
-        let coeffs_d = curve.control_points.narrow(1, d, 1)?.contiguous();
+        let coeffs_d = curve.control_points.narrow(1, d, 1)?.contiguous()?;
         let coeffs_1d = coeffs_d.reshape(&[n_points])?;
 
         let spline_1d = BSpline {
@@ -190,14 +190,14 @@ where
     let insertions = k.saturating_sub(mult);
     if insertions == 0 {
         // Already fully split at this knot — just split by index
-        let left_cp = curve.control_points.narrow(0, 0, span + 1)?.contiguous();
+        let left_cp = curve.control_points.narrow(0, 0, span + 1)?.contiguous()?;
         let right_cp = curve
             .control_points
             .narrow(0, span, n_points - span)?
-            .contiguous();
+            .contiguous()?;
 
-        let left_knots = curve.knots.narrow(0, 0, span + k + 2)?.contiguous();
-        let right_knots = curve.knots.narrow(0, span, n_knots - span)?.contiguous();
+        let left_knots = curve.knots.narrow(0, 0, span + k + 2)?.contiguous()?;
+        let right_knots = curve.knots.narrow(0, span, n_knots - span)?.contiguous()?;
 
         return Ok((
             BSplineCurve {
@@ -225,11 +225,11 @@ where
         let n_kn = knots.shape()[0];
 
         // Insert new knot value into knot vector
-        let left_knots = knots.narrow(0, 0, current_span + 1)?.contiguous();
+        let left_knots = knots.narrow(0, 0, current_span + 1)?.contiguous()?;
         let t_knot = Tensor::from_slice(&[t], &[1], device);
         let right_knots = knots
             .narrow(0, current_span + 1, n_kn - current_span - 1)?
-            .contiguous();
+            .contiguous()?;
         knots = client.cat(&[&left_knots, &t_knot, &right_knots], 0)?;
 
         // Compute blending alphas for affected range using tensor ops.
@@ -242,8 +242,8 @@ where
         let n_affected = current_span - start + 1;
 
         // knots_lo = knots[start..start+n_affected], knots_hi = knots[start+k+1..start+k+1+n_affected]
-        let knots_lo = knots.narrow(0, start, n_affected)?.contiguous();
-        let knots_hi = knots.narrow(0, start + k + 1, n_affected)?.contiguous();
+        let knots_lo = knots.narrow(0, start, n_affected)?.contiguous()?;
+        let knots_hi = knots.narrow(0, start + k + 1, n_affected)?.contiguous()?;
         let denom = client.sub(&knots_hi, &knots_lo)?;
 
         let t_bcast = Tensor::from_slice(&[t], &[1], device).broadcast_to(&[n_affected])?;
@@ -272,17 +272,17 @@ where
         let alpha_broad = alphas_col.broadcast_to(&[n_affected, n_dims])?;
 
         // cp_curr = cp[start..start+n_affected]
-        let cp_curr = cp.narrow(0, start, n_affected)?.contiguous();
+        let cp_curr = cp.narrow(0, start, n_affected)?.contiguous()?;
 
         // cp_prev: for i>0, cp[i-1]; for i==0, cp[0] (doesn't matter, alpha masks it)
         let prev_start = if start > 0 { start - 1 } else { 0 };
         let cp_prev = if start > 0 {
-            cp.narrow(0, prev_start, n_affected)?.contiguous()
+            cp.narrow(0, prev_start, n_affected)?.contiguous()?
         } else {
             // First row is cp[0] (placeholder), rest is cp[0..n_affected-1]
-            let first = cp.narrow(0, 0, 1)?.contiguous();
+            let first = cp.narrow(0, 0, 1)?.contiguous()?;
             if n_affected > 1 {
-                let rest = cp.narrow(0, 0, n_affected - 1)?.contiguous();
+                let rest = cp.narrow(0, 0, n_affected - 1)?.contiguous()?;
                 client.cat(&[&first, &rest], 0)?
             } else {
                 first
@@ -296,9 +296,9 @@ where
 
         // If start == 0, the first blended point should just be cp[0]
         let blended = if start == 0 {
-            let orig_first = cp.narrow(0, 0, 1)?.contiguous();
+            let orig_first = cp.narrow(0, 0, 1)?.contiguous()?;
             if n_affected > 1 {
-                let rest = blended.narrow(0, 1, n_affected - 1)?.contiguous();
+                let rest = blended.narrow(0, 1, n_affected - 1)?.contiguous()?;
                 client.cat(&[&orig_first, &rest], 0)?
             } else {
                 orig_first
@@ -310,12 +310,12 @@ where
         // Assemble: [unchanged_before | blended | unchanged_after]
         let mut parts: Vec<Tensor<R>> = Vec::new();
         if start > 0 {
-            parts.push(cp.narrow(0, 0, start)?.contiguous());
+            parts.push(cp.narrow(0, 0, start)?.contiguous()?);
         }
         parts.push(blended);
         if current_span < n_cp {
             let remaining = n_cp - current_span;
-            parts.push(cp.narrow(0, current_span, remaining)?.contiguous());
+            parts.push(cp.narrow(0, current_span, remaining)?.contiguous()?);
         }
         let refs: Vec<&Tensor<R>> = parts.iter().collect();
         cp = client.cat(&refs, 0)?;
@@ -327,13 +327,13 @@ where
     let n_cp = cp.shape()[0];
     let split_idx = current_span - k + 1;
 
-    let left_cp = cp.narrow(0, 0, split_idx + 1)?.contiguous();
-    let right_cp = cp.narrow(0, split_idx, n_cp - split_idx)?.contiguous();
+    let left_cp = cp.narrow(0, 0, split_idx + 1)?.contiguous()?;
+    let right_cp = cp.narrow(0, split_idx, n_cp - split_idx)?.contiguous()?;
 
     let n_kn = knots.shape()[0];
     let left_end = split_idx + k + 1;
-    let left_knots = knots.narrow(0, 0, left_end + 1)?.contiguous();
-    let right_knots = knots.narrow(0, split_idx, n_kn - split_idx)?.contiguous();
+    let left_knots = knots.narrow(0, 0, left_end + 1)?.contiguous()?;
+    let right_knots = knots.narrow(0, split_idx, n_kn - split_idx)?.contiguous()?;
 
     Ok((
         BSplineCurve {

@@ -37,7 +37,7 @@ where
     C: ScalarOps<R> + ShapeOps<R> + TensorOps<R> + RuntimeClient<R>,
 {
     if pad_before == 0 && pad_after == 0 {
-        return Ok(input.contiguous());
+        return input.contiguous();
     }
 
     let ndim = input.ndim() as isize;
@@ -88,7 +88,7 @@ where
                 }
             }
 
-            parts.push(input.contiguous());
+            parts.push(input.contiguous()?);
 
             if pad_after > 0 {
                 // Reflect from end: take last `pad_after` elements (excluding boundary), flip
@@ -103,7 +103,7 @@ where
 
             // Concatenate along axis
             if parts.is_empty() {
-                Ok(input.contiguous())
+                Ok(input.contiguous()?)
             } else {
                 let refs: Vec<&Tensor<R>> = parts.iter().collect();
                 client.cat(&refs, axis)
@@ -122,7 +122,7 @@ where
                 parts.push(repeated);
             }
 
-            parts.push(input.contiguous());
+            parts.push(input.contiguous()?);
 
             if pad_after > 0 {
                 // Take last element along axis, repeat pad_after times
@@ -134,7 +134,7 @@ where
             }
 
             if parts.is_empty() {
-                Ok(input.contiguous())
+                Ok(input.contiguous()?)
             } else {
                 let refs: Vec<&Tensor<R>> = parts.iter().collect();
                 client.cat(&refs, axis)
@@ -154,7 +154,7 @@ where
                 }
             }
 
-            parts.push(input.contiguous());
+            parts.push(input.contiguous()?);
 
             if pad_after > 0 {
                 let take = pad_after.min(axis_len);
@@ -167,7 +167,7 @@ where
             }
 
             if parts.is_empty() {
-                Ok(input.contiguous())
+                Ok(input.contiguous()?)
             } else {
                 let refs: Vec<&Tensor<R>> = parts.iter().collect();
                 client.cat(&refs, axis)
@@ -187,7 +187,7 @@ where
                 }
             }
 
-            parts.push(input.contiguous());
+            parts.push(input.contiguous()?);
 
             if pad_after > 0 {
                 // Take from the beginning: elements [0..min(pad_after, len)]
@@ -199,7 +199,7 @@ where
             }
 
             if parts.is_empty() {
-                Ok(input.contiguous())
+                Ok(input.contiguous()?)
             } else {
                 let refs: Vec<&Tensor<R>> = parts.iter().collect();
                 client.cat(&refs, axis)

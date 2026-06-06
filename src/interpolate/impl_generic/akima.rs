@@ -117,12 +117,12 @@ where
     let epsilon = Tensor::<R>::from_slice(&epsilon_data, &[n], device);
 
     // Make tensors contiguous to avoid issues with non-contiguous views
-    let denom_contig = denom.contiguous();
-    let dm1_contig = dm1.contiguous();
-    let dm2_contig = dm2.contiguous();
-    let m_i_minus1_contig = m_i_minus1.contiguous();
-    let m_i_contig = m_i.contiguous();
-    let slope_simple_contig = slope_simple.contiguous();
+    let denom_contig = denom.contiguous()?;
+    let dm1_contig = dm1.contiguous()?;
+    let dm2_contig = dm2.contiguous()?;
+    let m_i_minus1_contig = m_i_minus1.contiguous()?;
+    let m_i_contig = m_i.contiguous()?;
+    let slope_simple_contig = slope_simple.contiguous()?;
 
     // Safe denominator: denom + epsilon
     let safe_denom = client.add(&denom_contig, &epsilon)?;

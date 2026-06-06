@@ -139,12 +139,12 @@ where
 
     // For 2 points, use trapezoidal
     if n == 2 {
-        let x_left = x.narrow(x_last_dim as isize, 0, 1)?.contiguous();
-        let x_right = x.narrow(x_last_dim as isize, 1, 1)?.contiguous();
+        let x_left = x.narrow(x_last_dim as isize, 0, 1)?.contiguous()?;
+        let x_right = x.narrow(x_last_dim as isize, 1, 1)?.contiguous()?;
         let dx = client.sub(&x_right, &x_left)?;
 
-        let y_left = y.narrow(last_dim as isize, 0, 1)?.contiguous();
-        let y_right = y.narrow(last_dim as isize, 1, 1)?.contiguous();
+        let y_left = y.narrow(last_dim as isize, 0, 1)?.contiguous()?;
+        let y_right = y.narrow(last_dim as isize, 1, 1)?.contiguous()?;
         let y_sum = client.add(&y_left, &y_right)?;
 
         let area = client.mul(&dx, &y_sum)?;
@@ -267,12 +267,12 @@ where
     let simpson_integral = client.sum(&simpson_contrib, &[last_dim], false)?;
 
     // Trapezoidal for last interval (n-2, n-1)
-    let last_x_left = x.narrow(x_last_dim as isize, n - 2, 1)?.contiguous();
-    let last_x_right = x.narrow(x_last_dim as isize, n - 1, 1)?.contiguous();
+    let last_x_left = x.narrow(x_last_dim as isize, n - 2, 1)?.contiguous()?;
+    let last_x_right = x.narrow(x_last_dim as isize, n - 1, 1)?.contiguous()?;
     let last_dx = client.sub(&last_x_right, &last_x_left)?;
 
-    let last_y_left = y.narrow(last_dim as isize, n - 2, 1)?.contiguous();
-    let last_y_right = y.narrow(last_dim as isize, n - 1, 1)?.contiguous();
+    let last_y_left = y.narrow(last_dim as isize, n - 2, 1)?.contiguous()?;
+    let last_y_right = y.narrow(last_dim as isize, n - 1, 1)?.contiguous()?;
     let last_y_sum = client.add(&last_y_left, &last_y_right)?;
 
     let trap_area = client.mul(&last_dx, &last_y_sum)?;

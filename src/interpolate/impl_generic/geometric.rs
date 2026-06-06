@@ -53,14 +53,14 @@ where
 
     // Flatten input for easier indexing
     let input_flat = input
-        .contiguous()
+        .contiguous()?
         .reshape(&[input_shape.iter().product::<usize>()])?;
 
     // Extract and flatten coordinate arrays for each dimension
     let mut coord_arrays: Vec<Tensor<R>> = Vec::with_capacity(ndim);
     for d in 0..ndim {
         let c = coordinates.narrow(0, d, 1)?;
-        let c_squeezed = c.squeeze(Some(0)).contiguous();
+        let c_squeezed = c.squeeze(Some(0)).contiguous()?;
         let c_flat = c_squeezed.reshape(&[output_total])?;
         coord_arrays.push(c_flat);
     }

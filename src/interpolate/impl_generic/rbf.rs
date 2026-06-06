@@ -115,11 +115,11 @@ where
         let zeros_pp = Tensor::zeros(&[p_cols, p_cols], DType::F64, device);
 
         // Top row: [K, P]
-        let kernel_mat = kernel_mat.contiguous();
-        let p_mat = p_mat.contiguous();
+        let kernel_mat = kernel_mat.contiguous()?;
+        let p_mat = p_mat.contiguous()?;
         let top = client.cat(&[&kernel_mat, &p_mat], 1)?;
         // Bottom row: [P^T, 0]
-        let p_t = p_mat.transpose(0, 1)?.contiguous();
+        let p_t = p_mat.transpose(0, 1)?.contiguous()?;
         let bottom = client.cat(&[&p_t, &zeros_pp], 1)?;
         // Full: [[K, P], [P^T, 0]]
         let aug_mat = client.cat(&[&top, &bottom], 0)?;
@@ -134,8 +134,8 @@ where
         let zeros_rhs = Tensor::zeros(&[p_cols, n_out], DType::F64, device);
         let aug_rhs = client.cat(&[&vals_col, &zeros_rhs], 0)?;
 
-        let aug_mat = aug_mat.contiguous();
-        let aug_rhs = aug_rhs.contiguous();
+        let aug_mat = aug_mat.contiguous()?;
+        let aug_rhs = aug_rhs.contiguous()?;
         let solution = LinearAlgebraAlgorithms::solve(client, &aug_mat, &aug_rhs).map_err(|e| {
             InterpolateError::NumericalError {
                 message: format!("RBF augmented solve failed: {}", e),
@@ -143,8 +143,8 @@ where
         })?;
 
         // Split solution into weights and polynomial coefficients
-        let weights = solution.narrow(0, 0, n)?.contiguous();
-        let poly_coeffs = solution.narrow(0, n, p_cols)?.contiguous();
+        let weights = solution.narrow(0, 0, n)?.contiguous()?;
+        let poly_coeffs = solution.narrow(0, n, p_cols)?.contiguous()?;
 
         let weights = if values.shape().len() == 1 {
             weights.reshape(&[n])?
@@ -255,16 +255,16 @@ where
             let c = b2.narrow(1, col, 1)?;
             s = client.add(&s, &c)?;
         }
-        s.transpose(0, 1)?.contiguous() // [1, m]
+        s.transpose(0, 1)?.contiguous()? // [1, m]
     };
 
-    let b_t = b.transpose(0, 1)?.contiguous();
+    let b_t = b.transpose(0, 1)?.contiguous()?;
     let ab = client.matmul(a, &b_t)?; // [n, m]
     let two_ab = client.mul_scalar(&ab, 2.0)?;
 
     // Broadcast a_sq [n,1] + b_sq [1,m] -> [n,m]
-    let a_sq_b = a_sq.broadcast_to(&[n, m])?.contiguous();
-    let b_sq_b = b_sq.broadcast_to(&[n, m])?.contiguous();
+    let a_sq_b = a_sq.broadcast_to(&[n, m])?.contiguous()?;
+    let b_sq_b = b_sq.broadcast_to(&[n, m])?.contiguous()?;
     let sum_sq = client.add(&a_sq_b, &b_sq_b)?;
     let dist_sq = client.sub(&sum_sq, &two_ab)?;
 

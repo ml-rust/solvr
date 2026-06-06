@@ -220,6 +220,9 @@ where
                 message: format!("trust_exact: narrow ei - {}", e),
             })?
             .contiguous()
+            .map_err(|e| OptimizeError::NumericalError {
+                message: format!("trust_exact: contiguous ei - {}", e),
+            })?
             .reshape(&[n])
             .map_err(|e| OptimizeError::NumericalError {
                 message: format!("trust_exact: reshape ei - {}", e),

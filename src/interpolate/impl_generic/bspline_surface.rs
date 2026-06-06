@@ -83,18 +83,18 @@ where
     let bu_exp = basis_u
         .reshape(&[m, nu, 1])?
         .broadcast_to(&[m, nu, nv])?
-        .contiguous();
+        .contiguous()?;
     let bv_exp = basis_v
         .reshape(&[m, 1, nv])?
         .broadcast_to(&[m, nu, nv])?
-        .contiguous();
+        .contiguous()?;
     let product = client.mul(&bu_exp, &bv_exp)?;
     let product_flat = product.reshape(&[m, nu * nv])?;
 
     let cp_flat = surface
         .control_points
         .reshape(&[nu * nv, n_dims])?
-        .contiguous();
+        .contiguous()?;
     let result = client.matmul(&product_flat, &cp_flat)?;
     Ok(result)
 }
@@ -140,14 +140,14 @@ where
 
     for _ in 0..du {
         let nku = knots_u.shape()[0];
-        let hi = diff_cp.narrow(0, 1, cur_nu - 1)?.contiguous();
-        let lo = diff_cp.narrow(0, 0, cur_nu - 1)?.contiguous();
+        let hi = diff_cp.narrow(0, 1, cur_nu - 1)?.contiguous()?;
+        let lo = diff_cp.narrow(0, 0, cur_nu - 1)?.contiguous()?;
         let delta = client.sub(&hi, &lo)?;
 
         // Scale by degree / (knot differences) per row
         // For B-spline derivative: scale factor = deg / (t_{i+deg+1} - t_{i+1})
-        let t_hi = knots_u.narrow(0, deg_u + 1, cur_nu - 1)?.contiguous();
-        let t_lo = knots_u.narrow(0, 1, cur_nu - 1)?.contiguous();
+        let t_hi = knots_u.narrow(0, deg_u + 1, cur_nu - 1)?.contiguous()?;
+        let t_lo = knots_u.narrow(0, 1, cur_nu - 1)?.contiguous()?;
         let dt = client.sub(&t_hi, &t_lo)?;
 
         // Safe division
@@ -169,12 +169,12 @@ where
         let scale_broad = scale
             .reshape(&[cur_nu - 1, 1, 1])?
             .broadcast_to(&[cur_nu - 1, cur_nv, n_dims])?
-            .contiguous();
+            .contiguous()?;
 
         diff_cp = client.mul(&delta, &scale_broad)?;
 
         // Update knots: remove first and last
-        knots_u = knots_u.narrow(0, 1, nku - 2)?.contiguous();
+        knots_u = knots_u.narrow(0, 1, nku - 2)?.contiguous()?;
         deg_u -= 1;
         cur_nu -= 1;
     }
@@ -185,12 +185,12 @@ where
 
     for _ in 0..dv {
         let nkv = knots_v.shape()[0];
-        let hi = diff_cp.narrow(1, 1, cur_nv - 1)?.contiguous();
-        let lo = diff_cp.narrow(1, 0, cur_nv - 1)?.contiguous();
+        let hi = diff_cp.narrow(1, 1, cur_nv - 1)?.contiguous()?;
+        let lo = diff_cp.narrow(1, 0, cur_nv - 1)?.contiguous()?;
         let delta = client.sub(&hi, &lo)?;
 
-        let t_hi = knots_v.narrow(0, deg_v + 1, cur_nv - 1)?.contiguous();
-        let t_lo = knots_v.narrow(0, 1, cur_nv - 1)?.contiguous();
+        let t_hi = knots_v.narrow(0, deg_v + 1, cur_nv - 1)?.contiguous()?;
+        let t_lo = knots_v.narrow(0, 1, cur_nv - 1)?.contiguous()?;
         let dt = client.sub(&t_hi, &t_lo)?;
 
         let eps = Tensor::full_scalar(&[cur_nv - 1], DType::F64, 1e-300, device);
@@ -210,11 +210,11 @@ where
         let scale_broad = scale
             .reshape(&[1, cur_nv - 1, 1])?
             .broadcast_to(&[cur_nu_now, cur_nv - 1, n_dims])?
-            .contiguous();
+            .contiguous()?;
 
         diff_cp = client.mul(&delta, &scale_broad)?;
 
-        knots_v = knots_v.narrow(0, 1, nkv - 2)?.contiguous();
+        knots_v = knots_v.narrow(0, 1, nkv - 2)?.contiguous()?;
         deg_v -= 1;
         cur_nv -= 1;
     }

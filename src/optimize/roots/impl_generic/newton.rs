@@ -182,6 +182,9 @@ where
                 message: format!("jacobian: narrow row - {}", e),
             })?
             .contiguous()
+            .map_err(|e| OptimizeError::NumericalError {
+                message: format!("jacobian: contiguous delta - {}", e),
+            })?
             .reshape(&[n])
             .map_err(|e| OptimizeError::NumericalError {
                 message: format!("jacobian: reshape delta - {}", e),

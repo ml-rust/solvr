@@ -139,9 +139,9 @@ where
     let grads = grads_flat.reshape(&[m, 3, 2])?; // [m, 3, 2]
 
     // Extract vertex coordinates: p0, p1, p2 each [m, 2]
-    let p0 = verts.narrow(1, 0, 1)?.contiguous().reshape(&[m, 2])?; // [m, 2]
-    let p1 = verts.narrow(1, 1, 1)?.contiguous().reshape(&[m, 2])?;
-    let p2 = verts.narrow(1, 2, 1)?.contiguous().reshape(&[m, 2])?;
+    let p0 = verts.narrow(1, 0, 1)?.contiguous()?.reshape(&[m, 2])?; // [m, 2]
+    let p1 = verts.narrow(1, 1, 1)?.contiguous()?.reshape(&[m, 2])?;
+    let p2 = verts.narrow(1, 2, 1)?.contiguous()?.reshape(&[m, 2])?;
 
     // Barycentric coordinates (vectorized 2x2 solve)
     // d = p1 - p0, e = p2 - p0, q = xi - p0
@@ -149,12 +149,12 @@ where
     let e = client.sub(&p2, &p0)?; // [m, 2]
     let q = client.sub(xi, &p0)?; // [m, 2]
 
-    let d0 = d.narrow(1, 0, 1)?.contiguous().reshape(&[m])?; // [m]
-    let d1 = d.narrow(1, 1, 1)?.contiguous().reshape(&[m])?;
-    let e0 = e.narrow(1, 0, 1)?.contiguous().reshape(&[m])?;
-    let e1 = e.narrow(1, 1, 1)?.contiguous().reshape(&[m])?;
-    let q0 = q.narrow(1, 0, 1)?.contiguous().reshape(&[m])?;
-    let q1 = q.narrow(1, 1, 1)?.contiguous().reshape(&[m])?;
+    let d0 = d.narrow(1, 0, 1)?.contiguous()?.reshape(&[m])?; // [m]
+    let d1 = d.narrow(1, 1, 1)?.contiguous()?.reshape(&[m])?;
+    let e0 = e.narrow(1, 0, 1)?.contiguous()?.reshape(&[m])?;
+    let e1 = e.narrow(1, 1, 1)?.contiguous()?.reshape(&[m])?;
+    let q0 = q.narrow(1, 0, 1)?.contiguous()?.reshape(&[m])?;
+    let q1 = q.narrow(1, 1, 1)?.contiguous()?.reshape(&[m])?;
 
     // det = d0*e1 - e0*d1
     let det = client.sub(&client.mul(&d0, &e1)?, &client.mul(&e0, &d1)?)?;
@@ -186,14 +186,14 @@ where
     )?;
 
     // Extract per-vertex values: f0, f1, f2 each [m]
-    let f0 = vals.narrow(1, 0, 1)?.contiguous().reshape(&[m])?;
-    let f1 = vals.narrow(1, 1, 1)?.contiguous().reshape(&[m])?;
-    let f2 = vals.narrow(1, 2, 1)?.contiguous().reshape(&[m])?;
+    let f0 = vals.narrow(1, 0, 1)?.contiguous()?.reshape(&[m])?;
+    let f1 = vals.narrow(1, 1, 1)?.contiguous()?.reshape(&[m])?;
+    let f2 = vals.narrow(1, 2, 1)?.contiguous()?.reshape(&[m])?;
 
     // Extract per-vertex gradients: g0, g1, g2 each [m, 2]
-    let g0 = grads.narrow(1, 0, 1)?.contiguous().reshape(&[m, 2])?;
-    let g1 = grads.narrow(1, 1, 1)?.contiguous().reshape(&[m, 2])?;
-    let g2 = grads.narrow(1, 2, 1)?.contiguous().reshape(&[m, 2])?;
+    let g0 = grads.narrow(1, 0, 1)?.contiguous()?.reshape(&[m, 2])?;
+    let g1 = grads.narrow(1, 1, 1)?.contiguous()?.reshape(&[m, 2])?;
+    let g2 = grads.narrow(1, 2, 1)?.contiguous()?.reshape(&[m, 2])?;
 
     // Edge vectors: e01 = p1-p0, e02 = p2-p0, e12 = p2-p1 each [m, 2]
     let e01 = client.sub(&p1, &p0)?;
@@ -302,17 +302,17 @@ where
     let col_a = tri
         .simplices
         .narrow(1, 0, 1)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[n_tri])?;
     let col_b = tri
         .simplices
         .narrow(1, 1, 1)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[n_tri])?;
     let col_c = tri
         .simplices
         .narrow(1, 2, 1)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[n_tri])?;
 
     // src[e] = vertex whose gradient we're estimating
@@ -329,8 +329,8 @@ where
 
     // Compute deltas: delta_pos = dst - src, delta_val = dst_val - src_val
     let delta = client.sub(&dst_pts, &src_pts)?; // [n_edges, 2]
-    let dx = delta.narrow(1, 0, 1)?.contiguous().reshape(&[n_edges])?; // [n_edges]
-    let dy = delta.narrow(1, 1, 1)?.contiguous().reshape(&[n_edges])?;
+    let dx = delta.narrow(1, 0, 1)?.contiguous()?.reshape(&[n_edges])?; // [n_edges]
+    let dy = delta.narrow(1, 1, 1)?.contiguous()?.reshape(&[n_edges])?;
     let df = client.sub(&dst_vals, &src_vals)?; // [n_edges]
 
     // Compute the 5 products for A^T A and A^T b per edge

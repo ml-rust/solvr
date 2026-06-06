@@ -42,7 +42,7 @@ where
         _ => unreachable!(),
     };
 
-    let stft_contig = stft_matrix.contiguous();
+    let stft_contig = stft_matrix.contiguous()?;
     let ndim = stft_contig.ndim();
 
     if ndim < 2 {
@@ -173,7 +173,7 @@ where
         // narrow returns a view; make contiguous before reshape
         let spectrum = stft_matrix
             .narrow(0, f, 1)?
-            .contiguous()
+            .contiguous()?
             .reshape(&[freq_bins])?;
 
         // IRFFT to get time-domain frame (stays on device)
@@ -211,7 +211,7 @@ where
         // Extract [pad_left : pad_left + final_len]
         let extracted =
             normalized_output.narrow(0, pad_left, final_len.min(full_len - pad_left))?;
-        Ok(extracted.contiguous())
+        Ok(extracted.contiguous()?)
     }
 }
 
@@ -254,7 +254,7 @@ where
         // narrow returns a view; make contiguous before reshape
         let spectrum = stft_batched
             .narrow(1, f, 1)?
-            .contiguous()
+            .contiguous()?
             .reshape(&[batch_size, freq_bins])?;
 
         // IRFFT to get time-domain frames: [batch_size, n_fft]
@@ -297,6 +297,6 @@ where
         // Extract [pad_left : pad_left + final_len] along last dimension
         let extracted =
             normalized_output.narrow(1, pad_left, final_len.min(full_len - pad_left))?;
-        Ok(extracted.contiguous())
+        Ok(extracted.contiguous()?)
     }
 }

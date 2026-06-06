@@ -71,11 +71,11 @@ where
 
     // S = B R⁻¹ B^T
     let r_inv = LinearAlgebraAlgorithms::inverse(client, r)?;
-    let bt = b.transpose(0, 1)?.contiguous();
+    let bt = b.transpose(0, 1)?.contiguous()?;
     let s = client.matmul(&client.matmul(b, &r_inv)?, &bt)?;
 
     // Build Hamiltonian: H = [[A, -S], [-Q, -A^T]]
-    let at = a.transpose(0, 1)?.contiguous();
+    let at = a.transpose(0, 1)?.contiguous()?;
     let neg_s = client.neg(&s)?;
     let neg_q = client.neg(q)?;
     let neg_at = client.neg(&at)?;
@@ -110,15 +110,15 @@ where
     let w = client.mul_scalar(&client.sub(&eye_2n, &s_k)?, 0.5)?;
 
     // Extract blocks: W11 = W[0:n, 0:n], W21 = W[n:2n, 0:n]
-    let w11 = w.narrow(0, 0, n)?.narrow(1, 0, n)?.contiguous();
-    let w21 = w.narrow(0, n, n)?.narrow(1, 0, n)?.contiguous();
+    let w11 = w.narrow(0, 0, n)?.narrow(1, 0, n)?.contiguous()?;
+    let w21 = w.narrow(0, n, n)?.narrow(1, 0, n)?.contiguous()?;
 
     // X = W21 @ W11⁻¹
     let w11_inv = LinearAlgebraAlgorithms::inverse(client, &w11)?;
     let x = client.matmul(&w21, &w11_inv)?;
 
     // Symmetrize: X = (X + X^T) / 2
-    let xt = x.transpose(0, 1)?.contiguous();
+    let xt = x.transpose(0, 1)?.contiguous()?;
     let x_sym = client.mul_scalar(&client.add(&x, &xt)?, 0.5)?;
 
     Ok(x_sym)
@@ -179,7 +179,7 @@ where
 
     // S = B R⁻¹ B^T
     let r_inv = LinearAlgebraAlgorithms::inverse(client, r)?;
-    let bt = b.transpose(0, 1)?.contiguous();
+    let bt = b.transpose(0, 1)?.contiguous()?;
     let s = client.matmul(&client.matmul(b, &r_inv)?, &bt)?;
 
     // Build symplectic pencil matrices L and M:
@@ -189,7 +189,7 @@ where
     // Sign iteration on M⁻¹L
     let eye = client.eye(n, None, dtype)?;
     let zeros = client.mul_scalar(&eye, 0.0)?;
-    let at = a.transpose(0, 1)?.contiguous();
+    let at = a.transpose(0, 1)?.contiguous()?;
     let neg_q = client.neg(q)?;
 
     let l_top = client.cat(&[a, &zeros], 1)?;
@@ -242,14 +242,14 @@ where
     let w = client.mul_scalar(&client.sub(&eye_2n, &s_k)?, 0.5)?;
 
     // Extract blocks
-    let w11 = w.narrow(0, 0, n)?.narrow(1, 0, n)?.contiguous();
-    let w21 = w.narrow(0, n, n)?.narrow(1, 0, n)?.contiguous();
+    let w11 = w.narrow(0, 0, n)?.narrow(1, 0, n)?.contiguous()?;
+    let w21 = w.narrow(0, n, n)?.narrow(1, 0, n)?.contiguous()?;
 
     let w11_inv = LinearAlgebraAlgorithms::inverse(client, &w11)?;
     let x = client.matmul(&w21, &w11_inv)?;
 
     // Symmetrize
-    let xt = x.transpose(0, 1)?.contiguous();
+    let xt = x.transpose(0, 1)?.contiguous()?;
     let x_sym = client.mul_scalar(&client.add(&x, &xt)?, 0.5)?;
 
     Ok(x_sym)
@@ -297,7 +297,7 @@ where
 
     for _ in 0..MAX_ITER {
         // X_{k+1} = A_k X_k A_k^T + X_k
-        let a_k_t = a_k.transpose(0, 1)?.contiguous();
+        let a_k_t = a_k.transpose(0, 1)?.contiguous()?;
         let ax = client.matmul(&a_k, &x_k)?;
         let axat = client.matmul(&ax, &a_k_t)?;
         x_k = client.add(&axat, &x_k)?;
@@ -315,7 +315,7 @@ where
     }
 
     // Symmetrize: X = (X + X^T) / 2
-    let xt = x_k.transpose(0, 1)?.contiguous();
+    let xt = x_k.transpose(0, 1)?.contiguous()?;
     let x_sym = client.mul_scalar(&client.add(&x_k, &xt)?, 0.5)?;
 
     Ok(x_sym)

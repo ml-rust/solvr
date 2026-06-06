@@ -264,17 +264,17 @@ where
     let v0_idx = tri
         .simplices
         .narrow(1, 0, 1)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[n_simplices])?;
     let v1_idx = tri
         .simplices
         .narrow(1, 1, 1)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[n_simplices])?;
     let v2_idx = tri
         .simplices
         .narrow(1, 2, 1)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[n_simplices])?;
 
     // Get vertex coordinates
@@ -283,51 +283,51 @@ where
     let p2 = client.index_select(&tri.points, 0, &v2_idx)?;
 
     // Extract coordinates (need contiguous() before reshape)
-    let x0 = p0.narrow(1, 0, 1)?.contiguous().reshape(&[n_simplices])?;
-    let y0 = p0.narrow(1, 1, 1)?.contiguous().reshape(&[n_simplices])?;
-    let x1 = p1.narrow(1, 0, 1)?.contiguous().reshape(&[n_simplices])?;
-    let y1 = p1.narrow(1, 1, 1)?.contiguous().reshape(&[n_simplices])?;
-    let x2 = p2.narrow(1, 0, 1)?.contiguous().reshape(&[n_simplices])?;
-    let y2 = p2.narrow(1, 1, 1)?.contiguous().reshape(&[n_simplices])?;
+    let x0 = p0.narrow(1, 0, 1)?.contiguous()?.reshape(&[n_simplices])?;
+    let y0 = p0.narrow(1, 1, 1)?.contiguous()?.reshape(&[n_simplices])?;
+    let x1 = p1.narrow(1, 0, 1)?.contiguous()?.reshape(&[n_simplices])?;
+    let y1 = p1.narrow(1, 1, 1)?.contiguous()?.reshape(&[n_simplices])?;
+    let x2 = p2.narrow(1, 0, 1)?.contiguous()?.reshape(&[n_simplices])?;
+    let y2 = p2.narrow(1, 1, 1)?.contiguous()?.reshape(&[n_simplices])?;
 
     // Query point coordinates (need contiguous() before reshape)
-    let qx = query.narrow(1, 0, 1)?.contiguous().reshape(&[n_queries])?;
-    let qy = query.narrow(1, 1, 1)?.contiguous().reshape(&[n_queries])?;
+    let qx = query.narrow(1, 0, 1)?.contiguous()?.reshape(&[n_queries])?;
+    let qy = query.narrow(1, 1, 1)?.contiguous()?.reshape(&[n_queries])?;
 
     // Broadcast to [n_queries, n_simplices]
     let qx_exp = qx
         .unsqueeze(1)?
         .broadcast_to(&[n_queries, n_simplices])?
-        .contiguous();
+        .contiguous()?;
     let qy_exp = qy
         .unsqueeze(1)?
         .broadcast_to(&[n_queries, n_simplices])?
-        .contiguous();
+        .contiguous()?;
 
     let x0_exp = x0
         .unsqueeze(0)?
         .broadcast_to(&[n_queries, n_simplices])?
-        .contiguous();
+        .contiguous()?;
     let y0_exp = y0
         .unsqueeze(0)?
         .broadcast_to(&[n_queries, n_simplices])?
-        .contiguous();
+        .contiguous()?;
     let x1_exp = x1
         .unsqueeze(0)?
         .broadcast_to(&[n_queries, n_simplices])?
-        .contiguous();
+        .contiguous()?;
     let y1_exp = y1
         .unsqueeze(0)?
         .broadcast_to(&[n_queries, n_simplices])?
-        .contiguous();
+        .contiguous()?;
     let x2_exp = x2
         .unsqueeze(0)?
         .broadcast_to(&[n_queries, n_simplices])?
-        .contiguous();
+        .contiguous()?;
     let y2_exp = y2
         .unsqueeze(0)?
         .broadcast_to(&[n_queries, n_simplices])?
-        .contiguous();
+        .contiguous()?;
 
     // Compute barycentric coordinates
     // denom = (y1-y2)*(x0-x2) + (x2-x1)*(y0-y2)

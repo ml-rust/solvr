@@ -13,7 +13,11 @@ impl SparseQrAlgorithms<WgpuRuntime> for WgpuClient {
         a: &CscData<WgpuRuntime>,
         options: &QrOptions,
     ) -> Result<QrFactors<WgpuRuntime>> {
-        qr::sparse_qr_simple_wgpu(self, a, options)
+        // `sparse_qr_simple_wgpu` needs the CPU-resident CSC structure to run the
+        // symbolic analysis host-side (avoids GPU→CPU transfers during traversal).
+        let col_ptrs: Vec<i64> = a.col_ptrs().to_vec();
+        let row_indices: Vec<i64> = a.row_indices().to_vec();
+        qr::sparse_qr_simple_wgpu(self, a, &col_ptrs, &row_indices, options)
     }
 
     fn sparse_qr_with_symbolic(

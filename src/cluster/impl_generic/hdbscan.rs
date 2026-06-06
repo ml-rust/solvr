@@ -53,7 +53,7 @@ where
     let core_distances = if min_samples < n {
         sorted
             .narrow(1, min_samples, 1)?
-            .contiguous()
+            .contiguous()?
             .reshape(&[n])?
     } else {
         Tensor::<R>::full_scalar(&[n], dtype, f64::INFINITY, device)

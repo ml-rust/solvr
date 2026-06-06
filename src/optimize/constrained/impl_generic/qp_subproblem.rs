@@ -189,7 +189,12 @@ where
                         .map_err(|e| OptimizeError::NumericalError {
                             message: format!("qp_subproblem: extract multiplier {} - {}", idx, e),
                         })?;
-                let lam: f64 = lam_narrow.contiguous().to_vec()[0]; // Single scalar extraction
+                let lam: f64 = lam_narrow
+                    .contiguous()
+                    .map_err(|e| OptimizeError::NumericalError {
+                        message: format!("qp_subproblem: contiguous lam - {}", e),
+                    })?
+                    .to_vec()[0]; // Single scalar extraction
                 lambda_ineq_vals[row_i] = lam;
                 if lam < 0.0 {
                     active_set[row_i] = false;
@@ -236,7 +241,12 @@ where
                         .map_err(|e| OptimizeError::NumericalError {
                             message: format!("qp_subproblem: extract residual {} - {}", i, e),
                         })?;
-                let val: f64 = res_narrow.contiguous().to_vec()[0]; // Single scalar extraction
+                let val: f64 = res_narrow
+                    .contiguous()
+                    .map_err(|e| OptimizeError::NumericalError {
+                        message: format!("qp_subproblem: contiguous val - {}", e),
+                    })?
+                    .to_vec()[0]; // Single scalar extraction
                 if val < worst_violation {
                     worst_violation = val;
                     worst_idx = Some(i);
@@ -363,13 +373,19 @@ where
         .map_err(|e| OptimizeError::NumericalError {
             message: format!("qp_eq: extract d - {}", e),
         })?
-        .contiguous();
+        .contiguous()
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("qp_eq: contiguous d - {}", e),
+        })?;
     let lambda = sol_flat
         .narrow(0, n, m)
         .map_err(|e| OptimizeError::NumericalError {
             message: format!("qp_eq: extract lambda - {}", e),
         })?
-        .contiguous();
+        .contiguous()
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("qp_eq: contiguous lambda - {}", e),
+        })?;
 
     Ok((d, lambda))
 }
@@ -410,13 +426,19 @@ where
             .map_err(|e| OptimizeError::NumericalError {
                 message: format!("build_active: narrow A row {} - {}", row, e),
             })?
-            .contiguous();
+            .contiguous()
+            .map_err(|e| OptimizeError::NumericalError {
+                message: format!("build_active: contiguous A row {} - {}", row, e),
+            })?;
         let c_val = c_ineq
             .narrow(0, row, 1)
             .map_err(|e| OptimizeError::NumericalError {
                 message: format!("build_active: narrow c row {} - {}", row, e),
             })?
-            .contiguous();
+            .contiguous()
+            .map_err(|e| OptimizeError::NumericalError {
+                message: format!("build_active: contiguous c row {} - {}", row, e),
+            })?;
         a_parts.push(a_row);
         c_parts.push(c_val);
     }

@@ -74,11 +74,11 @@ where
     let bu_exp = basis_u
         .reshape(&[m, nu, 1])?
         .broadcast_to(&[m, nu, nv])?
-        .contiguous();
+        .contiguous()?;
     let bv_exp = basis_v
         .reshape(&[m, 1, nv])?
         .broadcast_to(&[m, nu, nv])?
-        .contiguous();
+        .contiguous()?;
     let product = client.mul(&bu_exp, &bv_exp)?;
 
     // Weight the basis: [m, nu, nv] * [nu, nv] → [m, nu, nv]
@@ -86,7 +86,7 @@ where
         .weights
         .reshape(&[1, nu, nv])?
         .broadcast_to(&[m, nu, nv])?
-        .contiguous();
+        .contiguous()?;
     let weighted_basis = client.mul(&product, &w_broad)?;
     let wb_flat = weighted_basis.reshape(&[m, nu * nv])?;
 
@@ -98,15 +98,15 @@ where
         .weights
         .reshape(&[nu, nv, 1])?
         .broadcast_to(&[nu, nv, n_dims])?
-        .contiguous();
+        .contiguous()?;
     let weighted_cp = client.mul(&surface.control_points, &w_cp_broad)?;
-    let wcp_flat = weighted_cp.reshape(&[nu * nv, n_dims])?.contiguous();
+    let wcp_flat = weighted_cp.reshape(&[nu * nv, n_dims])?.contiguous()?;
 
     // Numerator: wb_flat @ wcp_flat → [m, n_dims]
     let numerator = client.matmul(&wb_flat, &wcp_flat)?;
 
     // Divide
-    let denom_broad = denominator.broadcast_to(&[m, n_dims])?.contiguous();
+    let denom_broad = denominator.broadcast_to(&[m, n_dims])?.contiguous()?;
     let result = client.div(&numerator, &denom_broad)?;
     Ok(result)
 }
@@ -143,7 +143,7 @@ where
         .weights
         .reshape(&[nu, nv, 1])?
         .broadcast_to(&[nu, nv, n_dims])?
-        .contiguous();
+        .contiguous()?;
     let weighted_cp = client.mul(&surface.control_points, &w_cp_broad)?;
 
     // Numerator surface (A): weighted control points
@@ -171,8 +171,8 @@ where
         let w_val = bspline_surface_evaluate_impl(client, &w_surface, u, v)?; // [m, 1]
         let w_deriv = bspline_surface_partial_impl(client, &w_surface, u, v, du, dv)?;
 
-        let w_broad2 = w_val.broadcast_to(&[m, n_dims])?.contiguous();
-        let wd_broad = w_deriv.broadcast_to(&[m, n_dims])?.contiguous();
+        let w_broad2 = w_val.broadcast_to(&[m, n_dims])?.contiguous()?;
+        let wd_broad = w_deriv.broadcast_to(&[m, n_dims])?.contiguous()?;
 
         let num = client.sub(
             &client.mul(&a_deriv, &w_broad2)?,

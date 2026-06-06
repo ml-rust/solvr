@@ -91,15 +91,15 @@ fn sos2tf_cpu(
         let ai = Tensor::from_slice(&sections_data[offset + 3..offset + 6], &[3], device);
 
         // Flip to ascending order for polymul, then flip back
-        let b_asc = b.flip(0)?.contiguous();
-        let bi_asc = bi.flip(0)?.contiguous();
+        let b_asc = b.flip(0)?.contiguous()?;
+        let bi_asc = bi.flip(0)?.contiguous()?;
         let b_new_asc = client.polymul(&b_asc, &bi_asc)?;
-        b = b_new_asc.flip(0)?.contiguous();
+        b = b_new_asc.flip(0)?.contiguous()?;
 
-        let a_asc = a.flip(0)?.contiguous();
-        let ai_asc = ai.flip(0)?.contiguous();
+        let a_asc = a.flip(0)?.contiguous()?;
+        let ai_asc = ai.flip(0)?.contiguous()?;
         let a_new_asc = client.polymul(&a_asc, &ai_asc)?;
-        a = a_new_asc.flip(0)?.contiguous();
+        a = a_new_asc.flip(0)?.contiguous()?;
     }
 
     Ok(TransferFunction::new(b, a))

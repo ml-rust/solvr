@@ -160,7 +160,7 @@ where
                 options.reg_covar,
             )?;
             let cov = client.add(&diag, &reg_eye)?;
-            cov.unsqueeze(0)?.broadcast_to(&[k, d, d])?.contiguous()
+            cov.unsqueeze(0)?.broadcast_to(&[k, d, d])?.contiguous()?
         }
         CovarianceType::Tied => {
             // [d, d] — single covariance for all components
@@ -259,7 +259,10 @@ where
             // For now, compute and store as [k, d, d]
             let mut inv_slices = Vec::new();
             for j in 0..k {
-                let cov_j = covariances.narrow(0, j, 1)?.contiguous().reshape(&[d, d])?;
+                let cov_j = covariances
+                    .narrow(0, j, 1)?
+                    .contiguous()?
+                    .reshape(&[d, d])?;
                 let inv_j = client.inverse(&cov_j)?;
                 inv_slices.push(inv_j.unsqueeze(0)?);
             }
@@ -360,7 +363,10 @@ where
             // Process per-component for slogdet and Mahalanobis
             let mut log_gauss_slices = Vec::new();
             for j in 0..k {
-                let cov_j = covariances.narrow(0, j, 1)?.contiguous().reshape(&[d, d])?;
+                let cov_j = covariances
+                    .narrow(0, j, 1)?
+                    .contiguous()?
+                    .reshape(&[d, d])?;
                 let slogdet = client.slogdet(&cov_j)?;
                 let log_det_j: f64 = slogdet.logabsdet.item()?;
 
@@ -492,7 +498,7 @@ where
 
             let mut total_cov = Tensor::<R>::zeros(&[d, d], dtype, device);
             for j in 0..k {
-                let diff_j = diff.narrow(1, j, 1)?.contiguous().reshape(&[n, d])?; // [n, d]
+                let diff_j = diff.narrow(1, j, 1)?.contiguous()?.reshape(&[n, d])?; // [n, d]
                 let resp_j = resp.narrow(1, j, 1)?; // [n, 1]
                 let weighted = client.mul(&diff_j, &resp_j.broadcast_to(&[n, d])?)?;
                 let cov_j = client.matmul(&weighted.transpose(0, 1)?, &diff_j)?; // [d, d]
@@ -607,7 +613,7 @@ where
     let exp_shifted = client.exp(&shifted)?;
     let sum_exp = client.sum(&exp_shifted, &[1], true)?;
     let lse = client.add(&client.log(&sum_exp)?, &max_log)?;
-    lse.contiguous().reshape(&[n])
+    lse.contiguous()?.reshape(&[n])
 }
 
 /// Count free parameters in a GMM.

@@ -88,7 +88,7 @@ where
 {
     validate_stats_dtype(x.dtype())?;
 
-    let x_contig = x.contiguous();
+    let x_contig = x.contiguous()?;
     let n = x_contig.numel();
 
     if n < 2 {
@@ -128,8 +128,8 @@ where
     validate_stats_dtype(a.dtype())?;
     validate_stats_dtype(b.dtype())?;
 
-    let a_contig = a.contiguous();
-    let b_contig = b.contiguous();
+    let a_contig = a.contiguous()?;
+    let b_contig = b.contiguous()?;
 
     let n1 = a_contig.numel();
     let n2 = b_contig.numel();
@@ -218,8 +218,8 @@ where
         });
     }
 
-    let x_contig = x.contiguous();
-    let y_contig = y.contiguous();
+    let x_contig = x.contiguous()?;
+    let y_contig = y.contiguous()?;
 
     let all_dims: Vec<usize> = (0..x_contig.ndim()).collect();
 
@@ -319,7 +319,7 @@ where
     let mut grand_sum = 0.0;
 
     for g in groups {
-        let g_contig = g.contiguous();
+        let g_contig = g.contiguous()?;
         let ni = g_contig.numel();
         let all_dims: Vec<usize> = (0..g_contig.ndim()).collect();
         let mean_i = extract_scalar(&client.mean(&g_contig, &all_dims, false)?)?;
@@ -340,7 +340,7 @@ where
     // Within-group sum of squares: SSW = ΣΣ (x_ij - mean_i)^2
     let mut ssw = 0.0;
     for (i, g) in groups.iter().enumerate() {
-        let g_contig = g.contiguous();
+        let g_contig = g.contiguous()?;
         let all_dims: Vec<usize> = (0..g_contig.ndim()).collect();
         let var_i = extract_scalar(&client.var(&g_contig, &all_dims, false, 0)?)?;
         ssw += var_i * group_sizes[i] as f64;
@@ -400,7 +400,10 @@ where
     let device = client.device();
 
     // Combine all groups on device and compute ranks
-    let group_contigs: Vec<Tensor<R>> = groups.iter().map(|g| g.contiguous()).collect();
+    let group_contigs: Vec<Tensor<R>> = groups
+        .iter()
+        .map(|g| g.contiguous())
+        .collect::<Result<Vec<_>>>()?;
     let group_refs: Vec<&Tensor<R>> = group_contigs.iter().collect();
     let group_sizes: Vec<usize> = groups.iter().map(|g| g.numel()).collect();
 
@@ -479,7 +482,7 @@ where
     // by sorting along dim=0 and using scatter to assign ranks
     let mut group_contigs = Vec::new();
     for g in groups {
-        let c = g.contiguous();
+        let c = g.contiguous()?;
         group_contigs.push(c.reshape(&[1, n])?);
     }
     let group_refs: Vec<&Tensor<R>> = group_contigs.iter().collect();
@@ -531,7 +534,7 @@ where
 {
     validate_stats_dtype(x.dtype())?;
 
-    let x_contig = x.contiguous();
+    let x_contig = x.contiguous()?;
     let n = x_contig.numel();
 
     if n < 3 {
@@ -605,7 +608,7 @@ where
 {
     validate_stats_dtype(x.dtype())?;
 
-    let x_contig = x.contiguous();
+    let x_contig = x.contiguous()?;
     let n = x_contig.numel();
 
     if n < 20 {
@@ -706,7 +709,7 @@ where
     let mut n_total = 0usize;
 
     for g in groups {
-        let g_contig = g.contiguous();
+        let g_contig = g.contiguous()?;
         let ni = g_contig.numel();
         n_total += ni;
         let all_dims: Vec<usize> = (0..g_contig.ndim()).collect();
@@ -800,7 +803,7 @@ where
     let mut sizes = Vec::new();
 
     for g in groups {
-        let g_contig = g.contiguous();
+        let g_contig = g.contiguous()?;
         let ni = g_contig.numel();
         let all_dims: Vec<usize> = (0..g_contig.ndim()).collect();
         let var_i = extract_scalar(&client.var(&g_contig, &all_dims, false, 1)?)?;

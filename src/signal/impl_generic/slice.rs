@@ -27,7 +27,7 @@ where
 {
     // Use narrow() on last dimension (-1) - data stays on device
     // Make contiguous for compatibility (still on-device, no CPU transfer)
-    Ok(tensor.narrow(-1, start, len)?.contiguous())
+    tensor.narrow(-1, start, len)?.contiguous()
 }
 
 /// Slice last two dimensions of tensor (generic over Runtime).
@@ -51,5 +51,5 @@ where
     // Data stays on device throughout
     // Make contiguous for compatibility (still on-device, no CPU transfer)
     let sliced_h = tensor.narrow(-2, start_h, len_h)?;
-    Ok(sliced_h.narrow(-1, start_w, len_w)?.contiguous())
+    sliced_h.narrow(-1, start_w, len_w)?.contiguous()
 }

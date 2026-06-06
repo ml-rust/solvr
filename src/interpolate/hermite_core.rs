@@ -96,7 +96,7 @@ pub fn validate_inputs<R: Runtime<DType = DType>>(
     }
 
     // Extract min/max for bounds checking (small transfer, done once)
-    let x_data: Vec<f64> = x.contiguous().to_vec();
+    let x_data: Vec<f64> = x.contiguous()?.to_vec();
 
     // Check strictly increasing
     for i in 1..n {

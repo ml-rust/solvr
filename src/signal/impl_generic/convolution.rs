@@ -37,8 +37,8 @@ where
         });
     }
 
-    let signal_contig = signal.contiguous();
-    let kernel_contig = kernel.contiguous();
+    let signal_contig = signal.contiguous()?;
+    let kernel_contig = kernel.contiguous()?;
 
     let ndim = signal_contig.ndim();
     if ndim == 0 {
@@ -105,8 +105,8 @@ where
         });
     }
 
-    let signal_contig = signal.contiguous();
-    let kernel_contig = kernel.contiguous();
+    let signal_contig = signal.contiguous()?;
+    let kernel_contig = kernel.contiguous()?;
 
     let ndim = signal_contig.ndim();
     if ndim < 2 {

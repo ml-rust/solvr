@@ -44,8 +44,8 @@ where
 
     // Coefficients are in descending order, need to reverse for polyroots
     // which expects ascending order
-    let b_ascending = b.flip(0)?.contiguous();
-    let a_ascending = a.flip(0)?.contiguous();
+    let b_ascending = b.flip(0)?.contiguous()?;
+    let a_ascending = a.flip(0)?.contiguous()?;
 
     // Find zeros (roots of numerator)
     let zeros = if b.shape()[0] > 1 {
@@ -103,7 +103,7 @@ where
         // Build polynomial from roots, then scale by gain
         let b_monic = client.polyfromroots(&zpk.zeros_real, &zpk.zeros_imag)?;
         // polyfromroots returns ascending order, we need descending
-        let b_desc = b_monic.flip(0)?.contiguous();
+        let b_desc = b_monic.flip(0)?.contiguous()?;
         client.mul_scalar(&b_desc, zpk.gain)?
     };
 
@@ -114,7 +114,7 @@ where
     } else {
         let a_monic = client.polyfromroots(&zpk.poles_real, &zpk.poles_imag)?;
         // polyfromroots returns ascending order, we need descending
-        a_monic.flip(0)?.contiguous()
+        a_monic.flip(0)?.contiguous()?
     };
 
     Ok(TransferFunction::new(b, a))

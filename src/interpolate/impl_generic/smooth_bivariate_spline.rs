@@ -33,14 +33,14 @@ where
 {
     let device = client.device();
     if n == 1 {
-        return Ok(min_t.reshape(&[1])?.contiguous());
+        return Ok(min_t.reshape(&[1])?.contiguous()?);
     }
     let steps = client.arange(0.0, n as f64, 1.0, DType::F64)?; // [n]
     let denom = Tensor::full_scalar(&[1], DType::F64, (n - 1) as f64, device);
     let t = client.div(&steps, &denom)?; // [0, ..., 1]
     let range = client.sub(max_t, min_t)?; // scalar tensor
-    let range_broad = range.broadcast_to(&[n])?.contiguous();
-    let min_broad = min_t.broadcast_to(&[n])?.contiguous();
+    let range_broad = range.broadcast_to(&[n])?.contiguous()?;
+    let min_broad = min_t.broadcast_to(&[n])?.contiguous()?;
     Ok(client.add(&min_broad, &client.mul(&range_broad, &t)?)?)
 }
 
@@ -122,8 +122,14 @@ where
     // Build 2D design matrix: row-wise Kronecker product
     // A[i, j*ncx + k] = Bx[i, k] * By[i, j]
     // This is equivalent to: for each row i, A[i,:] = kron(By[i,:], Bx[i,:])
-    let bx_expanded = bx.unsqueeze(1)?.broadcast_to(&[m, ncy, ncx])?.contiguous(); // [m, ncy, ncx]
-    let by_expanded = by.unsqueeze(2)?.broadcast_to(&[m, ncy, ncx])?.contiguous(); // [m, ncy, ncx]
+    let bx_expanded = bx
+        .unsqueeze(1)?
+        .broadcast_to(&[m, ncy, ncx])?
+        .contiguous()?; // [m, ncy, ncx]
+    let by_expanded = by
+        .unsqueeze(2)?
+        .broadcast_to(&[m, ncy, ncx])?
+        .contiguous()?; // [m, ncy, ncx]
     let a_3d = client.mul(&bx_expanded, &by_expanded)?; // [m, ncy, ncx]
     let a = a_3d.reshape(&[m, n_coeffs])?; // [m, ncy*ncx]
 
@@ -131,7 +137,7 @@ where
     let z_col = z.reshape(&[m, 1])?;
     let (a_weighted, z_weighted) = if let Some(w) = weights {
         let w_col = w.reshape(&[m, 1])?;
-        let w_broad = w_col.broadcast_to(&[m, n_coeffs])?.contiguous();
+        let w_broad = w_col.broadcast_to(&[m, n_coeffs])?.contiguous()?;
         (client.mul(&a, &w_broad)?, client.mul(&z_col, &w_col)?)
     } else {
         (a.clone(), z_col.clone())
@@ -172,7 +178,7 @@ where
     let coefficients = coeffs_flat
         .reshape(&[ncy, ncx])?
         .transpose(0, 1)?
-        .contiguous();
+        .contiguous()?;
 
     Ok(BivariateSpline {
         knots_x,

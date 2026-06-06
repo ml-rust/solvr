@@ -137,6 +137,9 @@ where
             message: format!("powell: narrow row - {}", e),
         })?
         .contiguous()
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("powell: contiguous row - {}", e),
+        })?
         .reshape(&[n])
         .map_err(|e| OptimizeError::NumericalError {
             message: format!("powell: reshape row - {}", e),
@@ -158,13 +161,15 @@ where
     C: TensorOps<R> + RuntimeClient<R>,
 {
     // Reshape new_direction to [1, n] for concatenation
-    let new_dir_row =
-        new_direction
-            .contiguous()
-            .unsqueeze(0)
-            .map_err(|e| OptimizeError::NumericalError {
-                message: format!("powell: unsqueeze new dir - {}", e),
-            })?;
+    let new_dir_row = new_direction
+        .contiguous()
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("powell: contiguous new dir - {}", e),
+        })?
+        .unsqueeze(0)
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("powell: unsqueeze new dir - {}", e),
+        })?;
 
     // Collect rows to keep (all except remove_idx)
     let mut rows_to_cat: Vec<Tensor<R>> = Vec::with_capacity(n);
@@ -178,7 +183,10 @@ where
             .map_err(|e| OptimizeError::NumericalError {
                 message: format!("powell: narrow row {} - {}", i, e),
             })?
-            .contiguous();
+            .contiguous()
+            .map_err(|e| OptimizeError::NumericalError {
+                message: format!("powell: contiguous row {} - {}", i, e),
+            })?;
         rows_to_cat.push(row);
     }
 

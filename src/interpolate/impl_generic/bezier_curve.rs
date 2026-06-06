@@ -56,19 +56,19 @@ where
     let binom = client.exp(&log_binom)?; // [1, n+1]
 
     // t^i: broadcast t [m,1] and i [1,n+1] → [m, n+1]
-    let t_broad = t_col.broadcast_to(&[m, n_basis])?.contiguous();
-    let i_broad = i_row.broadcast_to(&[m, n_basis])?.contiguous();
+    let t_broad = t_col.broadcast_to(&[m, n_basis])?.contiguous()?;
+    let i_broad = i_row.broadcast_to(&[m, n_basis])?.contiguous()?;
     let t_pow_i = client.pow(&t_broad, &i_broad)?;
 
     // (1-t)^(n-i): exponent = n - i
     let n_tensor = Tensor::full_scalar(&[1, n_basis], DType::F64, n as f64, device);
     let n_minus_i = client.sub(&n_tensor, &i_row)?;
-    let omt_broad = one_minus_t.broadcast_to(&[m, n_basis])?.contiguous();
-    let nmi_broad = n_minus_i.broadcast_to(&[m, n_basis])?.contiguous();
+    let omt_broad = one_minus_t.broadcast_to(&[m, n_basis])?.contiguous()?;
+    let nmi_broad = n_minus_i.broadcast_to(&[m, n_basis])?.contiguous()?;
     let omt_pow = client.pow(&omt_broad, &nmi_broad)?;
 
     // basis = binom * t^i * (1-t)^(n-i)
-    let binom_broad = binom.broadcast_to(&[m, n_basis])?.contiguous();
+    let binom_broad = binom.broadcast_to(&[m, n_basis])?.contiguous()?;
     let basis = client.mul(&binom_broad, &client.mul(&t_pow_i, &omt_pow)?)?;
 
     Ok(basis)
@@ -139,8 +139,8 @@ where
 
     for _ in 0..order {
         let n_pts = diff_points.shape()[0];
-        let hi = diff_points.narrow(0, 1, n_pts - 1)?.contiguous();
-        let lo = diff_points.narrow(0, 0, n_pts - 1)?.contiguous();
+        let hi = diff_points.narrow(0, 1, n_pts - 1)?.contiguous()?;
+        let lo = diff_points.narrow(0, 0, n_pts - 1)?.contiguous()?;
         diff_points = client.sub(&hi, &lo)?;
         scale *= current_n as f64;
         current_n -= 1;
@@ -183,21 +183,21 @@ where
     let mut right_points = Vec::with_capacity(n + 1);
 
     // First point of level 0
-    left_points.push(current.narrow(0, 0, 1)?.contiguous());
+    left_points.push(current.narrow(0, 0, 1)?.contiguous()?);
     // Last point of level 0
-    right_points.push(current.narrow(0, n, 1)?.contiguous());
+    right_points.push(current.narrow(0, n, 1)?.contiguous()?);
 
     for _ in 0..n {
         let n_pts = current.shape()[0];
-        let lo = current.narrow(0, 0, n_pts - 1)?.contiguous();
-        let hi = current.narrow(0, 1, n_pts - 1)?.contiguous();
+        let lo = current.narrow(0, 0, n_pts - 1)?.contiguous()?;
+        let hi = current.narrow(0, 1, n_pts - 1)?.contiguous()?;
         // lerp: (1-t)*lo + t*hi
         let lo_part = client.mul_scalar(&lo, 1.0 - t)?;
         let hi_part = client.mul_scalar(&hi, t)?;
         current = client.add(&lo_part, &hi_part)?;
 
-        left_points.push(current.narrow(0, 0, 1)?.contiguous());
-        right_points.push(current.narrow(0, current.shape()[0] - 1, 1)?.contiguous());
+        left_points.push(current.narrow(0, 0, 1)?.contiguous()?);
+        right_points.push(current.narrow(0, current.shape()[0] - 1, 1)?.contiguous()?);
     }
 
     // Build left control points: cat all left_points

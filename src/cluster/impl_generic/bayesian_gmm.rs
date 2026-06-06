@@ -125,7 +125,7 @@ where
                 options.reg_covar,
             )?;
             let cov = client.add(&diag, &reg_eye)?;
-            cov.unsqueeze(0)?.broadcast_to(&[k, d, d])?.contiguous()
+            cov.unsqueeze(0)?.broadcast_to(&[k, d, d])?.contiguous()?
         }
         CovarianceType::Tied => {
             let diag = client.diagflat(&data_var)?;
@@ -363,7 +363,10 @@ where
             // Per-component slogdet
             let mut log_dets = Vec::new();
             for j in 0..k {
-                let cov_j = covariances.narrow(0, j, 1)?.contiguous().reshape(&[d, d])?;
+                let cov_j = covariances
+                    .narrow(0, j, 1)?
+                    .contiguous()?
+                    .reshape(&[d, d])?;
                 let slogdet = client.slogdet(&cov_j)?;
                 log_dets.push(slogdet.logabsdet.unsqueeze(0)?);
             }
@@ -433,7 +436,10 @@ where
         CovarianceType::Full => {
             let mut maha_slices = Vec::new();
             for j in 0..k {
-                let cov_j = covariances.narrow(0, j, 1)?.contiguous().reshape(&[d, d])?;
+                let cov_j = covariances
+                    .narrow(0, j, 1)?
+                    .contiguous()?
+                    .reshape(&[d, d])?;
                 let inv_cov = client.inverse(&cov_j)?;
                 let mean_j = means.narrow(0, j, 1)?;
                 let diff = client.sub(data, &mean_j.broadcast_to(&[n, d])?)?;
@@ -749,7 +755,10 @@ where
         CovarianceType::Full => {
             let mut inv_slices = Vec::new();
             for j in 0..k {
-                let cov_j = covariances.narrow(0, j, 1)?.contiguous().reshape(&[d, d])?;
+                let cov_j = covariances
+                    .narrow(0, j, 1)?
+                    .contiguous()?
+                    .reshape(&[d, d])?;
                 let inv_j = client.inverse(&cov_j)?;
                 inv_slices.push(inv_j.unsqueeze(0)?);
             }

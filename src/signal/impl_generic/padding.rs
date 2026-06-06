@@ -29,7 +29,7 @@ where
     let current_len = tensor.shape()[ndim - 1];
 
     if current_len >= target_len {
-        return Ok(tensor.contiguous());
+        return tensor.contiguous();
     }
 
     let pad_right = target_len - current_len;
@@ -109,7 +109,7 @@ where
     }
 
     if pad_left == 0 && pad_right == 0 {
-        return Ok(tensor.contiguous());
+        return tensor.contiguous();
     }
 
     // Build parts to concatenate
@@ -117,18 +117,18 @@ where
 
     // Left reflection: tensor[1:pad_left+1] reversed
     if pad_left > 0 {
-        let left_slice = tensor.narrow(-1, 1, pad_left)?.contiguous();
+        let left_slice = tensor.narrow(-1, 1, pad_left)?.contiguous()?;
         let left_reflected = left_slice.flip(-1)?;
         parts.push(left_reflected);
     }
 
     // Original tensor
-    parts.push(tensor.contiguous());
+    parts.push(tensor.contiguous()?);
 
     // Right reflection: tensor[len-pad_right-1:len-1] reversed
     if pad_right > 0 {
         let start = current_len - pad_right - 1;
-        let right_slice = tensor.narrow(-1, start, pad_right)?.contiguous();
+        let right_slice = tensor.narrow(-1, start, pad_right)?.contiguous()?;
         let right_reflected = right_slice.flip(-1)?;
         parts.push(right_reflected);
     }

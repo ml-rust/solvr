@@ -54,8 +54,8 @@ where
 
     // Monotonicity check (on-device, single scalar extraction for control flow)
     let dx = client.sub(
-        &x.narrow(0, 1, n - 1)?.contiguous(),
-        &x.narrow(0, 0, n - 1)?.contiguous(),
+        &x.narrow(0, 1, n - 1)?.contiguous()?,
+        &x.narrow(0, 0, n - 1)?.contiguous()?,
     )?;
     let zero_dx = Tensor::zeros(&[n - 1], DType::F64, device);
     let non_pos = client.le(&dx, &zero_dx)?;
@@ -163,8 +163,8 @@ where
     let n_knots = spline.knots.shape()[0];
 
     // Anti-derivative: C_i = sum_{j=0}^{i-1} c_j * (t_{j+k+1} - t_j) / (k+1)
-    let t_hi = spline.knots.narrow(0, k + 1, n_coeffs)?.contiguous();
-    let t_lo = spline.knots.narrow(0, 0, n_coeffs)?.contiguous();
+    let t_hi = spline.knots.narrow(0, k + 1, n_coeffs)?.contiguous()?;
+    let t_lo = spline.knots.narrow(0, 0, n_coeffs)?.contiguous()?;
     let dt = client.sub(&t_hi, &t_lo)?;
     let terms = client.mul_scalar(
         &client.mul(&spline.coefficients, &dt)?,
@@ -177,8 +177,8 @@ where
     let anti_coeffs = client.cat(&[&zero_1, &cumsum], 0)?;
 
     // Anti-derivative knot vector: add one copy at each end
-    let first = spline.knots.narrow(0, 0, 1)?.contiguous();
-    let last = spline.knots.narrow(0, n_knots - 1, 1)?.contiguous();
+    let first = spline.knots.narrow(0, 0, 1)?.contiguous()?;
+    let last = spline.knots.narrow(0, n_knots - 1, 1)?.contiguous()?;
     let anti_knots = client.cat(&[&first, &spline.knots, &last], 0)?;
 
     let anti_spline = BSpline {
@@ -190,8 +190,8 @@ where
     // Evaluate anti-derivative at b and a, return difference
     let ab = Tensor::from_slice(&[b, a], &[2], device);
     let vals = bspline_evaluate_impl(client, &anti_spline, &ab)?;
-    let val_b = vals.narrow(0, 0, 1)?.contiguous();
-    let val_a = vals.narrow(0, 1, 1)?.contiguous();
+    let val_b = vals.narrow(0, 0, 1)?.contiguous()?;
+    let val_a = vals.narrow(0, 1, 1)?.contiguous()?;
     Ok(client.sub(&val_b, &val_a)?)
 }
 
@@ -219,21 +219,21 @@ where
     let n_basis_0 = n_knots - 1; // number of degree-0 basis functions
 
     // x_col: [m, 1] for broadcasting
-    let x_col = x.reshape(&[m, 1])?.contiguous();
+    let x_col = x.reshape(&[m, 1])?.contiguous()?;
 
     // === Degree-0 basis: B0[i,j] = 1 if knots[j] <= x[i] < knots[j+1] ===
     let knots_left = knots
         .narrow(0, 0, n_basis_0)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[1, n_basis_0])?;
     let knots_right = knots
         .narrow(0, 1, n_basis_0)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[1, n_basis_0])?;
 
-    let x_broad = x_col.broadcast_to(&[m, n_basis_0])?.contiguous();
-    let kl_broad = knots_left.broadcast_to(&[m, n_basis_0])?.contiguous();
-    let kr_broad = knots_right.broadcast_to(&[m, n_basis_0])?.contiguous();
+    let x_broad = x_col.broadcast_to(&[m, n_basis_0])?.contiguous()?;
+    let kl_broad = knots_left.broadcast_to(&[m, n_basis_0])?.contiguous()?;
+    let kr_broad = knots_right.broadcast_to(&[m, n_basis_0])?.contiguous()?;
 
     let ge_left = client.ge(&x_broad, &kl_broad)?;
     let lt_right = client.lt(&x_broad, &kr_broad)?;
@@ -247,19 +247,19 @@ where
 
     let last_knot = knots
         .narrow(0, n_knots - 1, 1)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[1])?;
-    let at_right = client.ge(x, &last_knot.broadcast_to(&[m])?.contiguous())?; // [m]
+    let at_right = client.ge(x, &last_knot.broadcast_to(&[m])?.contiguous()?)?; // [m]
 
     let right_correction = client.mul(
         &at_right
             .reshape(&[m, 1])?
             .broadcast_to(&[m, n_basis_0])?
-            .contiguous(),
+            .contiguous()?,
         &right_col_mask
             .reshape(&[1, n_basis_0])?
             .broadcast_to(&[m, n_basis_0])?
-            .contiguous(),
+            .contiguous()?,
     )?;
 
     let mut basis = client.maximum(&in_span, &right_correction)?;
@@ -270,55 +270,61 @@ where
     for p in 1..=degree {
         let n_active = n_knots - p - 1;
 
-        let basis_left = basis.narrow(1, 0, n_active)?.contiguous();
-        let basis_right = basis.narrow(1, 1, n_active)?.contiguous();
+        let basis_left = basis.narrow(1, 0, n_active)?.contiguous()?;
+        let basis_right = basis.narrow(1, 1, n_active)?.contiguous()?;
 
         // w1[j] = (x - knots[j]) / (knots[j+p] - knots[j])
         let kj = knots
             .narrow(0, 0, n_active)?
-            .contiguous()
+            .contiguous()?
             .reshape(&[1, n_active])?;
         let kjp = knots
             .narrow(0, p, n_active)?
-            .contiguous()
+            .contiguous()?
             .reshape(&[1, n_active])?;
         let denom1 = client.sub(&kjp, &kj)?;
         let numer1 = client.sub(
-            &x_col.broadcast_to(&[m, n_active])?.contiguous(),
-            &kj.broadcast_to(&[m, n_active])?.contiguous(),
+            &x_col.broadcast_to(&[m, n_active])?.contiguous()?,
+            &kj.broadcast_to(&[m, n_active])?.contiguous()?,
         )?;
 
         let abs_d1 = client.abs(&denom1)?;
-        let eps_broad1 = eps_val.broadcast_to(&[1, n_active])?.contiguous();
+        let eps_broad1 = eps_val.broadcast_to(&[1, n_active])?.contiguous()?;
         let d1_safe = client.maximum(&abs_d1, &eps_broad1)?;
         let zero_1n = Tensor::zeros(&[1, n_active], DType::F64, device);
         let mask1 = client.gt(&abs_d1, &zero_1n)?;
         let w1 = client.mul(
-            &client.div(&numer1, &d1_safe.broadcast_to(&[m, n_active])?.contiguous())?,
-            &mask1.broadcast_to(&[m, n_active])?.contiguous(),
+            &client.div(
+                &numer1,
+                &d1_safe.broadcast_to(&[m, n_active])?.contiguous()?,
+            )?,
+            &mask1.broadcast_to(&[m, n_active])?.contiguous()?,
         )?;
 
         // w2[j] = (knots[j+p+1] - x) / (knots[j+p+1] - knots[j+1])
         let kj1 = knots
             .narrow(0, 1, n_active)?
-            .contiguous()
+            .contiguous()?
             .reshape(&[1, n_active])?;
         let kjp1 = knots
             .narrow(0, p + 1, n_active)?
-            .contiguous()
+            .contiguous()?
             .reshape(&[1, n_active])?;
         let denom2 = client.sub(&kjp1, &kj1)?;
         let numer2 = client.sub(
-            &kjp1.broadcast_to(&[m, n_active])?.contiguous(),
-            &x_col.broadcast_to(&[m, n_active])?.contiguous(),
+            &kjp1.broadcast_to(&[m, n_active])?.contiguous()?,
+            &x_col.broadcast_to(&[m, n_active])?.contiguous()?,
         )?;
 
         let abs_d2 = client.abs(&denom2)?;
         let d2_safe = client.maximum(&abs_d2, &eps_broad1)?;
         let mask2 = client.gt(&abs_d2, &zero_1n)?;
         let w2 = client.mul(
-            &client.div(&numer2, &d2_safe.broadcast_to(&[m, n_active])?.contiguous())?,
-            &mask2.broadcast_to(&[m, n_active])?.contiguous(),
+            &client.div(
+                &numer2,
+                &d2_safe.broadcast_to(&[m, n_active])?.contiguous()?,
+            )?,
+            &mask2.broadcast_to(&[m, n_active])?.contiguous()?,
         )?;
 
         let term1 = client.mul(&w1, &basis_left)?;
@@ -335,7 +341,7 @@ where
     }
 
     // Extract first n_coeffs columns
-    Ok(basis.narrow(1, 0, n_coeffs)?.contiguous())
+    Ok(basis.narrow(1, 0, n_coeffs)?.contiguous()?)
 }
 
 // ============ Knot vector construction (on-device) ============
@@ -353,10 +359,10 @@ where
     C: ScalarOps<R> + RuntimeClient<R>,
 {
     let k = degree;
-    let x_first = x.narrow(0, 0, 1)?.contiguous();
-    let x_last = x.narrow(0, n - 1, 1)?.contiguous();
-    let first_rep = x_first.broadcast_to(&[k + 1])?.contiguous();
-    let last_rep = x_last.broadcast_to(&[k + 1])?.contiguous();
+    let x_first = x.narrow(0, 0, 1)?.contiguous()?;
+    let x_last = x.narrow(0, n - 1, 1)?.contiguous()?;
+    let first_rep = x_first.broadcast_to(&[k + 1])?.contiguous()?;
+    let last_rep = x_last.broadcast_to(&[k + 1])?.contiguous()?;
 
     let interior = match boundary {
         BSplineBoundary::NotAKnot => {
@@ -365,9 +371,9 @@ where
             if n_interior == 0 {
                 None
             } else {
-                let mut knot_sum = x.narrow(0, 1, n_interior)?.contiguous();
+                let mut knot_sum = x.narrow(0, 1, n_interior)?.contiguous()?;
                 for offset in 1..k {
-                    let shifted = x.narrow(0, 1 + offset, n_interior)?.contiguous();
+                    let shifted = x.narrow(0, 1 + offset, n_interior)?.contiguous()?;
                     knot_sum = client.add(&knot_sum, &shifted)?;
                 }
                 Some(client.mul_scalar(&knot_sum, 1.0 / k as f64)?)
@@ -375,7 +381,7 @@ where
         }
         BSplineBoundary::Clamped { .. } | BSplineBoundary::Natural => {
             if n > 2 {
-                Some(x.narrow(0, 1, n - 2)?.contiguous())
+                Some(x.narrow(0, 1, n - 2)?.contiguous()?)
             } else {
                 None
             }
@@ -422,14 +428,14 @@ where
             let n_rows = n + 2;
 
             // Derivative basis at x[0]
-            let x_left = x.narrow(0, 0, 1)?.contiguous();
+            let x_left = x.narrow(0, 0, 1)?.contiguous()?;
             let dbasis_left = compute_deriv_basis(client, &x_left, knots, degree, n_coeffs)?;
 
             // Interpolation basis at all x
             let basis = compute_basis_matrix(client, x, knots, degree, n_coeffs)?;
 
             // Derivative basis at x[n-1]
-            let x_right = x.narrow(0, n - 1, 1)?.contiguous();
+            let x_right = x.narrow(0, n - 1, 1)?.contiguous()?;
             let dbasis_right = compute_deriv_basis(client, &x_right, knots, degree, n_coeffs)?;
 
             // Stack: [dbasis_left; basis; dbasis_right] → [n+2, n_coeffs]
@@ -450,12 +456,12 @@ where
             // n_rows = n + 2: 2nd deriv=0 at x[0], interpolation, 2nd deriv=0 at x[n-1]
             let n_rows = n + 2;
 
-            let x_left = x.narrow(0, 0, 1)?.contiguous();
+            let x_left = x.narrow(0, 0, 1)?.contiguous()?;
             let d2basis_left = compute_deriv2_basis(client, &x_left, knots, degree, n_coeffs)?;
 
             let basis = compute_basis_matrix(client, x, knots, degree, n_coeffs)?;
 
-            let x_right = x.narrow(0, n - 1, 1)?.contiguous();
+            let x_right = x.narrow(0, n - 1, 1)?.contiguous()?;
             let d2basis_right = compute_deriv2_basis(client, &x_right, knots, degree, n_coeffs)?;
 
             let col_mat = client.cat(&[&d2basis_left, &basis, &d2basis_right], 0)?;
@@ -501,27 +507,27 @@ where
     // Evaluate degree-(k-1) basis: [m, n_lower]
     let lower = compute_basis_matrix(client, x, knots, degree - 1, n_lower)?;
 
-    let lower_left = lower.narrow(1, 0, n_coeffs)?.contiguous(); // [m, n_coeffs]
-    let lower_right = lower.narrow(1, 1, n_coeffs)?.contiguous(); // [m, n_coeffs]
+    let lower_left = lower.narrow(1, 0, n_coeffs)?.contiguous()?; // [m, n_coeffs]
+    let lower_right = lower.narrow(1, 1, n_coeffs)?.contiguous()?; // [m, n_coeffs]
 
     // Denominators from knot differences
     let t_lo = knots
         .narrow(0, 0, n_coeffs)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[1, n_coeffs])?;
     let t_hi_k = knots
         .narrow(0, degree, n_coeffs)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[1, n_coeffs])?;
     let denom1 = client.sub(&t_hi_k, &t_lo)?;
 
     let t_lo1 = knots
         .narrow(0, 1, n_coeffs)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[1, n_coeffs])?;
     let t_hi_k1 = knots
         .narrow(0, degree + 1, n_coeffs)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[1, n_coeffs])?;
     let denom2 = client.sub(&t_hi_k1, &t_lo1)?;
 
@@ -535,9 +541,9 @@ where
     let term1 = client.mul(
         &client.div(
             &lower_left,
-            &d1_safe.broadcast_to(&[m, n_coeffs])?.contiguous(),
+            &d1_safe.broadcast_to(&[m, n_coeffs])?.contiguous()?,
         )?,
-        &mask1.broadcast_to(&[m, n_coeffs])?.contiguous(),
+        &mask1.broadcast_to(&[m, n_coeffs])?.contiguous()?,
     )?;
 
     let abs_d2 = client.abs(&denom2)?;
@@ -546,9 +552,9 @@ where
     let term2 = client.mul(
         &client.div(
             &lower_right,
-            &d2_safe.broadcast_to(&[m, n_coeffs])?.contiguous(),
+            &d2_safe.broadcast_to(&[m, n_coeffs])?.contiguous()?,
         )?,
-        &mask2.broadcast_to(&[m, n_coeffs])?.contiguous(),
+        &mask2.broadcast_to(&[m, n_coeffs])?.contiguous()?,
     )?;
 
     let deriv = client.mul_scalar(&client.sub(&term1, &term2)?, degree as f64)?;
@@ -583,26 +589,26 @@ where
     // Get derivative of degree-(k-1) basis: [m, n_lower]
     let d1_lower = compute_deriv_basis(client, x, knots, degree - 1, n_lower)?;
 
-    let d1_left = d1_lower.narrow(1, 0, n_coeffs)?.contiguous();
-    let d1_right = d1_lower.narrow(1, 1, n_coeffs)?.contiguous();
+    let d1_left = d1_lower.narrow(1, 0, n_coeffs)?.contiguous()?;
+    let d1_right = d1_lower.narrow(1, 1, n_coeffs)?.contiguous()?;
 
     let t_lo = knots
         .narrow(0, 0, n_coeffs)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[1, n_coeffs])?;
     let t_hi_k = knots
         .narrow(0, degree, n_coeffs)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[1, n_coeffs])?;
     let denom1 = client.sub(&t_hi_k, &t_lo)?;
 
     let t_lo1 = knots
         .narrow(0, 1, n_coeffs)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[1, n_coeffs])?;
     let t_hi_k1 = knots
         .narrow(0, degree + 1, n_coeffs)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[1, n_coeffs])?;
     let denom2 = client.sub(&t_hi_k1, &t_lo1)?;
 
@@ -615,9 +621,9 @@ where
     let term1 = client.mul(
         &client.div(
             &d1_left,
-            &d1_safe.broadcast_to(&[m, n_coeffs])?.contiguous(),
+            &d1_safe.broadcast_to(&[m, n_coeffs])?.contiguous()?,
         )?,
-        &mask1.broadcast_to(&[m, n_coeffs])?.contiguous(),
+        &mask1.broadcast_to(&[m, n_coeffs])?.contiguous()?,
     )?;
 
     let abs_d2 = client.abs(&denom2)?;
@@ -626,9 +632,9 @@ where
     let term2 = client.mul(
         &client.div(
             &d1_right,
-            &d2_safe.broadcast_to(&[m, n_coeffs])?.contiguous(),
+            &d2_safe.broadcast_to(&[m, n_coeffs])?.contiguous()?,
         )?,
-        &mask2.broadcast_to(&[m, n_coeffs])?.contiguous(),
+        &mask2.broadcast_to(&[m, n_coeffs])?.contiguous()?,
     )?;
 
     let deriv2 = client.mul_scalar(&client.sub(&term1, &term2)?, degree as f64)?;
@@ -663,12 +669,12 @@ where
         let n_knots = current_knots.shape()[0];
 
         // c'_i = k * (c_{i+1} - c_i) / (t_{i+k+1} - t_{i+1})
-        let c_hi = current_coeffs.narrow(0, 1, n - 1)?.contiguous();
-        let c_lo = current_coeffs.narrow(0, 0, n - 1)?.contiguous();
+        let c_hi = current_coeffs.narrow(0, 1, n - 1)?.contiguous()?;
+        let c_lo = current_coeffs.narrow(0, 0, n - 1)?.contiguous()?;
         let dc = client.sub(&c_hi, &c_lo)?;
 
-        let t_hi = current_knots.narrow(0, k + 1, n - 1)?.contiguous();
-        let t_lo = current_knots.narrow(0, 1, n - 1)?.contiguous();
+        let t_hi = current_knots.narrow(0, k + 1, n - 1)?.contiguous()?;
+        let t_lo = current_knots.narrow(0, 1, n - 1)?.contiguous()?;
         let dt = client.sub(&t_hi, &t_lo)?;
 
         // Safe division (zero dt → zero coefficient)
@@ -681,7 +687,7 @@ where
             client.mul_scalar(&client.mul(&client.div(&dc, &dt_safe)?, &mask)?, k as f64)?;
 
         // Remove first and last knot
-        let new_knots = current_knots.narrow(0, 1, n_knots - 2)?.contiguous();
+        let new_knots = current_knots.narrow(0, 1, n_knots - 2)?.contiguous()?;
 
         current_coeffs = new_coeffs;
         current_knots = new_knots;

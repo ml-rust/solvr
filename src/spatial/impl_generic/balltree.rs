@@ -207,7 +207,7 @@ where
     let best_dim = best_dim_vec[0] as usize;
 
     // Get values along split dimension
-    let split_col = subset_points.narrow(1, best_dim, 1)?.contiguous();
+    let split_col = subset_points.narrow(1, best_dim, 1)?.contiguous()?;
     let split_col = split_col.reshape(&[n])?;
 
     // Argsort to get sorted order
@@ -218,8 +218,8 @@ where
 
     // Split indices
     let mid = n / 2;
-    let left_indices = sorted_indices.narrow(0, 0, mid)?.contiguous();
-    let right_indices = sorted_indices.narrow(0, mid, n - mid)?.contiguous();
+    let left_indices = sorted_indices.narrow(0, 0, mid)?.contiguous()?;
+    let right_indices = sorted_indices.narrow(0, mid, n - mid)?.contiguous()?;
 
     // Placeholders for children
     let left_idx = left_children.len();
@@ -359,7 +359,7 @@ where
     let point_indices_2d = point_indices_1d
         .unsqueeze(0)?
         .broadcast_to(&[n_queries, n_points])?
-        .contiguous();
+        .contiguous()?;
     let flat_indices = point_indices_2d.reshape(&[n_queries * n_points])?;
     let result_indices = client.masked_select(&flat_indices, &flat_mask)?;
 

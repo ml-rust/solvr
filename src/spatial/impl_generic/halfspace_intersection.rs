@@ -64,8 +64,8 @@ where
     let dtype = halfspaces.dtype();
 
     // Extract normals [m, d] and offsets [m] from halfspaces [m, d+1]
-    let normals = halfspaces.narrow(1, 0, d)?.contiguous(); // [m, d]
-    let offsets = halfspaces.narrow(1, d, 1)?.contiguous().reshape(&[m])?; // [m]
+    let normals = halfspaces.narrow(1, 0, d)?.contiguous()?; // [m, d]
+    let offsets = halfspaces.narrow(1, d, 1)?.contiguous()?.reshape(&[m])?; // [m]
 
     // Verify interior_point is strictly inside all halfspaces: n·x + b < 0
     // vals = normals @ ip + offsets  (all on device)
@@ -96,7 +96,7 @@ where
     // Dual transform: dual_point_i = -normal_i / shifted_b_i
     let shifted_b = vals; // [m], all negative
     let shifted_b_col = shifted_b.reshape(&[m, 1])?; // [m, 1]
-    let shifted_b_broadcast = shifted_b_col.broadcast_to(&[m, d])?.contiguous(); // [m, d]
+    let shifted_b_broadcast = shifted_b_col.broadcast_to(&[m, d])?.contiguous()?; // [m, d]
     let neg_normals = client.mul_scalar(&normals, -1.0)?; // [m, d]
     let dual_points = client.div(&neg_normals, &shifted_b_broadcast)?; // [m, d]
 

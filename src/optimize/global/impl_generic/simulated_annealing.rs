@@ -4,7 +4,7 @@
 
 use numr::dtype::DType;
 use numr::error::Result;
-use numr::ops::{CompareOps, ScalarOps, TensorOps};
+use numr::ops::{CompareOps, RandomOps, ScalarOps, TensorOps};
 use numr::runtime::{Runtime, RuntimeClient};
 use numr::tensor::Tensor;
 
@@ -35,7 +35,7 @@ pub fn simulated_annealing_impl<R, C, F>(
 ) -> OptimizeResult<SimulatedAnnealingTensorResult<R>>
 where
     R: Runtime<DType = DType>,
-    C: TensorOps<R> + ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
+    C: TensorOps<R> + ScalarOps<R> + CompareOps<R> + RandomOps<R> + RuntimeClient<R>,
     F: Fn(&Tensor<R>) -> Result<f64>,
 {
     let shape = lower_bounds.shape();

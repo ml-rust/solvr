@@ -56,7 +56,7 @@ where
     let cp_flat = surface
         .control_points
         .reshape(&[nu * nv, n_dims])?
-        .contiguous();
+        .contiguous()?;
 
     // Build tensor product basis [m, nu*nv]
     // basis_u: [m, nu], basis_v: [m, nv]
@@ -64,11 +64,11 @@ where
     let bu_exp = basis_u
         .reshape(&[m, nu, 1])?
         .broadcast_to(&[m, nu, nv])?
-        .contiguous();
+        .contiguous()?;
     let bv_exp = basis_v
         .reshape(&[m, 1, nv])?
         .broadcast_to(&[m, nu, nv])?
-        .contiguous();
+        .contiguous()?;
     let product = client.mul(&bu_exp, &bv_exp)?;
     let product_flat = product.reshape(&[m, nu * nv])?;
 
@@ -115,8 +115,8 @@ where
 
     for _ in 0..du {
         // Forward difference along axis 0
-        let hi = diff_cp.narrow(0, 1, cur_nu - 1)?.contiguous();
-        let lo = diff_cp.narrow(0, 0, cur_nu - 1)?.contiguous();
+        let hi = diff_cp.narrow(0, 1, cur_nu - 1)?.contiguous()?;
+        let lo = diff_cp.narrow(0, 0, cur_nu - 1)?.contiguous()?;
         diff_cp = client.sub(&hi, &lo)?;
         scale_u *= deg_u as f64;
         deg_u -= 1;
@@ -129,8 +129,8 @@ where
     let mut cur_nv = nv;
 
     for _ in 0..dv {
-        let hi = diff_cp.narrow(1, 1, cur_nv - 1)?.contiguous();
-        let lo = diff_cp.narrow(1, 0, cur_nv - 1)?.contiguous();
+        let hi = diff_cp.narrow(1, 1, cur_nv - 1)?.contiguous()?;
+        let lo = diff_cp.narrow(1, 0, cur_nv - 1)?.contiguous()?;
         diff_cp = client.sub(&hi, &lo)?;
         scale_v *= deg_v as f64;
         deg_v -= 1;
@@ -185,12 +185,12 @@ where
     R: Runtime<DType = DType>,
     C: ScalarOps<R> + RuntimeClient<R>,
 {
-    let a0 = a.narrow(1, 0, 1)?.contiguous();
-    let a1 = a.narrow(1, 1, 1)?.contiguous();
-    let a2 = a.narrow(1, 2, 1)?.contiguous();
-    let b0 = b.narrow(1, 0, 1)?.contiguous();
-    let b1 = b.narrow(1, 1, 1)?.contiguous();
-    let b2 = b.narrow(1, 2, 1)?.contiguous();
+    let a0 = a.narrow(1, 0, 1)?.contiguous()?;
+    let a1 = a.narrow(1, 1, 1)?.contiguous()?;
+    let a2 = a.narrow(1, 2, 1)?.contiguous()?;
+    let b0 = b.narrow(1, 0, 1)?.contiguous()?;
+    let b1 = b.narrow(1, 1, 1)?.contiguous()?;
+    let b2 = b.narrow(1, 2, 1)?.contiguous()?;
 
     let c0 = client.sub(&client.mul(&a1, &b2)?, &client.mul(&a2, &b1)?)?;
     let c1 = client.sub(&client.mul(&a2, &b0)?, &client.mul(&a0, &b2)?)?;

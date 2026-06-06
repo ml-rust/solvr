@@ -16,7 +16,7 @@ where
 {
     validate_stats_dtype(pk.dtype())?;
 
-    let pk_contig = pk.contiguous();
+    let pk_contig = pk.contiguous()?;
     let n = pk_contig.numel();
     if n == 0 {
         return Err(Error::InvalidArgument {
@@ -60,7 +60,7 @@ where
 {
     validate_stats_dtype(x.dtype())?;
 
-    let x_contig = x.contiguous();
+    let x_contig = x.contiguous()?;
     let n = x_contig.numel();
 
     if n < k + 1 {
@@ -146,8 +146,8 @@ where
         });
     }
 
-    let pk_contig = pk.contiguous();
-    let qk_contig = qk.contiguous();
+    let pk_contig = pk.contiguous()?;
+    let qk_contig = qk.contiguous()?;
 
     // D_KL = Σ p * log(p/q) = Σ p * (log(p) - log(q))
     let epsilon = Tensor::<R>::full_scalar(pk_contig.shape(), pk.dtype(), 1e-300, client.device());
@@ -210,8 +210,8 @@ where
 
     let dtype = x.dtype();
     let device = client.device();
-    let x_contig = x.contiguous();
-    let y_contig = y.contiguous();
+    let x_contig = x.contiguous()?;
+    let y_contig = y.contiguous()?;
 
     // Compute min/max on device (single scalar transfers for range computation)
     let all_dims: Vec<usize> = (0..x_contig.ndim()).collect();
@@ -327,8 +327,8 @@ where
         });
     }
 
-    let pk_contig = pk.contiguous();
-    let qk_contig = qk.contiguous();
+    let pk_contig = pk.contiguous()?;
+    let qk_contig = qk.contiguous()?;
 
     // H(p, q) = -Σ p * log(q)
     let epsilon = Tensor::<R>::full_scalar(qk_contig.shape(), qk.dtype(), 1e-300, client.device());

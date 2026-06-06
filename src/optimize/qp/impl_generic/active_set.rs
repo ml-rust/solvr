@@ -231,13 +231,19 @@ where
                 .map_err(|e| OptimizeError::NumericalError {
                     message: format!("active_set: extract d - {}", e),
                 })?
-                .contiguous();
+                .contiguous()
+                .map_err(|e| OptimizeError::NumericalError {
+                    message: format!("active_set: contiguous d - {}", e),
+                })?;
             let lambdas = sol_flat
                 .narrow(0, n, m_working)
                 .map_err(|e| OptimizeError::NumericalError {
                     message: format!("active_set: extract lambda - {}", e),
                 })?
-                .contiguous();
+                .contiguous()
+                .map_err(|e| OptimizeError::NumericalError {
+                    message: format!("active_set: contiguous lambda - {}", e),
+                })?;
 
             let d_norm = tensor_norm(client, &d).map_err(|e| OptimizeError::NumericalError {
                 message: format!("active_set: d norm - {}", e),
@@ -253,6 +259,9 @@ where
                             message: format!("active_set: extract ineq lambdas - {}", e),
                         })?
                         .contiguous()
+                        .map_err(|e| OptimizeError::NumericalError {
+                            message: format!("active_set: contiguous ineq lambdas - {}", e),
+                        })?
                 } else {
                     lambdas.clone()
                 };
@@ -291,7 +300,10 @@ where
                                     .map_err(|e| OptimizeError::NumericalError {
                                         message: format!("active_set: extract dual_eq - {}", e),
                                     })?
-                                    .contiguous(),
+                                    .contiguous()
+                                    .map_err(|e| OptimizeError::NumericalError {
+                                        message: format!("active_set: contiguous dual_eq - {}", e),
+                                    })?,
                             )
                         } else {
                             None
@@ -515,13 +527,19 @@ where
                 .map_err(|e| OptimizeError::NumericalError {
                     message: format!("working_set: narrow A {} - {}", row, e),
                 })?
-                .contiguous();
+                .contiguous()
+                .map_err(|e| OptimizeError::NumericalError {
+                    message: format!("working_set: contiguous A {} - {}", row, e),
+                })?;
             let b_val = bi
                 .narrow(0, row, 1)
                 .map_err(|e| OptimizeError::NumericalError {
                     message: format!("working_set: narrow b {} - {}", row, e),
                 })?
-                .contiguous();
+                .contiguous()
+                .map_err(|e| OptimizeError::NumericalError {
+                    message: format!("working_set: contiguous b {} - {}", row, e),
+                })?;
             a_parts.push(a_row);
             b_parts.push(b_val);
         }

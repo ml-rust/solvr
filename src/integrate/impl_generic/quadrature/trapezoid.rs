@@ -54,13 +54,13 @@ where
     let x_last_dim = x_shape.len() - 1;
 
     // Compute dx = x[1:] - x[:-1] using tensor ops
-    let x_left = x.narrow(x_last_dim as isize, 0, n - 1)?.contiguous();
-    let x_right = x.narrow(x_last_dim as isize, 1, n - 1)?.contiguous();
+    let x_left = x.narrow(x_last_dim as isize, 0, n - 1)?.contiguous()?;
+    let x_right = x.narrow(x_last_dim as isize, 1, n - 1)?.contiguous()?;
     let dx = client.sub(&x_right, &x_left)?;
 
     // Compute y_left = y[:-1], y_right = y[1:]
-    let y_left = y.narrow(last_dim as isize, 0, n - 1)?.contiguous();
-    let y_right = y.narrow(last_dim as isize, 1, n - 1)?.contiguous();
+    let y_left = y.narrow(last_dim as isize, 0, n - 1)?.contiguous()?;
+    let y_right = y.narrow(last_dim as isize, 1, n - 1)?.contiguous()?;
 
     // y_sum = y_left + y_right
     let y_sum = client.add(&y_left, &y_right)?;
@@ -109,8 +109,8 @@ where
     let total_sum = client.sum(y, &[last_dim], false)?;
 
     // Get endpoints: y[0] and y[n-1]
-    let y_first = y.narrow(last_dim as isize, 0, 1)?.contiguous();
-    let y_last = y.narrow(last_dim as isize, n - 1, 1)?.contiguous();
+    let y_first = y.narrow(last_dim as isize, 0, 1)?.contiguous()?;
+    let y_last = y.narrow(last_dim as isize, n - 1, 1)?.contiguous()?;
 
     // endpoints_sum = y[0] + y[n-1], then reduce the size-1 dimension
     let endpoints = client.add(&y_first, &y_last)?;
@@ -158,8 +158,8 @@ where
     let last_dim = y_shape.len() - 1;
 
     // Compute y_left = y[:-1], y_right = y[1:]
-    let y_left = y.narrow(last_dim as isize, 0, n - 1)?.contiguous();
-    let y_right = y.narrow(last_dim as isize, 1, n - 1)?.contiguous();
+    let y_left = y.narrow(last_dim as isize, 0, n - 1)?.contiguous()?;
+    let y_right = y.narrow(last_dim as isize, 1, n - 1)?.contiguous()?;
 
     // y_sum = y_left + y_right
     let y_sum = client.add(&y_left, &y_right)?;
@@ -170,8 +170,12 @@ where
         let x_shape = x_tensor.shape();
         let x_last_dim = x_shape.len() - 1;
 
-        let x_left = x_tensor.narrow(x_last_dim as isize, 0, n - 1)?.contiguous();
-        let x_right = x_tensor.narrow(x_last_dim as isize, 1, n - 1)?.contiguous();
+        let x_left = x_tensor
+            .narrow(x_last_dim as isize, 0, n - 1)?
+            .contiguous()?;
+        let x_right = x_tensor
+            .narrow(x_last_dim as isize, 1, n - 1)?
+            .contiguous()?;
         let dx_tensor = client.sub(&x_right, &x_left)?;
 
         let scaled_y = client.mul_scalar(&y_sum, 0.5)?;

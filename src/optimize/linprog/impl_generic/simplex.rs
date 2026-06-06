@@ -398,11 +398,17 @@ where
             message: format!("pivot_column: narrow row - {}", e),
         })?
         .contiguous()
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("pivot_column: contiguous row - {}", e),
+        })?
         .narrow(1, 0, n_total)
         .map_err(|e| OptimizeError::NumericalError {
             message: format!("pivot_column: narrow cols - {}", e),
         })?
         .contiguous()
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("pivot_column: contiguous cols - {}", e),
+        })?
         .reshape(&[n_total])
         .map_err(|e| OptimizeError::NumericalError {
             message: format!("pivot_column: reshape - {}", e),
@@ -426,7 +432,10 @@ where
         .map_err(|e| OptimizeError::NumericalError {
             message: format!("pivot_column: get min val - {}", e),
         })?
-        .contiguous();
+        .contiguous()
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("pivot_column: contiguous min val - {}", e),
+        })?;
     let min_val_data: Vec<f64> = min_val_tensor.to_vec();
     let min_val = min_val_data[0];
 
@@ -456,12 +465,12 @@ where
         .map_err(|e| OptimizeError::NumericalError {
             message: format!("pivot_row: narrow rows - {}", e),
         })?
-        .contiguous()
+        .contiguous()?
         .narrow(1, pivot_col, 1)
         .map_err(|e| OptimizeError::NumericalError {
             message: format!("pivot_row: narrow col - {}", e),
         })?
-        .contiguous()
+        .contiguous()?
         .reshape(&[n_constraints])
         .map_err(|e| OptimizeError::NumericalError {
             message: format!("pivot_row: reshape col - {}", e),
@@ -473,12 +482,12 @@ where
         .map_err(|e| OptimizeError::NumericalError {
             message: format!("pivot_row: narrow rows rhs - {}", e),
         })?
-        .contiguous()
+        .contiguous()?
         .narrow(1, n_cols - 1, 1)
         .map_err(|e| OptimizeError::NumericalError {
             message: format!("pivot_row: narrow rhs - {}", e),
         })?
-        .contiguous()
+        .contiguous()?
         .reshape(&[n_constraints])
         .map_err(|e| OptimizeError::NumericalError {
             message: format!("pivot_row: reshape rhs - {}", e),
@@ -537,7 +546,10 @@ where
         .map_err(|e| OptimizeError::NumericalError {
             message: format!("pivot_row: get min val - {}", e),
         })?
-        .contiguous();
+        .contiguous()
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("pivot_row: contiguous min val - {}", e),
+        })?;
     let min_val_data: Vec<f64> = min_val_tensor.to_vec();
     let min_val = min_val_data[0];
 
@@ -569,11 +581,17 @@ where
                 message: format!("pivot: narrow pivot row - {}", e),
             })?
             .contiguous()
+            .map_err(|e| OptimizeError::NumericalError {
+                message: format!("pivot: contiguous pivot row - {}", e),
+            })?
             .narrow(1, pivot_col, 1)
             .map_err(|e| OptimizeError::NumericalError {
                 message: format!("pivot: narrow pivot col - {}", e),
             })?
-            .contiguous();
+            .contiguous()
+            .map_err(|e| OptimizeError::NumericalError {
+                message: format!("pivot: contiguous pivot col - {}", e),
+            })?;
         let data: Vec<f64> = elem.to_vec();
         data[0]
     };
@@ -590,7 +608,10 @@ where
         .map_err(|e| OptimizeError::NumericalError {
             message: format!("pivot: extract pivot row - {}", e),
         })?
-        .contiguous();
+        .contiguous()
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("pivot: contiguous pivot row - {}", e),
+        })?;
 
     let scaled_pivot_row = client
         .div_scalar(&pivot_row_tensor, pivot_val)
@@ -604,7 +625,10 @@ where
         .map_err(|e| OptimizeError::NumericalError {
             message: format!("pivot: extract factors - {}", e),
         })?
-        .contiguous();
+        .contiguous()
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("pivot: contiguous factors - {}", e),
+        })?;
 
     // Compute: outer_product = factors_col * scaled_pivot_row
     // Then: new_tableau = tableau - outer_product
@@ -636,7 +660,10 @@ where
                 .map_err(|e| OptimizeError::NumericalError {
                     message: format!("pivot: narrow before - {}", e),
                 })?
-                .contiguous(),
+                .contiguous()
+                .map_err(|e| OptimizeError::NumericalError {
+                    message: format!("pivot: contiguous before - {}", e),
+                })?,
         )
     } else {
         None
@@ -649,7 +676,10 @@ where
                 .map_err(|e| OptimizeError::NumericalError {
                     message: format!("pivot: narrow after - {}", e),
                 })?
-                .contiguous(),
+                .contiguous()
+                .map_err(|e| OptimizeError::NumericalError {
+                    message: format!("pivot: contiguous after - {}", e),
+                })?,
         )
     } else {
         None

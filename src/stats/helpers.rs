@@ -19,7 +19,7 @@ pub fn extract_scalar<R: Runtime<DType = DType>>(t: &Tensor<R>) -> Result<f64> {
         });
     }
 
-    let t = t.contiguous();
+    let t = t.contiguous()?;
     match t.dtype() {
         DType::F32 => {
             let data: Vec<f32> = t.to_vec();
@@ -44,7 +44,7 @@ where
     R: Runtime<DType = DType>,
     C: TensorOps<R> + RuntimeClient<R>,
 {
-    let x_contig = x.contiguous();
+    let x_contig = x.contiguous()?;
     let n = x_contig.numel();
     let device = client.device();
 

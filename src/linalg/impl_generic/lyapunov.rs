@@ -46,7 +46,7 @@ where
         });
     }
 
-    let at = a.transpose(0, 1)?.contiguous();
+    let at = a.transpose(0, 1)?.contiguous()?;
     sylvester_impl(client, a, &at, q)
 }
 
@@ -97,7 +97,7 @@ where
     let a_c = client.matmul(&a_minus_i_inv, &a_plus_i)?;
 
     // Q_c = (A - I)^{-1} Q (A - I)^{-T}
-    let a_minus_i_inv_t = a_minus_i_inv.transpose(0, 1)?.contiguous();
+    let a_minus_i_inv_t = a_minus_i_inv.transpose(0, 1)?.contiguous()?;
     let q_c = client.matmul(&client.matmul(&a_minus_i_inv, q)?, &a_minus_i_inv_t)?;
 
     // The bilinear transform gives: A_c X + X A_c^T = -2 Q_c

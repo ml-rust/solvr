@@ -83,6 +83,9 @@ where
                 message: format!("cobyla: extract delta {} - {}", i, e),
             })?
             .contiguous()
+            .map_err(|e| OptimizeError::NumericalError {
+                message: format!("cobyla: contiguous delta {} - {}", i, e),
+            })?
             .reshape(&[n])
             .map_err(|e| OptimizeError::NumericalError {
                 message: format!("cobyla: reshape delta {} - {}", i, e),
@@ -463,6 +466,9 @@ where
                 message: format!("cobyla rebuild: narrow {} - {}", i, e),
             })?
             .contiguous()
+            .map_err(|e| OptimizeError::NumericalError {
+                message: format!("cobyla rebuild: contiguous {} - {}", i, e),
+            })?
             .reshape(&[n])
             .map_err(|e| OptimizeError::NumericalError {
                 message: format!("cobyla rebuild: reshape {} - {}", i, e),

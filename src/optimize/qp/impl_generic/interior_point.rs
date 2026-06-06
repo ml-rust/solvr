@@ -470,13 +470,19 @@ where
         .map_err(|e| OptimizeError::NumericalError {
             message: format!("eq_qp: extract x - {}", e),
         })?
-        .contiguous();
+        .contiguous()
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("eq_qp: contiguous x - {}", e),
+        })?;
     let dual = sol
         .narrow(0, n, m_eq)
         .map_err(|e| OptimizeError::NumericalError {
             message: format!("eq_qp: extract dual - {}", e),
         })?
-        .contiguous();
+        .contiguous()
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("eq_qp: contiguous dual - {}", e),
+        })?;
 
     let fun = compute_objective(client, q, c_vec, &x, n)?;
     Ok(QpResult {

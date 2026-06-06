@@ -188,7 +188,7 @@ where
     let split_dim = split_dim_vec[0] as usize;
 
     // Get values along split dimension
-    let split_col = subset_points.narrow(1, split_dim, 1)?.contiguous();
+    let split_col = subset_points.narrow(1, split_dim, 1)?.contiguous()?;
     let split_col = split_col.reshape(&[n])?;
 
     // Argsort to get sorted order within subset
@@ -218,8 +218,8 @@ where
     right_children.push(-1);
 
     // Split indices using tensor narrow (stays on device)
-    let left_indices = sorted_indices.narrow(0, 0, mid)?.contiguous();
-    let right_indices = sorted_indices.narrow(0, mid, n - mid)?.contiguous();
+    let left_indices = sorted_indices.narrow(0, 0, mid)?.contiguous()?;
+    let right_indices = sorted_indices.narrow(0, mid, n - mid)?.contiguous()?;
 
     // Recurse on children
     let left_child = build_node_tensor(
@@ -356,7 +356,7 @@ where
     let point_indices_2d = point_indices_1d
         .unsqueeze(0)?
         .broadcast_to(&[n_queries, n_points])?
-        .contiguous();
+        .contiguous()?;
     let flat_indices = point_indices_2d.reshape(&[n_queries * n_points])?;
 
     // Use masked_select to get point indices within radius (stays on device)

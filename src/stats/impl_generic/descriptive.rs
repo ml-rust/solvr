@@ -23,7 +23,7 @@ where
         });
     }
 
-    let x_contig = x.contiguous();
+    let x_contig = x.contiguous()?;
     let n = x_contig.numel();
     let n_f = n as f64;
 
@@ -116,7 +116,7 @@ where
 {
     validate_stats_dtype(x.dtype())?;
 
-    let x_contig = x.contiguous();
+    let x_contig = x.contiguous()?;
     let n = x_contig.numel();
 
     if n < 3 {
@@ -164,7 +164,7 @@ where
 {
     validate_stats_dtype(x.dtype())?;
 
-    let x_contig = x.contiguous();
+    let x_contig = x.contiguous()?;
     let n = x_contig.numel();
 
     if n < 4 {
@@ -212,7 +212,7 @@ where
 {
     validate_stats_dtype(x.dtype())?;
 
-    let x_contig = x.contiguous();
+    let x_contig = x.contiguous()?;
     let all_dims: Vec<usize> = (0..x_contig.ndim()).collect();
 
     let mean_val = extract_scalar(&client.mean(&x_contig, &all_dims, false)?)?;
@@ -243,7 +243,7 @@ where
 {
     validate_stats_dtype(x.dtype())?;
 
-    let x_contig = x.contiguous();
+    let x_contig = x.contiguous()?;
     let n = x_contig.numel() as f64;
     let all_dims: Vec<usize> = (0..x_contig.ndim()).collect();
 

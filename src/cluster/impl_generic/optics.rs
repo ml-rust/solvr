@@ -52,7 +52,7 @@ where
     let sorted_dists = client.sort(&dists, 1, false)?; // [n, n] sorted ascending per row
     let ms = options.min_samples;
     let core_distances = if ms <= n {
-        sorted_dists.narrow(1, ms, 1)?.contiguous().reshape(&[n])? // [n] — ms-th nearest (including self at 0)
+        sorted_dists.narrow(1, ms, 1)?.contiguous()?.reshape(&[n])? // [n] — ms-th nearest (including self at 0)
     } else {
         Tensor::<R>::full_scalar(&[n], dtype, inf, device)
     };

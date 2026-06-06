@@ -75,7 +75,7 @@ where
     let dtype = points.dtype();
 
     // Find leftmost point (smallest x coordinate) using tensor argmin
-    let x_coords = points.narrow(1, 0, 1)?.contiguous().reshape(&[n])?;
+    let x_coords = points.narrow(1, 0, 1)?.contiguous()?.reshape(&[n])?;
     let start_idx_tensor = client.argmin(&x_coords, 0, false)?;
 
     // Extract start index (single scalar transfer - unavoidable for loop control)
@@ -92,14 +92,14 @@ where
         let curr_point = client.index_select(points, 0, &curr_idx_tensor)?; // [1, 2]
 
         // Broadcast current point to [n, 2] for vectorized subtraction
-        let curr_broadcast = curr_point.broadcast_to(&[n, 2])?.contiguous();
+        let curr_broadcast = curr_point.broadcast_to(&[n, 2])?.contiguous()?;
 
         // Compute vectors from current point to all points: v = points - current
         let vectors = client.sub(points, &curr_broadcast)?; // [n, 2]
 
         // Extract vector components
-        let vx = vectors.narrow(1, 0, 1)?.contiguous().reshape(&[n])?;
-        let vy = vectors.narrow(1, 1, 1)?.contiguous().reshape(&[n])?;
+        let vx = vectors.narrow(1, 0, 1)?.contiguous()?.reshape(&[n])?;
+        let vy = vectors.narrow(1, 1, 1)?.contiguous()?.reshape(&[n])?;
 
         // For Gift Wrapping, we need to find the point that makes all other points
         // lie to the left (positive cross product).
@@ -120,10 +120,10 @@ where
         // cross(v_q, v_p) = vx_q * vy_p - vy_q * vx_p
 
         // Broadcast for pairwise computation [n, n]
-        let vx_row = vx.unsqueeze(0)?.broadcast_to(&[n, n])?.contiguous(); // v_p (columns)
-        let vy_row = vy.unsqueeze(0)?.broadcast_to(&[n, n])?.contiguous();
-        let vx_col = vx.unsqueeze(1)?.broadcast_to(&[n, n])?.contiguous(); // v_q (rows)
-        let vy_col = vy.unsqueeze(1)?.broadcast_to(&[n, n])?.contiguous();
+        let vx_row = vx.unsqueeze(0)?.broadcast_to(&[n, n])?.contiguous()?; // v_p (columns)
+        let vy_row = vy.unsqueeze(0)?.broadcast_to(&[n, n])?.contiguous()?;
+        let vx_col = vx.unsqueeze(1)?.broadcast_to(&[n, n])?.contiguous()?; // v_q (rows)
+        let vy_col = vy.unsqueeze(1)?.broadcast_to(&[n, n])?.contiguous()?;
 
         // cross[q, p] = vx_q * vy_p - vy_q * vx_p
         let cross = client.sub(
@@ -194,19 +194,19 @@ where
     // Extract x, y coordinates
     let hx = hull_coords
         .narrow(1, 0, 1)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[n_vertices])?;
     let hy = hull_coords
         .narrow(1, 1, 1)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[n_vertices])?;
     let hx_next = hull_coords_shifted
         .narrow(1, 0, 1)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[n_vertices])?;
     let hy_next = hull_coords_shifted
         .narrow(1, 1, 1)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[n_vertices])?;
 
     // Perimeter: sum of edge lengths
@@ -258,9 +258,9 @@ where
     let dtype = points.dtype();
 
     // Find extreme points using tensor operations
-    let x_coords = points.narrow(1, 0, 1)?.contiguous().reshape(&[n])?;
-    let _y_coords = points.narrow(1, 1, 1)?.contiguous().reshape(&[n])?;
-    let _z_coords = points.narrow(1, 2, 1)?.contiguous().reshape(&[n])?;
+    let x_coords = points.narrow(1, 0, 1)?.contiguous()?.reshape(&[n])?;
+    let _y_coords = points.narrow(1, 1, 1)?.contiguous()?.reshape(&[n])?;
+    let _z_coords = points.narrow(1, 2, 1)?.contiguous()?.reshape(&[n])?;
 
     // Find min/max x points
     let min_x_idx = client.argmin(&x_coords, 0, false)?;
@@ -278,19 +278,19 @@ where
 
     // Direction vector d = pt1 - pt0
     let d = client.sub(&pt1, &pt0)?; // [1, 3]
-    let d_broadcast = d.broadcast_to(&[n, 3])?.contiguous();
+    let d_broadcast = d.broadcast_to(&[n, 3])?.contiguous()?;
 
     // Vector from p0 to each point: v = points - pt0
-    let pt0_broadcast = pt0.broadcast_to(&[n, 3])?.contiguous();
+    let pt0_broadcast = pt0.broadcast_to(&[n, 3])?.contiguous()?;
     let v = client.sub(points, &pt0_broadcast)?; // [n, 3]
 
     // Cross product d × v gives distance from line (magnitude)
-    let dx = d_broadcast.narrow(1, 0, 1)?.contiguous().reshape(&[n])?;
-    let dy = d_broadcast.narrow(1, 1, 1)?.contiguous().reshape(&[n])?;
-    let dz = d_broadcast.narrow(1, 2, 1)?.contiguous().reshape(&[n])?;
-    let vx = v.narrow(1, 0, 1)?.contiguous().reshape(&[n])?;
-    let vy = v.narrow(1, 1, 1)?.contiguous().reshape(&[n])?;
-    let vz = v.narrow(1, 2, 1)?.contiguous().reshape(&[n])?;
+    let dx = d_broadcast.narrow(1, 0, 1)?.contiguous()?.reshape(&[n])?;
+    let dy = d_broadcast.narrow(1, 1, 1)?.contiguous()?.reshape(&[n])?;
+    let dz = d_broadcast.narrow(1, 2, 1)?.contiguous()?.reshape(&[n])?;
+    let vx = v.narrow(1, 0, 1)?.contiguous()?.reshape(&[n])?;
+    let vy = v.narrow(1, 1, 1)?.contiguous()?.reshape(&[n])?;
+    let vz = v.narrow(1, 2, 1)?.contiguous()?.reshape(&[n])?;
 
     // cross = d × v
     let cx = client.sub(&client.mul(&dy, &vz)?, &client.mul(&dz, &vy)?)?;
@@ -333,21 +333,21 @@ where
     let e1 = client.sub(&pt1, &pt0)?; // [1, 3]
     let e2 = client.sub(&pt2, &pt0)?;
 
-    let e1x = e1.narrow(1, 0, 1)?.contiguous().reshape(&[1])?;
-    let e1y = e1.narrow(1, 1, 1)?.contiguous().reshape(&[1])?;
-    let e1z = e1.narrow(1, 2, 1)?.contiguous().reshape(&[1])?;
-    let e2x = e2.narrow(1, 0, 1)?.contiguous().reshape(&[1])?;
-    let e2y = e2.narrow(1, 1, 1)?.contiguous().reshape(&[1])?;
-    let e2z = e2.narrow(1, 2, 1)?.contiguous().reshape(&[1])?;
+    let e1x = e1.narrow(1, 0, 1)?.contiguous()?.reshape(&[1])?;
+    let e1y = e1.narrow(1, 1, 1)?.contiguous()?.reshape(&[1])?;
+    let e1z = e1.narrow(1, 2, 1)?.contiguous()?.reshape(&[1])?;
+    let e2x = e2.narrow(1, 0, 1)?.contiguous()?.reshape(&[1])?;
+    let e2y = e2.narrow(1, 1, 1)?.contiguous()?.reshape(&[1])?;
+    let e2z = e2.narrow(1, 2, 1)?.contiguous()?.reshape(&[1])?;
 
     let nx = client.sub(&client.mul(&e1y, &e2z)?, &client.mul(&e1z, &e2y)?)?;
     let ny = client.sub(&client.mul(&e1z, &e2x)?, &client.mul(&e1x, &e2z)?)?;
     let nz = client.sub(&client.mul(&e1x, &e2y)?, &client.mul(&e1y, &e2x)?)?;
 
     // Distance from plane for each point: dot(normal, point - pt0)
-    let nx_b = nx.broadcast_to(&[n])?.contiguous();
-    let ny_b = ny.broadcast_to(&[n])?.contiguous();
-    let nz_b = nz.broadcast_to(&[n])?.contiguous();
+    let nx_b = nx.broadcast_to(&[n])?.contiguous()?;
+    let ny_b = ny.broadcast_to(&[n])?.contiguous()?;
+    let nz_b = nz.broadcast_to(&[n])?.contiguous()?;
 
     let dist_plane = client.add(
         &client.add(&client.mul(&nx_b, &vx)?, &client.mul(&ny_b, &vy)?)?,
@@ -403,7 +403,7 @@ where
         }
 
         // Get point i coordinates
-        let pt_i = points.narrow(0, i, 1)?.contiguous(); // [1, 3]
+        let pt_i = points.narrow(0, i, 1)?.contiguous()?; // [1, 3]
 
         // Find faces visible from this point using tensor ops
         let visible = find_visible_faces_tensor(client, points, &faces, &pt_i)?;
@@ -483,20 +483,20 @@ where
         let indices = Tensor::<R>::from_slice(&[face[0], face[1], face[2]], &[3], device);
         let verts = client.index_select(points, 0, &indices)?; // [3, 3]
 
-        let v0 = verts.narrow(0, 0, 1)?.contiguous(); // [1, 3]
-        let v1 = verts.narrow(0, 1, 1)?.contiguous();
-        let v2 = verts.narrow(0, 2, 1)?.contiguous();
+        let v0 = verts.narrow(0, 0, 1)?.contiguous()?; // [1, 3]
+        let v1 = verts.narrow(0, 1, 1)?.contiguous()?;
+        let v2 = verts.narrow(0, 2, 1)?.contiguous()?;
 
         // Compute face normal
         let e1 = client.sub(&v1, &v0)?;
         let e2 = client.sub(&v2, &v0)?;
 
-        let e1x = e1.narrow(1, 0, 1)?.contiguous().reshape(&[1])?;
-        let e1y = e1.narrow(1, 1, 1)?.contiguous().reshape(&[1])?;
-        let e1z = e1.narrow(1, 2, 1)?.contiguous().reshape(&[1])?;
-        let e2x = e2.narrow(1, 0, 1)?.contiguous().reshape(&[1])?;
-        let e2y = e2.narrow(1, 1, 1)?.contiguous().reshape(&[1])?;
-        let e2z = e2.narrow(1, 2, 1)?.contiguous().reshape(&[1])?;
+        let e1x = e1.narrow(1, 0, 1)?.contiguous()?.reshape(&[1])?;
+        let e1y = e1.narrow(1, 1, 1)?.contiguous()?.reshape(&[1])?;
+        let e1z = e1.narrow(1, 2, 1)?.contiguous()?.reshape(&[1])?;
+        let e2x = e2.narrow(1, 0, 1)?.contiguous()?.reshape(&[1])?;
+        let e2y = e2.narrow(1, 1, 1)?.contiguous()?.reshape(&[1])?;
+        let e2z = e2.narrow(1, 2, 1)?.contiguous()?.reshape(&[1])?;
 
         let nx = client.sub(&client.mul(&e1y, &e2z)?, &client.mul(&e1z, &e2y)?)?;
         let ny = client.sub(&client.mul(&e1z, &e2x)?, &client.mul(&e1x, &e2z)?)?;
@@ -509,9 +509,9 @@ where
         // Vector from face center to centroid
         let to_centroid = client.sub(centroid, &face_center)?;
 
-        let tcx = to_centroid.narrow(1, 0, 1)?.contiguous().reshape(&[1])?;
-        let tcy = to_centroid.narrow(1, 1, 1)?.contiguous().reshape(&[1])?;
-        let tcz = to_centroid.narrow(1, 2, 1)?.contiguous().reshape(&[1])?;
+        let tcx = to_centroid.narrow(1, 0, 1)?.contiguous()?.reshape(&[1])?;
+        let tcy = to_centroid.narrow(1, 1, 1)?.contiguous()?.reshape(&[1])?;
+        let tcz = to_centroid.narrow(1, 2, 1)?.contiguous()?.reshape(&[1])?;
 
         // Dot product: if positive, normal points inward -> flip
         let dot = client.add(
@@ -568,39 +568,48 @@ where
     // Extract v0, v1, v2 for all faces
     let v0 = all_verts
         .narrow(1, 0, 1)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[n_faces, 3])?;
     let v1 = all_verts
         .narrow(1, 1, 1)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[n_faces, 3])?;
     let v2 = all_verts
         .narrow(1, 2, 1)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[n_faces, 3])?;
 
     // Compute face normals for all faces at once
     let e1 = client.sub(&v1, &v0)?; // [n_faces, 3]
     let e2 = client.sub(&v2, &v0)?;
 
-    let e1x = e1.narrow(1, 0, 1)?.contiguous().reshape(&[n_faces])?;
-    let e1y = e1.narrow(1, 1, 1)?.contiguous().reshape(&[n_faces])?;
-    let e1z = e1.narrow(1, 2, 1)?.contiguous().reshape(&[n_faces])?;
-    let e2x = e2.narrow(1, 0, 1)?.contiguous().reshape(&[n_faces])?;
-    let e2y = e2.narrow(1, 1, 1)?.contiguous().reshape(&[n_faces])?;
-    let e2z = e2.narrow(1, 2, 1)?.contiguous().reshape(&[n_faces])?;
+    let e1x = e1.narrow(1, 0, 1)?.contiguous()?.reshape(&[n_faces])?;
+    let e1y = e1.narrow(1, 1, 1)?.contiguous()?.reshape(&[n_faces])?;
+    let e1z = e1.narrow(1, 2, 1)?.contiguous()?.reshape(&[n_faces])?;
+    let e2x = e2.narrow(1, 0, 1)?.contiguous()?.reshape(&[n_faces])?;
+    let e2y = e2.narrow(1, 1, 1)?.contiguous()?.reshape(&[n_faces])?;
+    let e2z = e2.narrow(1, 2, 1)?.contiguous()?.reshape(&[n_faces])?;
 
     let nx = client.sub(&client.mul(&e1y, &e2z)?, &client.mul(&e1z, &e2y)?)?;
     let ny = client.sub(&client.mul(&e1z, &e2x)?, &client.mul(&e1x, &e2z)?)?;
     let nz = client.sub(&client.mul(&e1x, &e2y)?, &client.mul(&e1y, &e2x)?)?;
 
     // Vector from v0 to point for all faces
-    let point_broadcast = point.broadcast_to(&[n_faces, 3])?.contiguous();
+    let point_broadcast = point.broadcast_to(&[n_faces, 3])?.contiguous()?;
     let to_point = client.sub(&point_broadcast, &v0)?; // [n_faces, 3]
 
-    let tpx = to_point.narrow(1, 0, 1)?.contiguous().reshape(&[n_faces])?;
-    let tpy = to_point.narrow(1, 1, 1)?.contiguous().reshape(&[n_faces])?;
-    let tpz = to_point.narrow(1, 2, 1)?.contiguous().reshape(&[n_faces])?;
+    let tpx = to_point
+        .narrow(1, 0, 1)?
+        .contiguous()?
+        .reshape(&[n_faces])?;
+    let tpy = to_point
+        .narrow(1, 1, 1)?
+        .contiguous()?
+        .reshape(&[n_faces])?;
+    let tpz = to_point
+        .narrow(1, 2, 1)?
+        .contiguous()?
+        .reshape(&[n_faces])?;
 
     // Dot product: positive means point is above face (face is visible)
     let dot = client.add(
@@ -681,28 +690,28 @@ where
 
     let v0 = all_verts
         .narrow(1, 0, 1)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[n_faces, 3])?;
     let v1 = all_verts
         .narrow(1, 1, 1)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[n_faces, 3])?;
     let v2 = all_verts
         .narrow(1, 2, 1)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[n_faces, 3])?;
 
     // Volume using signed tetrahedra from origin
     // det = v0 · (v1 × v2)
-    let v0x = v0.narrow(1, 0, 1)?.contiguous().reshape(&[n_faces])?;
-    let v0y = v0.narrow(1, 1, 1)?.contiguous().reshape(&[n_faces])?;
-    let v0z = v0.narrow(1, 2, 1)?.contiguous().reshape(&[n_faces])?;
-    let v1x = v1.narrow(1, 0, 1)?.contiguous().reshape(&[n_faces])?;
-    let v1y = v1.narrow(1, 1, 1)?.contiguous().reshape(&[n_faces])?;
-    let v1z = v1.narrow(1, 2, 1)?.contiguous().reshape(&[n_faces])?;
-    let v2x = v2.narrow(1, 0, 1)?.contiguous().reshape(&[n_faces])?;
-    let v2y = v2.narrow(1, 1, 1)?.contiguous().reshape(&[n_faces])?;
-    let v2z = v2.narrow(1, 2, 1)?.contiguous().reshape(&[n_faces])?;
+    let v0x = v0.narrow(1, 0, 1)?.contiguous()?.reshape(&[n_faces])?;
+    let v0y = v0.narrow(1, 1, 1)?.contiguous()?.reshape(&[n_faces])?;
+    let v0z = v0.narrow(1, 2, 1)?.contiguous()?.reshape(&[n_faces])?;
+    let v1x = v1.narrow(1, 0, 1)?.contiguous()?.reshape(&[n_faces])?;
+    let v1y = v1.narrow(1, 1, 1)?.contiguous()?.reshape(&[n_faces])?;
+    let v1z = v1.narrow(1, 2, 1)?.contiguous()?.reshape(&[n_faces])?;
+    let v2x = v2.narrow(1, 0, 1)?.contiguous()?.reshape(&[n_faces])?;
+    let v2y = v2.narrow(1, 1, 1)?.contiguous()?.reshape(&[n_faces])?;
+    let v2z = v2.narrow(1, 2, 1)?.contiguous()?.reshape(&[n_faces])?;
 
     // v1 × v2
     let cx = client.sub(&client.mul(&v1y, &v2z)?, &client.mul(&v1z, &v2y)?)?;
@@ -725,12 +734,12 @@ where
     let e1 = client.sub(&v1, &v0)?;
     let e2 = client.sub(&v2, &v0)?;
 
-    let e1x = e1.narrow(1, 0, 1)?.contiguous().reshape(&[n_faces])?;
-    let e1y = e1.narrow(1, 1, 1)?.contiguous().reshape(&[n_faces])?;
-    let e1z = e1.narrow(1, 2, 1)?.contiguous().reshape(&[n_faces])?;
-    let e2x = e2.narrow(1, 0, 1)?.contiguous().reshape(&[n_faces])?;
-    let e2y = e2.narrow(1, 1, 1)?.contiguous().reshape(&[n_faces])?;
-    let e2z = e2.narrow(1, 2, 1)?.contiguous().reshape(&[n_faces])?;
+    let e1x = e1.narrow(1, 0, 1)?.contiguous()?.reshape(&[n_faces])?;
+    let e1y = e1.narrow(1, 1, 1)?.contiguous()?.reshape(&[n_faces])?;
+    let e1z = e1.narrow(1, 2, 1)?.contiguous()?.reshape(&[n_faces])?;
+    let e2x = e2.narrow(1, 0, 1)?.contiguous()?.reshape(&[n_faces])?;
+    let e2y = e2.narrow(1, 1, 1)?.contiguous()?.reshape(&[n_faces])?;
+    let e2z = e2.narrow(1, 2, 1)?.contiguous()?.reshape(&[n_faces])?;
 
     let ax = client.sub(&client.mul(&e1y, &e2z)?, &client.mul(&e1z, &e2y)?)?;
     let ay = client.sub(&client.mul(&e1z, &e2x)?, &client.mul(&e1x, &e2z)?)?;
@@ -810,49 +819,49 @@ where
     // Extract coordinates
     let x1 = hull_coords
         .narrow(1, 0, 1)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[n_hull])?;
     let y1 = hull_coords
         .narrow(1, 1, 1)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[n_hull])?;
     let x2 = hull_coords_shifted
         .narrow(1, 0, 1)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[n_hull])?;
     let y2 = hull_coords_shifted
         .narrow(1, 1, 1)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[n_hull])?;
 
-    let px = points.narrow(1, 0, 1)?.contiguous().reshape(&[n_test])?;
-    let py = points.narrow(1, 1, 1)?.contiguous().reshape(&[n_test])?;
+    let px = points.narrow(1, 0, 1)?.contiguous()?.reshape(&[n_test])?;
+    let py = points.narrow(1, 1, 1)?.contiguous()?.reshape(&[n_test])?;
 
     // Broadcast for pairwise computation
     let px_exp = px
         .unsqueeze(1)?
         .broadcast_to(&[n_test, n_hull])?
-        .contiguous();
+        .contiguous()?;
     let py_exp = py
         .unsqueeze(1)?
         .broadcast_to(&[n_test, n_hull])?
-        .contiguous();
+        .contiguous()?;
     let x1_exp = x1
         .unsqueeze(0)?
         .broadcast_to(&[n_test, n_hull])?
-        .contiguous();
+        .contiguous()?;
     let y1_exp = y1
         .unsqueeze(0)?
         .broadcast_to(&[n_test, n_hull])?
-        .contiguous();
+        .contiguous()?;
     let x2_exp = x2
         .unsqueeze(0)?
         .broadcast_to(&[n_test, n_hull])?
-        .contiguous();
+        .contiguous()?;
     let y2_exp = y2
         .unsqueeze(0)?
         .broadcast_to(&[n_test, n_hull])?
-        .contiguous();
+        .contiguous()?;
 
     // Cross products
     let dx = client.sub(&x2_exp, &x1_exp)?;
@@ -898,17 +907,17 @@ where
     let v0_idx = hull
         .simplices
         .narrow(1, 0, 1)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[n_faces])?;
     let v1_idx = hull
         .simplices
         .narrow(1, 1, 1)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[n_faces])?;
     let v2_idx = hull
         .simplices
         .narrow(1, 2, 1)?
-        .contiguous()
+        .contiguous()?
         .reshape(&[n_faces])?;
 
     // Get vertex coordinates
@@ -920,65 +929,65 @@ where
     let e1 = client.sub(&v1, &v0)?;
     let e2 = client.sub(&v2, &v0)?;
 
-    let e1x = e1.narrow(1, 0, 1)?.contiguous().reshape(&[n_faces])?;
-    let e1y = e1.narrow(1, 1, 1)?.contiguous().reshape(&[n_faces])?;
-    let e1z = e1.narrow(1, 2, 1)?.contiguous().reshape(&[n_faces])?;
-    let e2x = e2.narrow(1, 0, 1)?.contiguous().reshape(&[n_faces])?;
-    let e2y = e2.narrow(1, 1, 1)?.contiguous().reshape(&[n_faces])?;
-    let e2z = e2.narrow(1, 2, 1)?.contiguous().reshape(&[n_faces])?;
+    let e1x = e1.narrow(1, 0, 1)?.contiguous()?.reshape(&[n_faces])?;
+    let e1y = e1.narrow(1, 1, 1)?.contiguous()?.reshape(&[n_faces])?;
+    let e1z = e1.narrow(1, 2, 1)?.contiguous()?.reshape(&[n_faces])?;
+    let e2x = e2.narrow(1, 0, 1)?.contiguous()?.reshape(&[n_faces])?;
+    let e2y = e2.narrow(1, 1, 1)?.contiguous()?.reshape(&[n_faces])?;
+    let e2z = e2.narrow(1, 2, 1)?.contiguous()?.reshape(&[n_faces])?;
 
     let nx = client.sub(&client.mul(&e1y, &e2z)?, &client.mul(&e1z, &e2y)?)?;
     let ny = client.sub(&client.mul(&e1z, &e2x)?, &client.mul(&e1x, &e2z)?)?;
     let nz = client.sub(&client.mul(&e1x, &e2y)?, &client.mul(&e1y, &e2x)?)?;
 
     // Test point coordinates
-    let test_x = points.narrow(1, 0, 1)?.contiguous().reshape(&[n_test])?;
-    let test_y = points.narrow(1, 1, 1)?.contiguous().reshape(&[n_test])?;
-    let test_z = points.narrow(1, 2, 1)?.contiguous().reshape(&[n_test])?;
+    let test_x = points.narrow(1, 0, 1)?.contiguous()?.reshape(&[n_test])?;
+    let test_y = points.narrow(1, 1, 1)?.contiguous()?.reshape(&[n_test])?;
+    let test_z = points.narrow(1, 2, 1)?.contiguous()?.reshape(&[n_test])?;
 
-    let v0x = v0.narrow(1, 0, 1)?.contiguous().reshape(&[n_faces])?;
-    let v0y = v0.narrow(1, 1, 1)?.contiguous().reshape(&[n_faces])?;
-    let v0z = v0.narrow(1, 2, 1)?.contiguous().reshape(&[n_faces])?;
+    let v0x = v0.narrow(1, 0, 1)?.contiguous()?.reshape(&[n_faces])?;
+    let v0y = v0.narrow(1, 1, 1)?.contiguous()?.reshape(&[n_faces])?;
+    let v0z = v0.narrow(1, 2, 1)?.contiguous()?.reshape(&[n_faces])?;
 
     // Broadcast for pairwise computation
     let test_x_exp = test_x
         .unsqueeze(1)?
         .broadcast_to(&[n_test, n_faces])?
-        .contiguous();
+        .contiguous()?;
     let test_y_exp = test_y
         .unsqueeze(1)?
         .broadcast_to(&[n_test, n_faces])?
-        .contiguous();
+        .contiguous()?;
     let test_z_exp = test_z
         .unsqueeze(1)?
         .broadcast_to(&[n_test, n_faces])?
-        .contiguous();
+        .contiguous()?;
 
     let v0x_exp = v0x
         .unsqueeze(0)?
         .broadcast_to(&[n_test, n_faces])?
-        .contiguous();
+        .contiguous()?;
     let v0y_exp = v0y
         .unsqueeze(0)?
         .broadcast_to(&[n_test, n_faces])?
-        .contiguous();
+        .contiguous()?;
     let v0z_exp = v0z
         .unsqueeze(0)?
         .broadcast_to(&[n_test, n_faces])?
-        .contiguous();
+        .contiguous()?;
 
     let nx_exp = nx
         .unsqueeze(0)?
         .broadcast_to(&[n_test, n_faces])?
-        .contiguous();
+        .contiguous()?;
     let ny_exp = ny
         .unsqueeze(0)?
         .broadcast_to(&[n_test, n_faces])?
-        .contiguous();
+        .contiguous()?;
     let nz_exp = nz
         .unsqueeze(0)?
         .broadcast_to(&[n_test, n_faces])?
-        .contiguous();
+        .contiguous()?;
 
     // Compute (point - v0)
     let dx = client.sub(&test_x_exp, &v0x_exp)?;
