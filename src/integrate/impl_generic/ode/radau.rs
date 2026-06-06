@@ -22,6 +22,10 @@ use numr::tensor::Tensor;
 use super::direct_solver::DirectSparseSolver;
 #[cfg(feature = "sparse")]
 use super::sparse_utils::{create_direct_solver, solve_sparse_system};
+#[cfg(feature = "sparse")]
+use super::sparsity_detection::detect_jacobian_sparsity;
+#[cfg(feature = "sparse")]
+use numr::sparse::CsrData;
 
 use crate::integrate::error::{IntegrateError, IntegrateResult};
 use crate::integrate::impl_generic::ode::{
@@ -139,6 +143,33 @@ where
     #[cfg(feature = "sparse")]
     let mut direct_solver = create_direct_solver(&radau_options.sparse_jacobian, n);
 
+    // Auto-detect sparsity pattern if sparse mode is enabled but no pattern was supplied.
+    //
+    // One-time setup: two Jacobian evaluations + one host transfer of the n×n mask.
+    #[cfg(feature = "sparse")]
+    let detected_pattern: Option<CsrData<R>> = if radau_options.sparse_jacobian.enabled
+        && radau_options.sparse_jacobian.pattern.is_none()
+    {
+        let t_init = Tensor::<R>::from_slice(&[t_start], &[1], device);
+        match detect_jacobian_sparsity(client, &f, &t_init, y0) {
+            Ok(pat) => Some(pat),
+            Err(e) => {
+                let _ = e; // detection failure is non-fatal; fall back to full conversion
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    // Resolve the effective sparsity pattern: prefer user-supplied, then auto-detected.
+    #[cfg(feature = "sparse")]
+    let effective_pattern: Option<&CsrData<R>> = radau_options
+        .sparse_jacobian
+        .pattern
+        .as_ref()
+        .or(detected_pattern.as_ref());
+
     // Main loop
     while t_val < t_end {
         if naccept + nreject >= options.max_steps {
@@ -185,6 +216,8 @@ where
             radau_options,
             #[cfg(feature = "sparse")]
             &mut direct_solver,
+            #[cfg(feature = "sparse")]
+            effective_pattern,
         )?;
         nfev += newton_iters;
 
@@ -272,6 +305,7 @@ fn solve_radau_stages<R, C, F>(
     jacobian: &Tensor<R>,
     options: &RadauOptions<R>,
     #[cfg(feature = "sparse")] direct_solver: &mut Option<DirectSparseSolver<R>>,
+    #[cfg(feature = "sparse")] pattern: Option<&CsrData<R>>,
 ) -> IntegrateResult<(Tensor<R>, Tensor<R>, Tensor<R>, bool, usize)>
 where
     R: Runtime<DType = DType>,
@@ -354,6 +388,8 @@ where
             &options.sparse_jacobian,
             #[cfg(feature = "sparse")]
             direct_solver,
+            #[cfg(feature = "sparse")]
+            pattern,
         )?;
         let dk2 = solve_linear(
             client,
@@ -362,6 +398,8 @@ where
             &options.sparse_jacobian,
             #[cfg(feature = "sparse")]
             direct_solver,
+            #[cfg(feature = "sparse")]
+            pattern,
         )?;
         let dk3 = solve_linear(
             client,
@@ -370,6 +408,8 @@ where
             &options.sparse_jacobian,
             #[cfg(feature = "sparse")]
             direct_solver,
+            #[cfg(feature = "sparse")]
+            pattern,
         )?;
 
         // Update stages
@@ -433,6 +473,8 @@ fn solve_linear<R, C>(
     b: &Tensor<R>,
     sparse_config: &crate::integrate::ode::SparseJacobianConfig<R>,
     direct_solver: &mut Option<DirectSparseSolver<R>>,
+    // Effective sparsity pattern: user-supplied or auto-detected.
+    pattern: Option<&CsrData<R>>,
 ) -> Result<Tensor<R>>
 where
     R: Runtime<DType = DType>,
@@ -446,14 +488,14 @@ where
         return x_col.reshape(&[n]);
     }
 
-    // Sparse path - use pattern if available for Radau
+    // Sparse path — use auto-detected or user-supplied pattern.
     solve_sparse_system(
         client,
         m_dense,
         b,
         sparse_config,
         direct_solver,
-        sparse_config.pattern.as_ref(),
+        pattern,
         "Radau",
     )
 }

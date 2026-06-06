@@ -35,6 +35,10 @@ use numr::tensor::Tensor;
 use super::direct_solver::DirectSparseSolver;
 #[cfg(feature = "sparse")]
 use super::sparse_utils::{create_direct_solver, solve_sparse_system};
+#[cfg(feature = "sparse")]
+use super::sparsity_detection::detect_jacobian_sparsity;
+#[cfg(feature = "sparse")]
+use numr::sparse::CsrData;
 
 use crate::integrate::error::{IntegrateError, IntegrateResult};
 use crate::integrate::impl_generic::ode::{
@@ -140,6 +144,37 @@ where
     #[cfg(feature = "sparse")]
     let mut direct_solver = create_direct_solver(&bdf_options.sparse_jacobian, n);
 
+    // Auto-detect sparsity pattern if sparse mode is enabled but no pattern was supplied.
+    //
+    // This is a one-time setup cost (two Jacobian evaluations + one host transfer of
+    // the n×n boolean mask).  The detected pattern is used for every subsequent
+    // dense→CSR conversion, avoiding repeated threshold scans.
+    #[cfg(feature = "sparse")]
+    let detected_pattern: Option<CsrData<R>> =
+        if bdf_options.sparse_jacobian.enabled && bdf_options.sparse_jacobian.pattern.is_none() {
+            let t_init = Tensor::<R>::from_slice(&[t_start], &[1], device);
+            match detect_jacobian_sparsity(client, &f, &t_init, y0) {
+                Ok(pat) => Some(pat),
+                Err(e) => {
+                    // Detection failure is non-fatal: fall back to full dense→CSR conversion.
+                    // This matches behaviour when no pattern was supplied.
+                    let _ = e; // suppress unused-variable warning; error is intentionally ignored
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
+    // Resolve the effective sparsity pattern: prefer the one supplied by the user,
+    // then the auto-detected one, then None (which forces full dense→CSR each step).
+    #[cfg(feature = "sparse")]
+    let effective_pattern: Option<&CsrData<R>> = bdf_options
+        .sparse_jacobian
+        .pattern
+        .as_ref()
+        .or(detected_pattern.as_ref());
+
     // Main integration loop
     while t_val < t_end {
         if naccept + nreject >= options.max_steps {
@@ -193,6 +228,8 @@ where
             bdf_options,
             #[cfg(feature = "sparse")]
             &mut direct_solver,
+            #[cfg(feature = "sparse")]
+            effective_pattern,
         )?;
         nfev += newton_iters;
 
@@ -328,6 +365,7 @@ fn newton_iteration<R, C, F>(
     jacobian: &Tensor<R>,
     options: &BDFOptions<R>,
     #[cfg(feature = "sparse")] direct_solver: &mut Option<DirectSparseSolver<R>>,
+    #[cfg(feature = "sparse")] pattern: Option<&CsrData<R>>,
 ) -> IntegrateResult<(Tensor<R>, bool, usize)>
 where
     R: Runtime<DType = DType>,
@@ -402,6 +440,8 @@ where
             &options.sparse_jacobian,
             #[cfg(feature = "sparse")]
             direct_solver,
+            #[cfg(feature = "sparse")]
+            pattern,
         )
         .map_err(to_integrate_err)?;
         let delta = delta_col.reshape(&[n]).map_err(to_integrate_err)?;
@@ -458,6 +498,8 @@ fn solve_bdf_linear<R, C>(
     b: &Tensor<R>,
     sparse_config: &crate::integrate::ode::SparseJacobianConfig<R>,
     direct_solver: &mut Option<DirectSparseSolver<R>>,
+    // Effective sparsity pattern: user-supplied or auto-detected.
+    pattern: Option<&CsrData<R>>,
 ) -> Result<Tensor<R>>
 where
     R: Runtime<DType = DType>,
@@ -473,7 +515,7 @@ where
         b,
         sparse_config,
         direct_solver,
-        None,
+        pattern,
         "BDF",
     )
 }

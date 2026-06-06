@@ -57,9 +57,19 @@ pub struct SparseJacobianConfig<R: Runtime<DType = DType>> {
     /// Sparsity pattern of the Jacobian (optional).
     ///
     /// If provided, the dense Jacobian will be converted to CSR format using
-    /// this pattern. If None, full dense matrix is used (defeats the purpose).
+    /// this pattern.
     ///
-    /// **Note**: Automatic sparsity detection is not yet implemented.
+    /// If `None` and `enabled` is `true`, the BDF and Radau solvers automatically
+    /// detect the sparsity pattern at solver setup time by evaluating the Jacobian
+    /// at two nearby points (initial state and a small perturbation) and
+    /// thresholding absolute values above `1e-14`.  This one-time detection cost
+    /// (two Jacobian evaluations + one host transfer of the `n×n` mask) is
+    /// amortised over all subsequent Newton steps, which then operate entirely on
+    /// device using the cached CSR pattern.
+    ///
+    /// Supply an explicit pattern when you know the structure a priori (e.g., from
+    /// PDE stencils) to skip detection entirely.
+    ///
     /// **Note**: Only available with the `sparse` feature.
     #[cfg(feature = "sparse")]
     pub pattern: Option<CsrData<R>>,

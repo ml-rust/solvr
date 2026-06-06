@@ -357,7 +357,19 @@ where
         dense_to_csr_full(client, m_dense)?
     };
 
-    solve_with_gmres(client, &m_sparse, b, sparse_config, solver_name)
+    // GMRES requires a 1-D right-hand side.  The BDF/Radau Newton loops reshape
+    // the residual to [n, 1] before calling here (so that the dense `client.solve`
+    // path works), so we squeeze a trailing size-1 dimension if present.
+    let b_1d = if b.shape().len() == 2 && b.shape()[1] == 1 {
+        let n = b.shape()[0];
+        b.reshape(&[n]).map_err(|e| {
+            numr::error::Error::Internal(format!("Failed to reshape RHS to 1D: {}", e))
+        })?
+    } else {
+        b.clone()
+    };
+
+    solve_with_gmres(client, &m_sparse, &b_1d, sparse_config, solver_name)
 }
 
 /// Create a DirectSparseSolver based on configuration and problem size.

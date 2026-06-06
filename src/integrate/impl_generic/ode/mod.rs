@@ -25,6 +25,8 @@ mod rk45;
 #[cfg(feature = "sparse")]
 mod sparse_utils;
 #[cfg(feature = "sparse")]
+pub(crate) mod sparsity_detection;
+#[cfg(feature = "sparse")]
 pub(crate) mod symbolic_analysis;
 
 #[cfg(feature = "sparse")]
@@ -33,8 +35,10 @@ pub use direct_solver::DirectSparseSolver;
 pub use direct_solver_config::{DirectSolverConfig, SparseSolverStrategy};
 #[cfg(feature = "sparse")]
 pub use sparse_utils::SparseJacobianCache;
+#[cfg(feature = "sparse")]
+pub use sparsity_detection::{detect_jacobian_sparsity, sparsity_ratio};
 mod step_control;
-mod stiff_client;
+pub(crate) mod stiff_client;
 mod symplectic;
 
 pub use bdf::bdf_impl;
