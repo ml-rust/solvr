@@ -61,6 +61,7 @@ coverage/
 
 # Resources (reference materials, not for version control)
 resources/
+/releases/
 
 # Node modules (if using any JS tooling)
 node_modules/
@@ -84,3 +85,5 @@ build/
 *.bak
 *.backup
 *~
+
+.claude
