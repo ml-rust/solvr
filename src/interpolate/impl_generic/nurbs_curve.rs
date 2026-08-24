@@ -148,7 +148,7 @@ where
         // For simplicity, compute numerically via finite differences on the first derivative
         let device = client.device();
         let h = 1e-7;
-        let h_tensor = Tensor::full_scalar(&[m], DType::F64, h, device);
+        let h_tensor = Tensor::full_scalar(&[m], DType::F64, h, device)?;
         let t_plus = client.add(t, &h_tensor)?;
         let t_minus = client.sub(t, &h_tensor)?;
 
@@ -256,9 +256,9 @@ mod tests {
     fn test_nurbs_uniform_weights_equals_bspline() {
         let (device, client) = setup();
         // With uniform weights, NURBS should equal B-spline
-        let cp = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[2, 2], &device);
-        let weights = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device);
-        let knots = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[4], &device);
+        let cp = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[2, 2], &device).unwrap();
+        let weights = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device).unwrap();
+        let knots = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[4], &device).unwrap();
 
         let nurbs = NurbsCurve {
             control_points: cp.clone(),
@@ -272,7 +272,8 @@ mod tests {
             degree: 1,
         };
 
-        let t = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.25, 0.5, 0.75, 1.0], &[5], &device);
+        let t =
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.25, 0.5, 0.75, 1.0], &[5], &device).unwrap();
         let nurbs_result = nurbs_curve_evaluate_impl(&client, &nurbs, &t).unwrap();
         let bspline_result = bspline_curve_evaluate_impl(&client, &bspline, &t).unwrap();
 
@@ -288,11 +289,13 @@ mod tests {
         let (device, client) = setup();
         // Quarter circle: 3 control points with weight sqrt(2)/2 for middle
         let cp =
-            Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0, 1.0, 1.0, 0.0, 1.0], &[3, 2], &device);
+            Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0, 1.0, 1.0, 0.0, 1.0], &[3, 2], &device)
+                .unwrap();
         let w = std::f64::consts::FRAC_1_SQRT_2;
-        let weights = Tensor::<CpuRuntime>::from_slice(&[1.0, w, 1.0], &[3], &device);
+        let weights = Tensor::<CpuRuntime>::from_slice(&[1.0, w, 1.0], &[3], &device).unwrap();
         let knots =
-            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 0.0, 1.0, 1.0, 1.0], &[6], &device);
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 0.0, 1.0, 1.0, 1.0], &[6], &device)
+                .unwrap();
 
         let nurbs = NurbsCurve {
             control_points: cp,
@@ -302,7 +305,8 @@ mod tests {
         };
 
         // Points on the circle should have |p| = 1
-        let t = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.25, 0.5, 0.75, 1.0], &[5], &device);
+        let t =
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.25, 0.5, 0.75, 1.0], &[5], &device).unwrap();
         let result = nurbs_curve_evaluate_impl(&client, &nurbs, &t).unwrap();
         let vals: Vec<f64> = result.to_vec();
 
@@ -324,9 +328,9 @@ mod tests {
     #[test]
     fn test_nurbs_derivative_linear() {
         let (device, client) = setup();
-        let cp = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 2.0, 4.0], &[2, 2], &device);
-        let weights = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device);
-        let knots = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[4], &device);
+        let cp = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 2.0, 4.0], &[2, 2], &device).unwrap();
+        let weights = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device).unwrap();
+        let knots = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[4], &device).unwrap();
 
         let nurbs = NurbsCurve {
             control_points: cp,
@@ -335,7 +339,7 @@ mod tests {
             degree: 1,
         };
 
-        let t = Tensor::<CpuRuntime>::from_slice(&[0.25, 0.75], &[2], &device);
+        let t = Tensor::<CpuRuntime>::from_slice(&[0.25, 0.75], &[2], &device).unwrap();
         let deriv = nurbs_curve_derivative_impl(&client, &nurbs, &t, 1).unwrap();
         let vals: Vec<f64> = deriv.to_vec();
         // With uniform weights, derivative = (P1-P0) / (t_end - t_start) * degree... = (2,4)

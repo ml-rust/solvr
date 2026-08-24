@@ -190,7 +190,7 @@ impl<R: Runtime<DType = DType>> CwtResult<R> {
 
         let shape = self.coeffs_real.shape().to_vec();
         let device = self.coeffs_real.device();
-        Ok(Tensor::from_slice(&mag, &shape, device))
+        Tensor::from_slice(&mag, &shape, device)
     }
 
     /// Get phase of CWT coefficients.
@@ -206,6 +206,6 @@ impl<R: Runtime<DType = DType>> CwtResult<R> {
 
         let shape = self.coeffs_real.shape().to_vec();
         let device = self.coeffs_real.device();
-        Ok(Tensor::from_slice(&phase, &shape, device))
+        Tensor::from_slice(&phase, &shape, device)
     }
 }

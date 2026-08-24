@@ -154,8 +154,8 @@ where
     let num_selected_size: usize = blocks.iter().filter(|b| b.2).map(|b| b.1).sum();
 
     let device = t.device();
-    let t_out = Tensor::from_slice(&t_data, &[n, n], device);
-    let z_out = Tensor::from_slice(&z_data, &[n, n], device);
+    let t_out = Tensor::from_slice(&t_data, &[n, n], device)?;
+    let z_out = Tensor::from_slice(&z_data, &[n, n], device)?;
 
     Ok(OrderedSchur {
         z: z_out,
@@ -648,10 +648,10 @@ where
     let device = s.device();
 
     Ok(OrderedQZ {
-        q: Tensor::from_slice(&q_data, &[n, n], device),
-        z: Tensor::from_slice(&z_data, &[n, n], device),
-        s: Tensor::from_slice(&s_data, &[n, n], device),
-        t: Tensor::from_slice(&t_data, &[n, n], device),
+        q: Tensor::from_slice(&q_data, &[n, n], device)?,
+        z: Tensor::from_slice(&z_data, &[n, n], device)?,
+        s: Tensor::from_slice(&s_data, &[n, n], device)?,
+        t: Tensor::from_slice(&t_data, &[n, n], device)?,
         num_selected,
     })
 }

@@ -45,7 +45,8 @@ mod tests {
             ],
             &[8, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         let options = MeanShiftOptions {
             bandwidth: Some(2.0),

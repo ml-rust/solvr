@@ -106,7 +106,7 @@ where
 
     // Initialize
     let mut t_val = t_start;
-    let mut t = Tensor::<R>::from_slice(&[t_val], &[1], device);
+    let mut t = Tensor::<R>::from_slice(&[t_val], &[1], device)?;
     let mut y = y0.clone();
 
     // History buffers
@@ -220,7 +220,7 @@ where
         if error_val <= 1.0 {
             // Accept
             t_val += h;
-            t = Tensor::<R>::from_slice(&[t_val], &[1], device);
+            t = Tensor::<R>::from_slice(&[t_val], &[1], device)?;
             y = y_new;
 
             // Update history
@@ -274,7 +274,7 @@ where
         }
 
         // Step size control
-        let error_tensor = Tensor::<R>::from_slice(&[error_val], &[1], device);
+        let error_tensor = Tensor::<R>::from_slice(&[error_val], &[1], device)?;
         let factor =
             compute_step_factor(client, &error_tensor, order, SAFETY, MIN_FACTOR, MAX_FACTOR)
                 .map_err(to_integrate_err)?;
@@ -331,7 +331,7 @@ where
     }
 
     // Evaluate at predicted point using primal evaluation
-    let t_new = Tensor::<R>::from_slice(&[t + h], &[1], device);
+    let t_new = Tensor::<R>::from_slice(&[t + h], &[1], device)?;
     let f_pred = eval_primal(client, f, &t_new, &y_pred).map_err(to_integrate_err)?;
 
     // Corrector (Adams-Moulton)
@@ -415,7 +415,7 @@ where
         .map_err(to_integrate_err)?;
 
     // Newton iteration
-    let t_new = Tensor::<R>::from_slice(&[t + h], &[1], device);
+    let t_new = Tensor::<R>::from_slice(&[t + h], &[1], device)?;
     let mut y_iter = y.clone();
     let mut nfev = 0;
     let max_iter = 10;
@@ -518,7 +518,7 @@ mod tests {
         let (device, client) = setup();
 
         // Non-stiff: dy/dt = -y using dual operations
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
 
         let result = lsoda_impl(
             &client,
@@ -548,7 +548,7 @@ mod tests {
         let (device, client) = setup();
 
         // Stiff: dy/dt = -1000*y using dual operations
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
 
         let result = lsoda_impl(
             &client,

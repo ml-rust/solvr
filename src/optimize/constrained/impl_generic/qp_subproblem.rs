@@ -258,11 +258,15 @@ where
             active_set[idx] = true;
         } else {
             // All constraints satisfied -> done
-            let lambda_ineq = Tensor::<R>::from_slice(&lambda_ineq_vals, &[m_ineq], d.device());
+            let device = d.device().clone();
             return Ok(QpSubproblemResult {
                 d,
                 lambda_eq: lambda_eq_out,
-                lambda_ineq: Some(lambda_ineq),
+                lambda_ineq: Some(Tensor::<R>::from_slice(
+                    &lambda_ineq_vals,
+                    &[m_ineq],
+                    &device,
+                )?),
             });
         }
     }

@@ -57,11 +57,11 @@ where
 
     // Initial indices tensor [0, 1, 2, ..., n_points-1]
     let all_indices: Vec<i64> = (0..n_points as i64).collect();
-    let initial_indices = Tensor::<R>::from_slice(&all_indices, &[n_points], device);
+    let initial_indices = Tensor::<R>::from_slice(&all_indices, &[n_points], device)?;
 
     // For small point sets, just create a single leaf node
     if n_points <= options.leaf_size {
-        let empty_internal = Tensor::<R>::zeros(&[0], dtype, device);
+        let empty_internal = Tensor::<R>::zeros(&[0], dtype, device)?;
 
         return Ok(KDTree {
             data: points.clone(),
@@ -70,8 +70,8 @@ where
             left_children: empty_internal.clone(),
             right_children: empty_internal,
             point_indices: initial_indices,
-            leaf_starts: Tensor::<R>::from_slice(&[0i64], &[1], device),
-            leaf_sizes: Tensor::<R>::from_slice(&[n_points as i64], &[1], device),
+            leaf_starts: Tensor::<R>::from_slice(&[0i64], &[1], device)?,
+            leaf_sizes: Tensor::<R>::from_slice(&[n_points as i64], &[1], device)?,
             options,
         });
     }
@@ -110,17 +110,17 @@ where
 
     Ok(KDTree {
         data: points.clone(),
-        split_dims: Tensor::<R>::from_slice(&split_dims_vec, &[n_nodes], device),
-        split_values: Tensor::<R>::from_slice(&split_values_vec, &[n_nodes], device),
-        left_children: Tensor::<R>::from_slice(&left_children_vec, &[n_nodes], device),
-        right_children: Tensor::<R>::from_slice(&right_children_vec, &[n_nodes], device),
+        split_dims: Tensor::<R>::from_slice(&split_dims_vec, &[n_nodes], device)?,
+        split_values: Tensor::<R>::from_slice(&split_values_vec, &[n_nodes], device)?,
+        left_children: Tensor::<R>::from_slice(&left_children_vec, &[n_nodes], device)?,
+        right_children: Tensor::<R>::from_slice(&right_children_vec, &[n_nodes], device)?,
         point_indices: Tensor::<R>::from_slice(
             &point_indices_ordered,
             &[point_indices_ordered.len()],
             device,
-        ),
-        leaf_starts: Tensor::<R>::from_slice(&leaf_starts_vec, &[n_leaves], device),
-        leaf_sizes: Tensor::<R>::from_slice(&leaf_sizes_vec, &[n_leaves], device),
+        )?,
+        leaf_starts: Tensor::<R>::from_slice(&leaf_starts_vec, &[n_leaves], device)?,
+        leaf_sizes: Tensor::<R>::from_slice(&leaf_sizes_vec, &[n_leaves], device)?,
         options,
     })
 }
@@ -199,7 +199,7 @@ where
 
     // Find median value - get the middle element
     let mid = n / 2;
-    let mid_idx = Tensor::<R>::from_slice(&[mid as i64], &[1], device);
+    let mid_idx = Tensor::<R>::from_slice(&[mid as i64], &[1], device)?;
     let median_pos = client.index_select(&sorted_order, 0, &mid_idx)?;
     let median_value_tensor = client.index_select(&split_col, 0, &median_pos)?;
 
@@ -325,7 +325,7 @@ where
     let all_distances = client.cdist(query, &tree.data, tree.options.metric)?;
 
     // Create mask for distances within radius
-    let threshold = Tensor::<R>::full_scalar(&[], dtype, radius, device);
+    let threshold = Tensor::<R>::full_scalar(&[], dtype, radius, device)?;
     let within_radius_raw = client.le(&all_distances, &threshold)?; // [n_queries, n_points]
     // Cast to U8 for boolean mask (comparison ops may return same dtype as input)
     let within_radius = client.cast(&within_radius_raw, DType::U8)?;
@@ -336,7 +336,7 @@ where
     let counts = client.cast(&counts_f, DType::I64)?;
 
     // Compute offsets using cumsum (stays on device)
-    let zero = Tensor::<R>::zeros(&[1], DType::I64, device);
+    let zero = Tensor::<R>::zeros(&[1], DType::I64, device)?;
     let cumsum = client.cumsum(&counts, 0)?; // [n_queries]
 
     // Concatenate zero with cumsum to get offsets [0, c0, c0+c1, ...]
@@ -352,7 +352,7 @@ where
     // Create point index tensor [0,1,2,...,n_points-1] repeated for each query
     // Shape: [n_queries, n_points] where each row is [0, 1, 2, ..., n_points-1]
     let point_indices_row: Vec<i64> = (0..n_points as i64).collect();
-    let point_indices_1d = Tensor::<R>::from_slice(&point_indices_row, &[n_points], device);
+    let point_indices_1d = Tensor::<R>::from_slice(&point_indices_row, &[n_points], device)?;
     let point_indices_2d = point_indices_1d
         .unsqueeze(0)?
         .broadcast_to(&[n_queries, n_points])?
@@ -365,12 +365,12 @@ where
     // Handle empty results
     let total_neighbors = result_distances.shape()[0];
     let final_distances = if total_neighbors == 0 {
-        Tensor::<R>::zeros(&[1], dtype, device)
+        Tensor::<R>::zeros(&[1], dtype, device)?
     } else {
         result_distances
     };
     let final_indices = if total_neighbors == 0 {
-        Tensor::<R>::zeros(&[1], DType::I64, device)
+        Tensor::<R>::zeros(&[1], DType::I64, device)?
     } else {
         result_indices
     };

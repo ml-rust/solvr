@@ -332,7 +332,7 @@ impl<R: Runtime<DType = DType>> CsdResult<R> {
             .collect();
 
         let device = self.pxy_real.device();
-        Ok(Tensor::from_slice(&mag, &[n], device))
+        Tensor::from_slice(&mag, &[n], device)
     }
 
     /// Get phase of cross spectral density in radians.
@@ -348,7 +348,7 @@ impl<R: Runtime<DType = DType>> CsdResult<R> {
             .collect();
 
         let device = self.pxy_real.device();
-        Ok(Tensor::from_slice(&phase, &[n], device))
+        Tensor::from_slice(&phase, &[n], device)
     }
 }
 

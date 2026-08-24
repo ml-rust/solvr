@@ -40,7 +40,7 @@ where
     }
 
     // Convert real to complex (imaginary part = 0)
-    let zeros = Tensor::zeros(x.shape(), x.dtype(), device);
+    let zeros = Tensor::zeros(x.shape(), x.dtype(), device)?;
     let x_complex = client.make_complex(x, &zeros)?;
 
     // Compute FFT via numr
@@ -66,7 +66,7 @@ where
     }
     // Negative frequencies (h_data[half+1..]) stay at 0
 
-    let h = Tensor::from_slice(&h_data, &[n], device);
+    let h = Tensor::from_slice(&h_data, &[n], device)?;
 
     // Multiply FFT by H
     // Need to handle Complex * Real: extract real/imag, multiply, recombine

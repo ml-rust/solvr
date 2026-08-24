@@ -47,7 +47,8 @@ mod tests {
             ],
             &[8, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         let options = SpectralOptions {
             n_clusters: 2,

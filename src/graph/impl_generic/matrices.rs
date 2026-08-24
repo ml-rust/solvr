@@ -73,10 +73,10 @@ where
         }
 
         // Convert to CSR
-        let row_ptrs_tensor = Tensor::<R>::from_slice(&lap_row_ptrs, &[n + 1], &device);
+        let row_ptrs_tensor = Tensor::<R>::from_slice(&lap_row_ptrs, &[n + 1], &device)?;
         let col_indices_tensor =
-            Tensor::<R>::from_slice(&lap_col_indices, &[lap_col_indices.len()], &device);
-        let values_tensor = Tensor::<R>::from_slice(&lap_values, &[lap_values.len()], &device);
+            Tensor::<R>::from_slice(&lap_col_indices, &[lap_col_indices.len()], &device)?;
+        let values_tensor = Tensor::<R>::from_slice(&lap_values, &[lap_values.len()], &device)?;
 
         let csr =
             numr::sparse::CsrData::new(row_ptrs_tensor, col_indices_tensor, values_tensor, [n, n])?;

@@ -54,8 +54,8 @@ mod tests {
         let device = CpuDevice::new();
         let client = CpuClient::new(device.clone());
 
-        let lower = Tensor::<CpuRuntime>::from_slice(&[-5.0, -5.0], &[2], &device);
-        let upper = Tensor::<CpuRuntime>::from_slice(&[5.0, 5.0], &[2], &device);
+        let lower = Tensor::<CpuRuntime>::from_slice(&[-5.0, -5.0], &[2], &device).unwrap();
+        let upper = Tensor::<CpuRuntime>::from_slice(&[5.0, 5.0], &[2], &device).unwrap();
 
         let opts = GlobalOptions {
             seed: Some(42),

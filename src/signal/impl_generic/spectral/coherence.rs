@@ -72,7 +72,7 @@ where
     }
 
     // Generate window tensor
-    let window = generate_window(&params.window, nperseg, &params.device);
+    let window = generate_window(&params.window, nperseg, &params.device)?;
 
     // Extract overlapping segments as 2D tensors [num_segments, nperseg]
     let x_segments = extract_segments_impl(client, x, nperseg, noverlap)?;
@@ -139,8 +139,8 @@ where
     let cxy = client.div(&pxy_mag_sq, &pxx_pyy_safe)?;
 
     // Clamp to [0, 1] range
-    let zeros = Tensor::zeros(cxy.shape(), cxy.dtype(), &params.device);
-    let ones = Tensor::ones(cxy.shape(), cxy.dtype(), &params.device);
+    let zeros = Tensor::zeros(cxy.shape(), cxy.dtype(), &params.device)?;
+    let ones = Tensor::ones(cxy.shape(), cxy.dtype(), &params.device)?;
     let cxy_clamped = client.maximum(&zeros, &cxy)?;
     let cxy_final = client.minimum(&ones, &cxy_clamped)?;
 

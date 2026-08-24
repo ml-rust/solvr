@@ -35,7 +35,7 @@ where
                 });
             }
         };
-        return Ok(Tensor::<R>::from_slice(&[] as &[f64], &[0], &device));
+        return Tensor::<R>::from_slice(&[] as &[f64], &[0], &device);
     }
 
     // Initialize x = 1/sqrt(n) for all nodes
@@ -50,7 +50,7 @@ where
         }
     };
 
-    let mut x = Tensor::<R>::from_slice(&vec![init_val; n], &[n], &device);
+    let mut x = Tensor::<R>::from_slice(&vec![init_val; n], &[n], &device)?;
 
     for _ in 0..options.max_iter {
         // x_new = A * x

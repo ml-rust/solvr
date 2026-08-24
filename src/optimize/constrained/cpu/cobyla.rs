@@ -35,7 +35,7 @@ mod tests {
     fn test_cobyla_unconstrained() {
         let device = CpuDevice::new();
         let client = CpuClient::new(device.clone());
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[2.0, 3.0], &[2], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[2.0, 3.0], &[2], &device).unwrap();
 
         let result = client
             .cobyla(
@@ -64,9 +64,9 @@ mod tests {
     fn test_cobyla_with_bounds() {
         let device = CpuDevice::new();
         let client = CpuClient::new(device.clone());
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[5.0, 5.0], &[2], &device);
-        let lower = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device);
-        let upper = Tensor::<CpuRuntime>::from_slice(&[10.0, 10.0], &[2], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[5.0, 5.0], &[2], &device).unwrap();
+        let lower = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device).unwrap();
+        let upper = Tensor::<CpuRuntime>::from_slice(&[10.0, 10.0], &[2], &device).unwrap();
 
         let result = client
             .cobyla(

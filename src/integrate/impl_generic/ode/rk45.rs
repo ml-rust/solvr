@@ -110,7 +110,7 @@ where
     let max_step = options.max_step.unwrap_or(t_end - t_start);
 
     // Initialize - all tensors stay on device
-    let mut t = Tensor::<R>::from_slice(&[t_start], &[1], device);
+    let mut t = Tensor::<R>::from_slice(&[t_start], &[1], device)?;
     let mut y = y0.clone();
     let mut k1 = f(&t, &y).map_err(|e| IntegrateError::InvalidInput {
         context: format!("RHS function error: {}", e),
@@ -118,7 +118,7 @@ where
 
     // Compute initial step size (device-resident)
     let mut h = match options.h0 {
-        Some(h0) => Tensor::<R>::from_slice(&[h0], &[1], device),
+        Some(h0) => Tensor::<R>::from_slice(&[h0], &[1], device)?,
         None => compute_initial_step(client, &f, &t, &y, &k1, 4, options.rtol, options.atol)
             .map_err(|e| IntegrateError::InvalidInput {
                 context: format!("Initial step computation error: {}", e),
@@ -126,12 +126,12 @@ where
     };
 
     // Clamp h to [min_step, max_step] on device
-    let min_h = Tensor::<R>::from_slice(&[min_step], &[1], device);
-    let max_h = Tensor::<R>::from_slice(&[max_step], &[1], device);
+    let min_h = Tensor::<R>::from_slice(&[min_step], &[1], device)?;
+    let max_h = Tensor::<R>::from_slice(&[max_step], &[1], device)?;
     h = client.minimum(&client.maximum(&h, &min_h)?, &max_h)?;
 
     // t_end tensor for comparison
-    let t_end_tensor = Tensor::<R>::from_slice(&[t_end], &[1], device);
+    let t_end_tensor = Tensor::<R>::from_slice(&[t_end], &[1], device)?;
 
     // Storage for results
     let mut t_values = vec![t_start];
@@ -309,7 +309,7 @@ where
 {
     let n_steps = t_values.len();
 
-    let t_tensor = Tensor::<R>::from_slice(t_values, &[n_steps], client.device());
+    let t_tensor = Tensor::<R>::from_slice(t_values, &[n_steps], client.device())?;
 
     let y_refs: Vec<&Tensor<R>> = y_values.iter().collect();
     let y_tensor = client
@@ -383,7 +383,7 @@ where
     // Initialize
     let mut t_val = t_start;
     let mut y = y0.clone();
-    let t_tensor = Tensor::<R>::from_slice(&[t_start], &[1], device);
+    let t_tensor = Tensor::<R>::from_slice(&[t_start], &[1], device)?;
     let mut k1 = f(&t_tensor, &y).map_err(to_integrate_err)?;
 
     // Compute initial step size
@@ -449,8 +449,8 @@ where
         h = h.min(t_end - t_val);
 
         // Create time tensor for this step
-        let t = Tensor::<R>::from_slice(&[t_val], &[1], device);
-        let h_tensor = Tensor::<R>::from_slice(&[h], &[1], device);
+        let t = Tensor::<R>::from_slice(&[t_val], &[1], device)?;
+        let h_tensor = Tensor::<R>::from_slice(&[h], &[1], device)?;
 
         // RK45 stages (same as before)
         let h_a21 = client.mul_scalar(&h_tensor, A21)?;
@@ -486,7 +486,7 @@ where
         )?;
         let y_stage = client.add(&y, &sum_k)?;
         let t_new_val = t_val + h;
-        let t_new = Tensor::<R>::from_slice(&[t_new_val], &[1], device);
+        let t_new = Tensor::<R>::from_slice(&[t_new_val], &[1], device)?;
         let k6 = f(&t_new, &y_stage).map_err(to_integrate_err)?;
 
         // 5th order solution
@@ -619,7 +619,7 @@ mod tests {
         let (device, client) = setup();
 
         // dy/dt = -y, y(0) = 1, solution: y(t) = exp(-t)
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
 
         let result = rk45_impl(
             &client,
@@ -649,7 +649,7 @@ mod tests {
         let (device, client) = setup();
 
         // y'' + y = 0 as system: y1' = y2, y2' = -y1
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0], &[2], &device);
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0], &[2], &device).unwrap();
 
         let opts = ODEOptions::with_tolerances(1e-6, 1e-8);
 
@@ -658,11 +658,7 @@ mod tests {
             |_t, y| {
                 // For harmonic oscillator: dy1/dt = y2, dy2/dt = -y1
                 let y_data: Vec<f64> = y.to_vec();
-                Ok(Tensor::<CpuRuntime>::from_slice(
-                    &[y_data[1], -y_data[0]],
-                    &[2],
-                    &device,
-                ))
+                Tensor::<CpuRuntime>::from_slice(&[y_data[1], -y_data[0]], &[2], &device)
             },
             [0.0, 2.0 * std::f64::consts::PI],
             &y0,
@@ -682,7 +678,7 @@ mod tests {
         let (device, client) = setup();
 
         // dy/dt = 3t^2, y(0) = 0, solution: y(t) = t^3
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device);
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device).unwrap();
 
         let result = rk45_impl(
             &client,

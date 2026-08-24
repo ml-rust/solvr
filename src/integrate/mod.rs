@@ -55,8 +55,8 @@
 //! # let device = CpuDevice::new();
 //! # let client = CpuClient::new(device.clone());
 //! // Tensor-based integration
-//! # let x = Tensor::from_slice(&[0.0, 0.5, 1.0], &[3], &device);
-//! # let y = Tensor::from_slice(&[0.0, 0.25, 1.0], &[3], &device);
+//! # let x = Tensor::from_slice(&[0.0, 0.5, 1.0], &[3], &device)?;
+//! # let y = Tensor::from_slice(&[0.0, 0.25, 1.0], &[3], &device)?;
 //! let result = client.trapezoid(&y, &x)?;
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```

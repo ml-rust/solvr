@@ -102,7 +102,7 @@ where
 
     // Take square root
     let result: Vec<f64> = dist_sq.iter().map(|&d| d.sqrt()).collect();
-    Ok(Tensor::from_slice(&result, &shape, device))
+    Tensor::from_slice(&result, &shape, device)
 }
 
 /// 1D squared distance transform using parabola envelope (Felzenszwalb & Huttenlocher).
@@ -216,10 +216,10 @@ where
     let large = (total + 1) as f64;
 
     // Build foreground mask: nonzero => true
-    let zero_tensor = Tensor::from_slice(&vec![0.0; total], &shape, input.device());
+    let zero_tensor = Tensor::from_slice(&vec![0.0; total], &shape, input.device())?;
     let fg_mask = client.ne(input, &zero_tensor)?;
-    let zero = Tensor::from_slice(&vec![0.0; total], &shape, input.device());
-    let large_tensor = Tensor::from_slice(&vec![large; total], &shape, input.device());
+    let zero = Tensor::from_slice(&vec![0.0; total], &shape, input.device())?;
+    let large_tensor = Tensor::from_slice(&vec![large; total], &shape, input.device())?;
 
     // Initialize: foreground = 0, background = large
     let mut dist = client.where_cond(&fg_mask, &zero, &large_tensor)?;

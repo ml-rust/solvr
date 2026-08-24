@@ -237,11 +237,11 @@ impl ContinuousDistribution for StudentT {
         let nu_plus_x_sq = client.add_scalar(&x_sq, self.nu)?;
 
         // t = ν / (ν + x²)
-        let nu_tensor = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.nu, client.device());
+        let nu_tensor = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.nu, client.device())?;
         let t = client.div(&nu_tensor, &nu_plus_x_sq)?;
 
-        let a = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.nu / 2.0, client.device());
-        let b = Tensor::<R>::full_scalar(x.shape(), x.dtype(), 0.5, client.device());
+        let a = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.nu / 2.0, client.device())?;
+        let b = Tensor::<R>::full_scalar(x.shape(), x.dtype(), 0.5, client.device())?;
         let betainc_val = client.betainc(&a, &b, &t)?;
 
         // For positive x: 1 - 0.5 * betainc_val
@@ -293,8 +293,8 @@ impl ContinuousDistribution for StudentT {
         // For p > 0.5: x = √(ν * (1/I⁻¹ - 1)) where I⁻¹ = betaincinv(ν/2, 1/2, 2*(1-p))
         // For p <= 0.5: x = -√(ν * (1/I⁻¹ - 1)) where I⁻¹ = betaincinv(ν/2, 1/2, 2*p)
 
-        let a = Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.nu / 2.0, client.device());
-        let b = Tensor::<R>::full_scalar(p.shape(), p.dtype(), 0.5, client.device());
+        let a = Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.nu / 2.0, client.device())?;
+        let b = Tensor::<R>::full_scalar(p.shape(), p.dtype(), 0.5, client.device())?;
 
         // q = 2 * min(p, 1-p) = 2 * |p - 0.5| for the symmetric case
         // Use: q = 2*(1-p) when p > 0.5, else q = 2*p
@@ -309,7 +309,7 @@ impl ContinuousDistribution for StudentT {
         let t = client.betaincinv(&a, &b, &q_adjusted)?;
 
         // x = sign(p - 0.5) * √(ν * (1/t - 1))
-        let one_tensor = Tensor::<R>::full_scalar(p.shape(), p.dtype(), 1.0, client.device());
+        let one_tensor = Tensor::<R>::full_scalar(p.shape(), p.dtype(), 1.0, client.device())?;
         let inv_t = client.div(&one_tensor, &t)?;
         let inv_t_minus_1 = client.sub_scalar(&inv_t, 1.0)?;
         let nu_term = client.mul_scalar(&inv_t_minus_1, self.nu)?;

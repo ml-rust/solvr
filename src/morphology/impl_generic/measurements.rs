@@ -69,7 +69,7 @@ where
     let dtype = input.dtype();
 
     // Build foreground mask on-device
-    let zero_tensor = Tensor::from_slice(&vec![0.0; total], &shape, device);
+    let zero_tensor = Tensor::from_slice(&vec![0.0; total], &shape, device)?;
     let fg_mask = client.ne(input, &zero_tensor)?;
 
     // Assign sequential 1-based IDs to all pixels: 1, 2, 3, ...
@@ -77,7 +77,7 @@ where
     let ids = ids.reshape(&shape)?;
 
     let inf_val = (total + 1) as f64;
-    let inf_tensor = Tensor::from_slice(&vec![inf_val; total], &shape, device);
+    let inf_tensor = Tensor::from_slice(&vec![inf_val; total], &shape, device)?;
 
     // Initialize: foreground gets sequential IDs, background gets INF
     let mut labels = client.where_cond(&fg_mask, &ids, &inf_tensor)?;
@@ -167,7 +167,7 @@ where
         }
     }
 
-    let tensor = Tensor::from_slice(&result, &shape, device);
+    let tensor = Tensor::from_slice(&result, &shape, device)?;
     let tensor = client.cast(&tensor, dtype)?;
     Ok((tensor, num_labels))
 }
@@ -246,7 +246,7 @@ where
     let indices = client.cast(&indices, DType::I64)?;
 
     // Destination: zeros of shape [num_labels]
-    let dst = Tensor::from_slice(&vec![0.0; num_labels], &[num_labels], device);
+    let dst = Tensor::from_slice(&vec![0.0; num_labels], &[num_labels], device)?;
 
     let result =
         client.scatter_reduce(&dst, 0, &indices, &flat_input, ScatterReduceOp::Sum, true)?;
@@ -274,7 +274,7 @@ where
     let indices = client.add_scalar(&flat_labels, -1.0)?;
     let indices = client.cast(&indices, DType::I64)?;
 
-    let dst = Tensor::from_slice(&vec![0.0; num_labels], &[num_labels], device);
+    let dst = Tensor::from_slice(&vec![0.0; num_labels], &[num_labels], device)?;
 
     let result =
         client.scatter_reduce(&dst, 0, &indices, &flat_input, ScatterReduceOp::Mean, true)?;
@@ -317,7 +317,7 @@ where
     let indices = client.cast(&indices, DType::I64)?;
 
     // Compute total weight per label
-    let dst_zeros = Tensor::from_slice(&vec![0.0; num_labels], &[num_labels], device);
+    let dst_zeros = Tensor::from_slice(&vec![0.0; num_labels], &[num_labels], device)?;
     let total_weights = client.scatter_reduce(
         &dst_zeros,
         0,
@@ -362,10 +362,10 @@ where
         // center = weighted_sum / total_weight (0 where weight is 0)
         let zero_mask = client.eq(
             &total_weights,
-            &Tensor::from_slice(&vec![0.0; num_labels], &[num_labels], device),
+            &Tensor::from_slice(&vec![0.0; num_labels], &[num_labels], device)?,
         )?;
         let center = client.div(&weighted_sum, &total_weights)?;
-        let zero_tensor = Tensor::from_slice(&vec![0.0; num_labels], &[num_labels], device);
+        let zero_tensor = Tensor::from_slice(&vec![0.0; num_labels], &[num_labels], device)?;
         let center = client.where_cond(&zero_mask, &zero_tensor, &center)?;
 
         results.push(center);

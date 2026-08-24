@@ -30,7 +30,7 @@ where
                 });
             }
         };
-        return Ok(Tensor::<R>::from_slice(&vec![0.0f64; n], &[n], &device));
+        return Tensor::<R>::from_slice(&vec![0.0f64; n], &[n], &device);
     }
 
     // degrees = A * ones (row sums)
@@ -44,7 +44,7 @@ where
         }
     };
 
-    let ones = Tensor::<R>::from_slice(&vec![1.0f64; n], &[n], &device);
+    let ones = Tensor::<R>::from_slice(&vec![1.0f64; n], &[n], &device)?;
     let degrees = client.spmv(&graph.adjacency, &ones)?;
 
     // centrality = degrees / (n - 1)

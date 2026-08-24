@@ -97,7 +97,7 @@ mod tests {
 
         let wavelet = Wavelet::new(WaveletFamily::Haar);
         let signal = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0];
-        let x = Tensor::from_slice(&signal, &[signal.len()], &device);
+        let x = Tensor::from_slice(&signal, &[signal.len()], &device).unwrap();
 
         let result = client.dwt(&x, &wavelet, ExtensionMode::Symmetric).unwrap();
 
@@ -119,7 +119,7 @@ mod tests {
 
         let wavelet = Wavelet::new(WaveletFamily::Haar);
         let signal = vec![1.0, 4.0, 3.0, 5.0, 8.0, 2.0, 7.0, 6.0];
-        let x = Tensor::from_slice(&signal, &[signal.len()], &device);
+        let x = Tensor::from_slice(&signal, &[signal.len()], &device).unwrap();
 
         let dwt_result = client.dwt(&x, &wavelet, ExtensionMode::Symmetric).unwrap();
         let reconstructed = client
@@ -148,7 +148,7 @@ mod tests {
 
         let wavelet = Wavelet::new(WaveletFamily::Daubechies(2));
         let signal: Vec<f64> = (0..32).map(|i| (i as f64 * 0.2).sin()).collect();
-        let x = Tensor::from_slice(&signal, &[signal.len()], &device);
+        let x = Tensor::from_slice(&signal, &[signal.len()], &device).unwrap();
 
         let result = client.dwt(&x, &wavelet, ExtensionMode::Symmetric).unwrap();
 
@@ -165,7 +165,7 @@ mod tests {
 
         let wavelet = Wavelet::new(WaveletFamily::Haar);
         let signal: Vec<f64> = (0..64).map(|i| (i as f64 * 0.1).sin()).collect();
-        let x = Tensor::from_slice(&signal, &[signal.len()], &device);
+        let x = Tensor::from_slice(&signal, &[signal.len()], &device).unwrap();
 
         let result = client
             .wavedec(&x, &wavelet, ExtensionMode::Symmetric, 3)
@@ -194,7 +194,7 @@ mod tests {
 
         let wavelet = Wavelet::new(WaveletFamily::Haar);
         let signal: Vec<f64> = (0..32).map(|i| (i as f64 * 0.2).sin()).collect();
-        let x = Tensor::from_slice(&signal, &[signal.len()], &device);
+        let x = Tensor::from_slice(&signal, &[signal.len()], &device).unwrap();
 
         let decomp = client
             .wavedec(&x, &wavelet, ExtensionMode::Symmetric, 2)
@@ -226,7 +226,7 @@ mod tests {
         let image: Vec<f64> = vec![
             1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
         ];
-        let x = Tensor::from_slice(&image, &[4, 4], &device);
+        let x = Tensor::from_slice(&image, &[4, 4], &device).unwrap();
 
         let result = client.dwt2(&x, &wavelet, ExtensionMode::Symmetric).unwrap();
 
@@ -259,11 +259,11 @@ mod tests {
                 (-t * t / 2.0).exp() // Gaussian pulse
             })
             .collect();
-        let x = Tensor::from_slice(&signal, &[n], &device);
+        let x = Tensor::from_slice(&signal, &[n], &device).unwrap();
 
         // Multiple scales
         let scales_data: Vec<f64> = (1..10).map(|i| i as f64 * 2.0).collect();
-        let scales = Tensor::from_slice(&scales_data, &[scales_data.len()], &device);
+        let scales = Tensor::from_slice(&scales_data, &[scales_data.len()], &device).unwrap();
 
         let result = client.cwt(&x, &scales, &wavelet).unwrap();
 
@@ -304,7 +304,7 @@ mod tests {
         let (client, device) = setup();
 
         let signal: Vec<f64> = (0..64).map(|i| (i as f64 * 0.1).sin()).collect();
-        let x = Tensor::from_slice(&signal, &[signal.len()], &device);
+        let x = Tensor::from_slice(&signal, &[signal.len()], &device).unwrap();
 
         // Test various wavelet families
         let wavelets = vec![

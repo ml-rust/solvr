@@ -49,7 +49,8 @@ mod tests {
             &[0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0],
             &[4, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         let tri = client.delaunay(&points).unwrap();
 
@@ -66,12 +67,13 @@ mod tests {
             &[0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0],
             &[4, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         let tri = client.delaunay(&points).unwrap();
 
         // Query point inside the triangulation
-        let query = Tensor::<CpuRuntime>::from_slice(&[0.5, 0.5], &[1, 2], &device);
+        let query = Tensor::<CpuRuntime>::from_slice(&[0.5, 0.5], &[1, 2], &device).unwrap();
 
         let result = client.delaunay_find_simplex(&tri, &query).unwrap();
         let indices: Vec<i64> = result.to_vec();
@@ -88,7 +90,8 @@ mod tests {
             &[0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0],
             &[4, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         let tri = client.delaunay(&points).unwrap();
         let (_indices, indptr) = client.delaunay_vertex_neighbors(&tri).unwrap();
@@ -109,7 +112,8 @@ mod tests {
 
         // Triangle
         let points =
-            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 0.0, 0.5, 1.0], &[3, 2], &device);
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 0.0, 0.5, 1.0], &[3, 2], &device)
+                .unwrap();
 
         let tri = client.delaunay(&points).unwrap();
 

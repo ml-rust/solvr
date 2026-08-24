@@ -64,10 +64,10 @@ where
     }
 
     Ok(AnalogPrototype::new(
-        Tensor::zeros(&[0], numr::dtype::DType::F64, device),
-        Tensor::zeros(&[0], numr::dtype::DType::F64, device),
-        Tensor::from_slice(&poles_re, &[n], device),
-        Tensor::from_slice(&poles_im, &[n], device),
+        Tensor::zeros(&[0], numr::dtype::DType::F64, device)?,
+        Tensor::zeros(&[0], numr::dtype::DType::F64, device)?,
+        Tensor::from_slice(&poles_re, &[n], device)?,
+        Tensor::from_slice(&poles_im, &[n], device)?,
         1.0,
     ))
 }
@@ -167,10 +167,10 @@ where
     let gain = g / (1.0 + eps * eps).sqrt();
 
     Ok(AnalogPrototype::new(
-        Tensor::zeros(&[0], numr::dtype::DType::F64, device),
-        Tensor::zeros(&[0], numr::dtype::DType::F64, device),
-        Tensor::from_slice(&poles_re, &[n], device),
-        Tensor::from_slice(&poles_im, &[n], device),
+        Tensor::zeros(&[0], numr::dtype::DType::F64, device)?,
+        Tensor::zeros(&[0], numr::dtype::DType::F64, device)?,
+        Tensor::from_slice(&poles_re, &[n], device)?,
+        Tensor::from_slice(&poles_im, &[n], device)?,
         gain,
     ))
 }
@@ -279,10 +279,10 @@ where
     let gain = den_prod / num_prod / (10.0_f64.powf(rs / 20.0));
 
     Ok(AnalogPrototype::new(
-        Tensor::from_slice(&zeros_re, &[zeros_re.len()], device),
-        Tensor::from_slice(&zeros_im, &[zeros_im.len()], device),
-        Tensor::from_slice(&poles_re, &[n], device),
-        Tensor::from_slice(&poles_im, &[n], device),
+        Tensor::from_slice(&zeros_re, &[zeros_re.len()], device)?,
+        Tensor::from_slice(&zeros_im, &[zeros_im.len()], device)?,
+        Tensor::from_slice(&poles_re, &[n], device)?,
+        Tensor::from_slice(&poles_im, &[n], device)?,
         gain,
     ))
 }
@@ -404,10 +404,10 @@ where
     }
 
     Ok(AnalogPrototype::new(
-        Tensor::from_slice(&zeros_re, &[zeros_re.len()], device),
-        Tensor::from_slice(&zeros_im, &[zeros_im.len()], device),
-        Tensor::from_slice(&poles_re, &[n], device),
-        Tensor::from_slice(&poles_im, &[n], device),
+        Tensor::from_slice(&zeros_re, &[zeros_re.len()], device)?,
+        Tensor::from_slice(&zeros_im, &[zeros_im.len()], device)?,
+        Tensor::from_slice(&poles_re, &[n], device)?,
+        Tensor::from_slice(&poles_im, &[n], device)?,
         gain,
     ))
 }
@@ -541,10 +541,10 @@ where
     }
 
     Ok(AnalogPrototype::new(
-        Tensor::zeros(&[0], numr::dtype::DType::F64, device),
-        Tensor::zeros(&[0], numr::dtype::DType::F64, device),
-        Tensor::from_slice(&scaled_poles_re, &[n], device),
-        Tensor::from_slice(&scaled_poles_im, &[n], device),
+        Tensor::zeros(&[0], numr::dtype::DType::F64, device)?,
+        Tensor::zeros(&[0], numr::dtype::DType::F64, device)?,
+        Tensor::from_slice(&scaled_poles_re, &[n], device)?,
+        Tensor::from_slice(&scaled_poles_im, &[n], device)?,
         gain,
     ))
 }

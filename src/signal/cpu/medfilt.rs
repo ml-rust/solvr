@@ -76,7 +76,7 @@ fn medfilt_cpu(x: &Tensor<CpuRuntime>, kernel_size: usize) -> Result<Tensor<CpuR
         result.push(median);
     }
 
-    Ok(Tensor::from_slice(&result, &[n], device))
+    Tensor::from_slice(&result, &[n], device)
 }
 
 /// Apply a 2D median filter to an image (CPU implementation).
@@ -148,7 +148,7 @@ fn medfilt2d_cpu(
         }
     }
 
-    Ok(Tensor::from_slice(&result, &[height, width], device))
+    Tensor::from_slice(&result, &[height, width], device)
 }
 
 /// Compute median of a slice using quickselect algorithm.
@@ -240,7 +240,7 @@ mod tests {
 
         // Signal with an outlier
         let signal = vec![1.0, 1.0, 1.0, 100.0, 1.0, 1.0, 1.0];
-        let x = Tensor::from_slice(&signal, &[signal.len()], &device);
+        let x = Tensor::from_slice(&signal, &[signal.len()], &device).unwrap();
 
         let result = client.medfilt(&x, 3).unwrap();
         let result_data: Vec<f64> = result.to_vec();
@@ -260,7 +260,7 @@ mod tests {
 
         // Signal with spike
         let signal = vec![1.0, 2.0, 3.0, 100.0, 5.0, 6.0, 7.0];
-        let x = Tensor::from_slice(&signal, &[signal.len()], &device);
+        let x = Tensor::from_slice(&signal, &[signal.len()], &device).unwrap();
 
         let result = client.medfilt(&x, 5).unwrap();
         let result_data: Vec<f64> = result.to_vec();
@@ -275,7 +275,7 @@ mod tests {
 
         // Monotonic signal should be mostly preserved
         let signal: Vec<f64> = (0..9).map(|i| i as f64).collect();
-        let x = Tensor::from_slice(&signal, &[signal.len()], &device);
+        let x = Tensor::from_slice(&signal, &[signal.len()], &device).unwrap();
 
         let result = client.medfilt(&x, 3).unwrap();
         let result_data: Vec<f64> = result.to_vec();
@@ -292,7 +292,7 @@ mod tests {
 
         // 3x3 image with center spike
         let image = vec![1.0, 1.0, 1.0, 1.0, 100.0, 1.0, 1.0, 1.0, 1.0];
-        let x = Tensor::from_slice(&image, &[3, 3], &device);
+        let x = Tensor::from_slice(&image, &[3, 3], &device).unwrap();
 
         let result = client.medfilt2d(&x, (3, 3)).unwrap();
         let result_data: Vec<f64> = result.to_vec();
@@ -312,7 +312,7 @@ mod tests {
         }
         image[12] = 100.0; // Add outlier at center
 
-        let x = Tensor::from_slice(&image, &[5, 5], &device);
+        let x = Tensor::from_slice(&image, &[5, 5], &device).unwrap();
 
         let result = client.medfilt2d(&x, (3, 3)).unwrap();
         let result_data: Vec<f64> = result.to_vec();
@@ -327,7 +327,7 @@ mod tests {
 
         // Short signal
         let signal = vec![3.0, 1.0, 2.0];
-        let x = Tensor::from_slice(&signal, &[signal.len()], &device);
+        let x = Tensor::from_slice(&signal, &[signal.len()], &device).unwrap();
 
         let result = client.medfilt(&x, 3).unwrap();
         let result_data: Vec<f64> = result.to_vec();
@@ -341,7 +341,7 @@ mod tests {
         let (client, device) = setup();
 
         let signal = vec![1.0, 2.0, 3.0];
-        let x = Tensor::from_slice(&signal, &[signal.len()], &device);
+        let x = Tensor::from_slice(&signal, &[signal.len()], &device).unwrap();
 
         // Even kernel size should fail
         let result = client.medfilt(&x, 4);

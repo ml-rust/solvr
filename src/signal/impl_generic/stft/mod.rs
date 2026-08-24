@@ -154,7 +154,7 @@ where
                 client.pad(&partial, &[0, pad_amount], 0.0)?
             } else {
                 // No signal left, create zeros
-                Tensor::<R>::zeros(&[n_fft], signal.dtype(), client.device())
+                Tensor::<R>::zeros(&[n_fft], signal.dtype(), client.device())?
             }
         };
 
@@ -218,7 +218,7 @@ where
                 let pad_amount = n_fft - frame_len;
                 client.pad(&partial, &[0, pad_amount], 0.0)?
             } else {
-                Tensor::<R>::zeros(&[batch_size, n_fft], signal.dtype(), client.device())
+                Tensor::<R>::zeros(&[batch_size, n_fft], signal.dtype(), client.device())?
             }
         };
 

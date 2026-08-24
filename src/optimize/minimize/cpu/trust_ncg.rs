@@ -40,7 +40,7 @@ mod tests {
     #[test]
     fn test_trust_ncg_cpu() {
         let (device, client) = setup();
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device).unwrap();
 
         let result = client
             .trust_ncg(

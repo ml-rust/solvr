@@ -55,14 +55,16 @@ mod tests {
         //   x <= 2
         //   y <= 3
         //   x, y >= 0
-        let c = Tensor::<CpuRuntime>::from_slice(&[-1.0, -2.0], &[2], &device);
+        let c = Tensor::<CpuRuntime>::from_slice(&[-1.0, -2.0], &[2], &device).unwrap();
 
         let a_ub =
-            Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0, 1.0, 0.0, 0.0, 1.0], &[3, 2], &device);
-        let b_ub = Tensor::<CpuRuntime>::from_slice(&[4.0, 2.0, 3.0], &[3], &device);
-        let lower = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[2], &device);
+            Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0, 1.0, 0.0, 0.0, 1.0], &[3, 2], &device)
+                .unwrap();
+        let b_ub = Tensor::<CpuRuntime>::from_slice(&[4.0, 2.0, 3.0], &[3], &device).unwrap();
+        let lower = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[2], &device).unwrap();
         let upper =
-            Tensor::<CpuRuntime>::from_slice(&[f64::INFINITY, f64::INFINITY], &[2], &device);
+            Tensor::<CpuRuntime>::from_slice(&[f64::INFINITY, f64::INFINITY], &[2], &device)
+                .unwrap();
 
         let constraints = LinProgTensorConstraints {
             a_ub: Some(a_ub),
@@ -88,13 +90,14 @@ mod tests {
 
         // Minimize x + y
         // Subject to: x + y = 2, x >= 0, y >= 0
-        let c = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device);
+        let c = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device).unwrap();
 
-        let a_eq = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[1, 2], &device);
-        let b_eq = Tensor::<CpuRuntime>::from_slice(&[2.0], &[1], &device);
-        let lower = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[2], &device);
+        let a_eq = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[1, 2], &device).unwrap();
+        let b_eq = Tensor::<CpuRuntime>::from_slice(&[2.0], &[1], &device).unwrap();
+        let lower = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[2], &device).unwrap();
         let upper =
-            Tensor::<CpuRuntime>::from_slice(&[f64::INFINITY, f64::INFINITY], &[2], &device);
+            Tensor::<CpuRuntime>::from_slice(&[f64::INFINITY, f64::INFINITY], &[2], &device)
+                .unwrap();
 
         let constraints = LinProgTensorConstraints {
             a_ub: None,

@@ -64,20 +64,20 @@ where
     let col_idx = client.arange(0.0, n as f64, 1.0, DType::I64)?;
     let col_idx_exp = col_idx.unsqueeze(0)?.broadcast_to(&[n, n])?;
     let is_diag = client.eq(&eye_idx, &col_idx_exp)?;
-    let pref_matrix = Tensor::<R>::full_scalar(&[n, n], dtype, pref, device);
+    let pref_matrix = Tensor::<R>::full_scalar(&[n, n], dtype, pref, device)?;
     let s = client.where_cond(&is_diag, &pref_matrix, similarities)?;
 
     // Initialize responsibility and availability matrices
-    let mut r = Tensor::<R>::zeros(&[n, n], dtype, device);
-    let mut a = Tensor::<R>::zeros(&[n, n], dtype, device);
+    let mut r = Tensor::<R>::zeros(&[n, n], dtype, device)?;
+    let mut a = Tensor::<R>::zeros(&[n, n], dtype, device)?;
 
     let mut n_iter = 0;
     let mut no_change_count = 0;
     let mut prev_exemplar_f: Option<Tensor<R>> = None;
 
-    let damp_t = Tensor::<R>::full_scalar(&[n, n], dtype, damping, device);
-    let one_minus_damp_t = Tensor::<R>::full_scalar(&[n, n], dtype, 1.0 - damping, device);
-    let zeros_nn = Tensor::<R>::zeros(&[n, n], dtype, device);
+    let damp_t = Tensor::<R>::full_scalar(&[n, n], dtype, damping, device)?;
+    let one_minus_damp_t = Tensor::<R>::full_scalar(&[n, n], dtype, 1.0 - damping, device)?;
+    let zeros_nn = Tensor::<R>::zeros(&[n, n], dtype, device)?;
 
     for iter in 0..options.max_iter {
         n_iter = iter + 1;
@@ -141,7 +141,7 @@ where
 
         // Check convergence
         let ar_diag = client.add(&client.gather(&a, 1, &idx_gather)?.reshape(&[n])?, &r_diag)?;
-        let exemplar_mask = client.gt(&ar_diag, &Tensor::<R>::zeros(&[n], dtype, device))?;
+        let exemplar_mask = client.gt(&ar_diag, &Tensor::<R>::zeros(&[n], dtype, device)?)?;
         let exemplar_f = client.cast(&exemplar_mask, dtype)?;
 
         // Convergence: compare exemplar mask with previous via single scalar transfer
@@ -166,9 +166,9 @@ where
     let idx_gather = indices.unsqueeze(1)?;
     let ar_diag = client.add(
         &client.gather(&ar, 1, &idx_gather)?.reshape(&[n])?,
-        &Tensor::<R>::zeros(&[n], dtype, device), // identity add to ensure shape
+        &Tensor::<R>::zeros(&[n], dtype, device)?, // identity add to ensure shape
     )?;
-    let exemplar_mask = client.gt(&ar_diag, &Tensor::<R>::zeros(&[n], dtype, device))?;
+    let exemplar_mask = client.gt(&ar_diag, &Tensor::<R>::zeros(&[n], dtype, device)?)?;
     let all_indices = client.arange(0.0, n as f64, 1.0, DType::I64)?;
     let exemplar_mask_u8 = client.cast(&exemplar_mask, DType::U8)?;
     let cluster_centers_indices = client.masked_select(&all_indices, &exemplar_mask_u8)?;
@@ -176,7 +176,7 @@ where
     let n_clusters = cluster_centers_indices.shape()[0];
 
     if n_clusters == 0 {
-        let labels = Tensor::<R>::full_scalar(&[n], DType::I64, -1.0, device);
+        let labels = Tensor::<R>::full_scalar(&[n], DType::I64, -1.0, device)?;
         return Ok(AffinityPropagationResult {
             labels,
             cluster_centers_indices,

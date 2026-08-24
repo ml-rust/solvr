@@ -90,7 +90,7 @@ where
     C: TensorOps<R> + RuntimeClient<R>,
 {
     let n_steps = params.t_values.len();
-    let t_tensor = Tensor::<R>::from_slice(params.t_values, &[n_steps], client.device());
+    let t_tensor = Tensor::<R>::from_slice(params.t_values, &[n_steps], client.device())?;
     let y_refs: Vec<&Tensor<R>> = params.y_values.iter().collect();
     let y_tensor = client
         .stack(&y_refs, 0)
@@ -206,7 +206,7 @@ impl<R: Runtime<DType = DType>> ODEResultTensor<R> {
 /// # let device = CpuDevice::new();
 /// # let client = CpuClient::new(device.clone());
 /// // Solve dy/dt = -y, y(0) = 1
-/// # let y0 = Tensor::from_slice(&[1.0], &[1], &device);
+/// # let y0 = Tensor::from_slice(&[1.0], &[1], &device)?;
 /// let result = client.solve_ivp(
 ///     |_t, y| Ok(client.mul_scalar(y, -1.0)?),
 ///     [0.0, 5.0],

@@ -41,19 +41,19 @@ where
     let n = data.shape()[0];
     let dtype = data.dtype();
     let device = data.device();
-    let zeros_n = Tensor::<R>::zeros(&[n], dtype, device);
-    let ones_n = Tensor::<R>::ones(&[n], dtype, device);
+    let zeros_n = Tensor::<R>::zeros(&[n], dtype, device)?;
+    let ones_n = Tensor::<R>::ones(&[n], dtype, device)?;
 
     // 1. Compute pairwise distance matrix [n, n]
     let dists = client.cdist(data, data, options.metric)?;
 
     // 2. Neighbor mask: dist <= eps → dtype [n, n] (0.0/1.0)
-    let eps_t = Tensor::<R>::full_scalar(&[n, n], dtype, options.eps, device);
+    let eps_t = Tensor::<R>::full_scalar(&[n, n], dtype, options.eps, device)?;
     let neighbor_mask = client.le(&dists, &eps_t)?; // [n, n] dtype (0/1)
 
     // 3. Core points: sum(neighbor_mask, dim=1) >= min_samples
     let neighbor_counts = client.sum(&neighbor_mask, &[1], false)?; // [n]
-    let min_samples_t = Tensor::<R>::full_scalar(&[n], dtype, options.min_samples as f64, device);
+    let min_samples_t = Tensor::<R>::full_scalar(&[n], dtype, options.min_samples as f64, device)?;
     let is_core = client.ge(&neighbor_counts, &min_samples_t)?; // [n] dtype (0/1)
 
     // 4. Core-reachable adjacency: neighbor_mask AND (either endpoint is core)
@@ -66,14 +66,14 @@ where
     // 5. Label propagation for connected components
     // Use F64 labels (not I64) so to_vec() works correctly
     let mut labels = client.arange(0.0, n as f64, 1.0, dtype)?; // [n] F64
-    let large_val_nn = Tensor::<R>::full_scalar(&[n, n], dtype, (n + 1) as f64, device);
+    let large_val_nn = Tensor::<R>::full_scalar(&[n, n], dtype, (n + 1) as f64, device)?;
 
     for _ in 0..n {
         let labels_row = labels.unsqueeze(0)?.broadcast_to(&[n, n])?;
         // Where not adjacent, use large value; where adjacent, use label
         // not_adj = 1 - adjacency (adjacency is 0/1 dtype)
         let adj_nn = adjacency.broadcast_to(&[n, n])?;
-        let ones_nn = Tensor::<R>::ones(&[n, n], dtype, device);
+        let ones_nn = Tensor::<R>::ones(&[n, n], dtype, device)?;
         let not_adj = client.sub(&ones_nn, &adj_nn)?;
         // masked = not_adj * large + adj * labels_row
         let masked_large = client.mul(&not_adj, &large_val_nn)?;
@@ -114,7 +114,7 @@ where
     let is_noise = client.mul(&not_core, &not_reachable)?; // dtype (0/1)
 
     // Set noise labels to -1.0
-    let neg_one = Tensor::<R>::full_scalar(&[n], dtype, -1.0, device);
+    let neg_one = Tensor::<R>::full_scalar(&[n], dtype, -1.0, device)?;
     // noise_labels = is_noise * (-1) + (1 - is_noise) * labels
     let not_noise = client.sub(&ones_n, &is_noise)?;
     let labels_after_noise = client.add(
@@ -128,7 +128,7 @@ where
     let safe_labels_i64 = client.cast(&safe_labels, DType::I64)?;
 
     // Mark which label values are used by non-noise points via scatter_reduce(Max)
-    let used = Tensor::<R>::zeros(&[1, n], dtype, device);
+    let used = Tensor::<R>::zeros(&[1, n], dtype, device)?;
     let non_noise_2d = client.sub(&ones_n, &is_noise)?.unsqueeze(0)?; // [1, n]
     let used = client
         .scatter_reduce(

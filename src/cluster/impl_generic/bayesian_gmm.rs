@@ -93,20 +93,20 @@ where
     let mean_prior = client.mean(data, &[0], false)?; // [d]
 
     // Initialize posterior parameters
-    let mut nk = Tensor::<R>::full_scalar(&[k], dtype, n as f64 / k as f64, device);
+    let mut nk = Tensor::<R>::full_scalar(&[k], dtype, n as f64 / k as f64, device)?;
     let mut means_post = means;
 
     // beta_k = beta_0 + nk
-    let beta_0_t = Tensor::<R>::full_scalar(&[k], dtype, beta_0, device);
+    let beta_0_t = Tensor::<R>::full_scalar(&[k], dtype, beta_0, device)?;
     let mut beta_k = client.add(&beta_0_t, &nk)?; // [k]
 
     // nu_k = nu_0 + nk
-    let nu_0_t = Tensor::<R>::full_scalar(&[k], dtype, nu_0, device);
+    let nu_0_t = Tensor::<R>::full_scalar(&[k], dtype, nu_0, device)?;
     let mut nu_k = client.add(&nu_0_t, &nk)?; // [k]
 
     // Initialize covariances from data
     let data_var = client.var(data, &[0], false, 1)?; // [d]
-    let reg_t = Tensor::<R>::full_scalar(&[1], dtype, options.reg_covar, device);
+    let reg_t = Tensor::<R>::full_scalar(&[1], dtype, options.reg_covar, device)?;
 
     let mut covariances = match options.covariance_type {
         CovarianceType::Diagonal => {
@@ -121,7 +121,7 @@ where
         CovarianceType::Full => {
             let diag = client.diagflat(&data_var)?;
             let reg_eye = client.mul_scalar(
-                &client.diagflat(&Tensor::<R>::ones(&[d], dtype, device))?,
+                &client.diagflat(&Tensor::<R>::ones(&[d], dtype, device)?)?,
                 options.reg_covar,
             )?;
             let cov = client.add(&diag, &reg_eye)?;
@@ -130,7 +130,7 @@ where
         CovarianceType::Tied => {
             let diag = client.diagflat(&data_var)?;
             let reg_eye = client.mul_scalar(
-                &client.diagflat(&Tensor::<R>::ones(&[d], dtype, device))?,
+                &client.diagflat(&Tensor::<R>::ones(&[d], dtype, device)?)?,
                 options.reg_covar,
             )?;
             client.add(&diag, &reg_eye)?
@@ -141,13 +141,13 @@ where
     let mut weight_concentration = match options.weight_concentration_prior_type {
         WeightConcentrationPrior::DirichletProcess => {
             // Stick-breaking: two parameters per component [2, k]
-            let ones = Tensor::<R>::ones(&[k], dtype, device);
-            let alpha_t = Tensor::<R>::full_scalar(&[k], dtype, alpha_0, device);
+            let ones = Tensor::<R>::ones(&[k], dtype, device)?;
+            let alpha_t = Tensor::<R>::full_scalar(&[k], dtype, alpha_0, device)?;
             client.cat(&[&ones.unsqueeze(0)?, &alpha_t.unsqueeze(0)?], 0)? // [2, k]
         }
         WeightConcentrationPrior::DirichletDistribution => {
             // Single concentration per component [k]
-            Tensor::<R>::full_scalar(&[k], dtype, alpha_0 + n as f64 / k as f64, device)
+            Tensor::<R>::full_scalar(&[k], dtype, alpha_0 + n as f64 / k as f64, device)?
         }
     };
 
@@ -211,7 +211,8 @@ where
 
         // M-step: update posterior parameters
         nk = client.sum(&resp, &[0], false)?; // [k]
-        let nk_safe = client.maximum(&nk, &Tensor::<R>::full_scalar(&[k], dtype, 1e-32, device))?;
+        let nk_safe =
+            client.maximum(&nk, &Tensor::<R>::full_scalar(&[k], dtype, 1e-32, device)?)?;
 
         // Update means
         let resp_t = resp.transpose(0, 1)?;
@@ -386,7 +387,7 @@ where
             let half_nu = client.mul_scalar(nu_k, 0.5)?;
             let log_half_nu = client.log(&half_nu)?;
             let d_log = client.mul_scalar(&log_half_nu, d as f64)?;
-            let neg_det = Tensor::<R>::full_scalar(&[k], dtype, -log_det, device);
+            let neg_det = Tensor::<R>::full_scalar(&[k], dtype, -log_det, device)?;
             client.add(&neg_det, &d_log)
         }
     }
@@ -471,14 +472,14 @@ where
 
     // Add correction term d/beta_k (uncertainty in mean)
     let d_over_beta = client.div_scalar(
-        &Tensor::<R>::full_scalar(&[k], dtype, d as f64, device),
+        &Tensor::<R>::full_scalar(&[k], dtype, d as f64, device)?,
         1.0,
     )?;
     let d_over_beta = client.div(&d_over_beta, beta_k)?; // [k]
     let d_over_beta_exp = d_over_beta.unsqueeze(0)?.broadcast_to(&[n, k])?;
 
     // log_resp = log_weights + 0.5*log_det_precision - 0.5*d*log(2pi) - 0.5*(nu*maha + d/beta)
-    let const_term = Tensor::<R>::full_scalar(&[1], dtype, -0.5 * d as f64 * log_2pi, device);
+    let const_term = Tensor::<R>::full_scalar(&[1], dtype, -0.5 * d as f64 * log_2pi, device)?;
     let half_log_det =
         client.mul_scalar(&log_det_precision.unsqueeze(0)?.broadcast_to(&[n, k])?, 0.5)?;
     let half_maha = client.mul_scalar(&client.add(&weighted_maha, &d_over_beta_exp)?, -0.5)?;
@@ -537,7 +538,7 @@ where
             let prior_term = client.mul(&beta_ratio, &diff_prior_sq)?;
 
             let cov = client.add(&cov_ml, &prior_term)?;
-            let reg_t = Tensor::<R>::full_scalar(&[k, d], dtype, reg, device);
+            let reg_t = Tensor::<R>::full_scalar(&[k, d], dtype, reg, device)?;
             client.add(&cov, &reg_t)
         }
         CovarianceType::Spherical => {
@@ -561,7 +562,7 @@ where
             let prior_term = client.mul(&beta_ratio, &prior_mean)?;
 
             let cov = client.add(&cov_ml, &prior_term)?;
-            let reg_t = Tensor::<R>::full_scalar(&[k], dtype, reg, device);
+            let reg_t = Tensor::<R>::full_scalar(&[k], dtype, reg, device)?;
             client.add(&cov, &reg_t)
         }
         CovarianceType::Full => {
@@ -587,7 +588,7 @@ where
 
                 let cov_j = client.add(&cov_ml, &prior_term)?;
                 let reg_eye = client.mul_scalar(
-                    &client.diagflat(&Tensor::<R>::ones(&[d], dtype, device))?,
+                    &client.diagflat(&Tensor::<R>::ones(&[d], dtype, device)?)?,
                     reg,
                 )?;
                 let cov_j = client.add(&cov_j, &reg_eye)?;
@@ -597,7 +598,7 @@ where
             client.cat(&refs, 0)
         }
         CovarianceType::Tied => {
-            let mut total_cov = Tensor::<R>::zeros(&[d, d], dtype, device);
+            let mut total_cov = Tensor::<R>::zeros(&[d, d], dtype, device)?;
             for j in 0..k {
                 let mean_j = x_bar.narrow(0, j, 1)?;
                 let diff = client.sub(data, &mean_j.broadcast_to(&[n, d])?)?;
@@ -606,13 +607,13 @@ where
                 let cov_j = client.matmul(&weighted.transpose(0, 1)?, &diff)?;
                 total_cov = client.add(&total_cov, &cov_j)?;
             }
-            let n_f = Tensor::<R>::full_scalar(&[d, d], dtype, n as f64, device);
+            let n_f = Tensor::<R>::full_scalar(&[d, d], dtype, n as f64, device)?;
             let cov_ml = client.div(&total_cov, &n_f)?;
 
             // Prior contribution (averaged)
             let m0 = mean_prior.unsqueeze(0)?.broadcast_to(&[k, d])?;
             let diff_prior = client.sub(x_bar, &m0)?; // [k, d]
-            let mut prior_outer = Tensor::<R>::zeros(&[d, d], dtype, device);
+            let mut prior_outer = Tensor::<R>::zeros(&[d, d], dtype, device)?;
             for j in 0..k {
                 let dp_j = diff_prior.narrow(0, j, 1)?; // [1, d]
                 let outer = client.matmul(&dp_j.transpose(0, 1)?, &dp_j)?;
@@ -628,7 +629,7 @@ where
             let cov = client.add(&cov_ml, &prior_avg)?;
 
             let reg_eye = client.mul_scalar(
-                &client.diagflat(&Tensor::<R>::ones(&[d], dtype, device))?,
+                &client.diagflat(&Tensor::<R>::ones(&[d], dtype, device)?)?,
                 reg,
             )?;
             client.add(&cov, &reg_eye)
@@ -655,21 +656,21 @@ where
             // Stick-breaking update:
             // alpha_1[j] = 1 + nk[j]
             // alpha_2[j] = alpha_0 + sum(nk[j+1:])
-            let ones = Tensor::<R>::ones(&[k], dtype, device);
+            let ones = Tensor::<R>::ones(&[k], dtype, device)?;
             let alpha_1 = client.add(&ones, nk)?; // [k]
 
             // Reverse cumsum for alpha_2: sum(nk[j+1:]) = total - cumsum(nk)[j]
             let total_nk = client.sum(nk, &[0], false)?;
             let cum_nk = client.cumsum(nk, 0)?;
             let remaining = client.sub(&total_nk.broadcast_to(&[k])?, &cum_nk)?;
-            let alpha_0_t = Tensor::<R>::full_scalar(&[k], dtype, alpha_0, device);
+            let alpha_0_t = Tensor::<R>::full_scalar(&[k], dtype, alpha_0, device)?;
             let alpha_2 = client.add(&alpha_0_t, &remaining)?; // [k]
 
             client.cat(&[&alpha_1.unsqueeze(0)?, &alpha_2.unsqueeze(0)?], 0) // [2, k]
         }
         WeightConcentrationPrior::DirichletDistribution => {
             // alpha_j = alpha_0 + nk_j
-            let alpha_0_t = Tensor::<R>::full_scalar(&[k], dtype, alpha_0, device);
+            let alpha_0_t = Tensor::<R>::full_scalar(&[k], dtype, alpha_0, device)?;
             client.add(&alpha_0_t, nk)
         }
     }
@@ -698,21 +699,22 @@ where
             let v = client.div(&alpha_1, &sum_alpha)?; // [k]
 
             // log(1 - V_j)
-            let one = Tensor::<R>::ones(&[k], dtype, device);
+            let one = Tensor::<R>::ones(&[k], dtype, device)?;
             let one_minus_v = client.sub(&one, &v)?;
             let log_one_minus_v = client.log(&client.maximum(
                 &one_minus_v,
-                &Tensor::<R>::full_scalar(&[k], dtype, 1e-32, device),
+                &Tensor::<R>::full_scalar(&[k], dtype, 1e-32, device)?,
             )?)?;
 
             // Cumulative sum of log(1-V) shifted right (exclusive prefix sum)
             let cum_log = client.cumsum(&log_one_minus_v, 0)?;
             // Shift right: [0, cum[0], cum[1], ..., cum[k-2]]
-            let zero = Tensor::<R>::zeros(&[1], dtype, device);
+            let zero = Tensor::<R>::zeros(&[1], dtype, device)?;
             let cum_shifted = client.cat(&[&zero, &cum_log.narrow(0, 0, k - 1)?], 0)?;
 
-            let log_v = client
-                .log(&client.maximum(&v, &Tensor::<R>::full_scalar(&[k], dtype, 1e-32, device))?)?;
+            let log_v = client.log(
+                &client.maximum(&v, &Tensor::<R>::full_scalar(&[k], dtype, 1e-32, device)?)?,
+            )?;
             let log_weights = client.add(&log_v, &cum_shifted)?;
             let weights = client.exp(&log_weights)?;
 
@@ -745,11 +747,11 @@ where
 {
     match options.covariance_type {
         CovarianceType::Diagonal => client.div(
-            &Tensor::<R>::ones(&[k, d], dtype, device),
+            &Tensor::<R>::ones(&[k, d], dtype, device)?,
             &client.sqrt(covariances)?,
         ),
         CovarianceType::Spherical => client.div(
-            &Tensor::<R>::ones(&[k], dtype, device),
+            &Tensor::<R>::ones(&[k], dtype, device)?,
             &client.sqrt(covariances)?,
         ),
         CovarianceType::Full => {

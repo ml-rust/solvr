@@ -121,7 +121,7 @@ fn wiener_cpu(
         result.push(filtered);
     }
 
-    Ok(Tensor::from_slice(&result, &[n], device))
+    Tensor::from_slice(&result, &[n], device)
 }
 
 /// Apply a 2D Wiener filter for noise reduction in images (CPU implementation).
@@ -231,7 +231,7 @@ fn wiener2d_cpu(
         result[i] = local_mean + filter_coeff * (data[i] - local_mean);
     }
 
-    Ok(Tensor::from_slice(&result, &[height, width], device))
+    Tensor::from_slice(&result, &[height, width], device)
 }
 
 #[cfg(test)]
@@ -252,7 +252,7 @@ mod tests {
         // Signal with constant value plus noise
         // True signal is 5.0, noise varies around it
         let signal = vec![4.5, 5.5, 4.8, 5.2, 5.0, 4.9, 5.1, 4.7, 5.3, 5.0];
-        let x = Tensor::from_slice(&signal, &[signal.len()], &device);
+        let x = Tensor::from_slice(&signal, &[signal.len()], &device).unwrap();
 
         let result = client.wiener(&x, Some(3), Some(0.05)).unwrap();
         let result_data: Vec<f64> = result.to_vec();
@@ -278,7 +278,7 @@ mod tests {
 
         // Signal with a step edge
         let signal = vec![0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0];
-        let x = Tensor::from_slice(&signal, &[signal.len()], &device);
+        let x = Tensor::from_slice(&signal, &[signal.len()], &device).unwrap();
 
         let result = client.wiener(&x, Some(3), None).unwrap();
         let result_data: Vec<f64> = result.to_vec();
@@ -298,7 +298,7 @@ mod tests {
 
         // Very noisy signal
         let signal = vec![1.0, 10.0, 2.0, 9.0, 3.0, 8.0, 4.0, 7.0];
-        let x = Tensor::from_slice(&signal, &[signal.len()], &device);
+        let x = Tensor::from_slice(&signal, &[signal.len()], &device).unwrap();
 
         // With high noise estimate, filter should smooth heavily
         let result = client.wiener(&x, Some(3), Some(10.0)).unwrap();
@@ -324,7 +324,7 @@ mod tests {
             1.0, 1.0, 1.0, 1.0, 5.0, 1.0, // Center is an outlier
             1.0, 1.0, 1.0,
         ];
-        let x = Tensor::from_slice(&image, &[3, 3], &device);
+        let x = Tensor::from_slice(&image, &[3, 3], &device).unwrap();
 
         let result = client.wiener2d(&x, Some((3, 3)), Some(0.1)).unwrap();
         let result_data: Vec<f64> = result.to_vec();
@@ -345,7 +345,7 @@ mod tests {
             0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0,
             1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
         ];
-        let x = Tensor::from_slice(&image, &[5, 5], &device);
+        let x = Tensor::from_slice(&image, &[5, 5], &device).unwrap();
 
         let result = client.wiener2d(&x, Some((3, 3)), Some(0.01)).unwrap();
         let result_data: Vec<f64> = result.to_vec();
@@ -367,7 +367,7 @@ mod tests {
 
         // Signal with uniform region (for noise estimation)
         let signal = vec![1.0, 1.0, 1.0, 1.0, 5.0, 5.0, 5.0, 5.0];
-        let x = Tensor::from_slice(&signal, &[signal.len()], &device);
+        let x = Tensor::from_slice(&signal, &[signal.len()], &device).unwrap();
 
         // Auto noise estimation (None)
         let result = client.wiener(&x, Some(3), None).unwrap();
@@ -385,7 +385,7 @@ mod tests {
         let (client, device) = setup();
 
         let signal = vec![1.0, 2.0, 3.0];
-        let x = Tensor::from_slice(&signal, &[signal.len()], &device);
+        let x = Tensor::from_slice(&signal, &[signal.len()], &device).unwrap();
 
         // Even kernel size should fail
         let result = client.wiener(&x, Some(4), None);

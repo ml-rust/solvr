@@ -94,8 +94,8 @@ fn impulse_impl(
     let t: Vec<f64> = (0..n).map(|i| i as f64).collect();
 
     Ok(ImpulseResponse {
-        t: Tensor::from_slice(&t, &[n], device),
-        y: Tensor::from_slice(&y, &[n], device),
+        t: Tensor::from_slice(&t, &[n], device)?,
+        y: Tensor::from_slice(&y, &[n], device)?,
     })
 }
 
@@ -148,8 +148,8 @@ fn step_impl(
     let t: Vec<f64> = (0..n).map(|i| i as f64).collect();
 
     Ok(StepResponse {
-        t: Tensor::from_slice(&t, &[n], device),
-        y: Tensor::from_slice(&y, &[n], device),
+        t: Tensor::from_slice(&t, &[n], device)?,
+        y: Tensor::from_slice(&y, &[n], device)?,
     })
 }
 
@@ -200,8 +200,9 @@ mod tests {
 
         // FIR filter: moving average [0.25, 0.25, 0.25, 0.25]
         // Impulse response should be the filter coefficients
-        let b = Tensor::<CpuRuntime>::from_slice(&[0.25f64, 0.25, 0.25, 0.25], &[4], &device);
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
+        let b =
+            Tensor::<CpuRuntime>::from_slice(&[0.25f64, 0.25, 0.25, 0.25], &[4], &device).unwrap();
+        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
         let tf = TransferFunction::new(b, a);
 
         let result = client.impulse(&tf, 6, &device).unwrap();
@@ -223,8 +224,8 @@ mod tests {
         // First-order IIR: y[n] = x[n] + 0.5*y[n-1]
         // H(z) = 1 / (1 - 0.5z^-1)
         // Impulse response: h[n] = 0.5^n
-        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -0.5], &[2], &device);
+        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
+        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -0.5], &[2], &device).unwrap();
         let tf = TransferFunction::new(b, a);
 
         let result = client.impulse(&tf, 5, &device).unwrap();
@@ -243,8 +244,9 @@ mod tests {
 
         // FIR filter: moving average [0.25, 0.25, 0.25, 0.25]
         // Step response: cumulative sum of impulse response
-        let b = Tensor::<CpuRuntime>::from_slice(&[0.25f64, 0.25, 0.25, 0.25], &[4], &device);
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
+        let b =
+            Tensor::<CpuRuntime>::from_slice(&[0.25f64, 0.25, 0.25, 0.25], &[4], &device).unwrap();
+        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
         let tf = TransferFunction::new(b, a);
 
         let result = client.step(&tf, 6, &device).unwrap();
@@ -264,8 +266,8 @@ mod tests {
 
         // First-order IIR: y[n] = x[n] + 0.5*y[n-1]
         // Step response converges to 1 / (1 - 0.5) = 2
-        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -0.5], &[2], &device);
+        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
+        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -0.5], &[2], &device).unwrap();
         let tf = TransferFunction::new(b, a);
 
         let result = client.step(&tf, 20, &device).unwrap();
@@ -284,8 +286,8 @@ mod tests {
     fn test_impulse_time_indices() {
         let (client, device) = setup();
 
-        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
+        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
+        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
         let tf = TransferFunction::new(b, a);
 
         let result = client.impulse(&tf, 5, &device).unwrap();
@@ -300,8 +302,8 @@ mod tests {
 
         // Second-order system: damped oscillation
         // H(z) = 1 / (1 - 1.2z^-1 + 0.5z^-2)
-        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -1.2, 0.5], &[3], &device);
+        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
+        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -1.2, 0.5], &[3], &device).unwrap();
         let tf = TransferFunction::new(b, a);
 
         let result = client.impulse(&tf, 10, &device).unwrap();

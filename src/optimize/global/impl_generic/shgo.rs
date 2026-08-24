@@ -63,7 +63,7 @@ where
     }
 
     let device = client.device();
-    Tensor::try_from_slice(&values, &[dim], device).map_err(|e| OptimizeError::NumericalError {
+    Tensor::from_slice(&values, &[dim], device).map_err(|e| OptimizeError::NumericalError {
         message: format!("halton: create tensor - {}", e),
     })
 }

@@ -129,7 +129,7 @@ impl<R: Runtime<DType = DType>> HilbertResult<R> {
             .collect();
 
         let device = self.real.device();
-        Ok(Tensor::from_slice(&env, &[n], device))
+        Tensor::from_slice(&env, &[n], device)
     }
 
     /// Get instantaneous phase in radians.
@@ -147,7 +147,7 @@ impl<R: Runtime<DType = DType>> HilbertResult<R> {
             .collect();
 
         let device = self.real.device();
-        Ok(Tensor::from_slice(&phase, &[n], device))
+        Tensor::from_slice(&phase, &[n], device)
     }
 
     /// Get instantaneous frequency in radians per sample.
@@ -182,7 +182,7 @@ impl<R: Runtime<DType = DType>> HilbertResult<R> {
         }
 
         let device = self.real.device();
-        Ok(Tensor::from_slice(&freq, &[n], device))
+        Tensor::from_slice(&freq, &[n], device)
     }
 }
 

@@ -54,29 +54,29 @@ where
     let core_distances = if ms <= n {
         sorted_dists.narrow(1, ms, 1)?.contiguous()?.reshape(&[n])? // [n] — ms-th nearest (including self at 0)
     } else {
-        Tensor::<R>::full_scalar(&[n], dtype, inf, device)
+        Tensor::<R>::full_scalar(&[n], dtype, inf, device)?
     };
 
     // 3. Apply max_eps filter: core_distance > max_eps → infinity
-    let max_eps_t = Tensor::<R>::full_scalar(&[n], dtype, options.max_eps, device);
+    let max_eps_t = Tensor::<R>::full_scalar(&[n], dtype, options.max_eps, device)?;
     let exceeds_max = client.gt(&core_distances, &max_eps_t)?;
-    let inf_t = Tensor::<R>::full_scalar(&[n], dtype, inf, device);
+    let inf_t = Tensor::<R>::full_scalar(&[n], dtype, inf, device)?;
     let core_distances = client.where_cond(&exceeds_max, &inf_t, &core_distances)?;
 
     // 4. Sequential ordering
     // reachability[i] = inf initially
     // processed[i] = false
-    let mut reachability = Tensor::<R>::full_scalar(&[n], dtype, inf, device);
-    let mut processed = Tensor::<R>::zeros(&[n], dtype, device); // 0 = unprocessed
-    let ones = Tensor::<R>::ones(&[n], dtype, device);
+    let mut reachability = Tensor::<R>::full_scalar(&[n], dtype, inf, device)?;
+    let mut processed = Tensor::<R>::zeros(&[n], dtype, device)?; // 0 = unprocessed
+    let ones = Tensor::<R>::ones(&[n], dtype, device)?;
 
     let mut ordering_vec = Vec::with_capacity(n);
 
     for _step in 0..n {
         // Pick next point: unprocessed point with smallest reachability
         // For first point, all reachabilities are inf, so pick any unprocessed (first one)
-        let large = Tensor::<R>::full_scalar(&[n], dtype, inf + 1.0, device);
-        let proc_bool = client.gt(&processed, &Tensor::<R>::zeros(&[n], dtype, device))?;
+        let large = Tensor::<R>::full_scalar(&[n], dtype, inf + 1.0, device)?;
+        let proc_bool = client.gt(&processed, &Tensor::<R>::zeros(&[n], dtype, device)?)?;
         let masked_reach = client.where_cond(&proc_bool, &large, &reachability)?;
 
         let current_idx: i64 = client
@@ -86,8 +86,8 @@ where
         ordering_vec.push(current_idx);
 
         // Mark as processed
-        let idx_t = Tensor::<R>::from_slice(&[current_idx], &[1], device);
-        let one_val = Tensor::<R>::ones(&[1], dtype, device);
+        let idx_t = Tensor::<R>::from_slice(&[current_idx], &[1], device)?;
+        let one_val = Tensor::<R>::ones(&[1], dtype, device)?;
         // scatter 1 into processed at current_idx
         let proc_2d = processed.unsqueeze(0)?;
         let idx_2d = idx_t.unsqueeze(0)?;
@@ -122,7 +122,7 @@ where
     }
 
     // Build ordering tensor
-    let ordering = Tensor::<R>::from_slice(&ordering_vec, &[n], device);
+    let ordering = Tensor::<R>::from_slice(&ordering_vec, &[n], device)?;
 
     // Reorder reachability to match ordering
     let reachability_ordered = client.index_select(&reachability, 0, &ordering)?;
@@ -141,7 +141,7 @@ where
         )?
     } else {
         // No cluster extraction, all labels = -1
-        Tensor::<R>::full_scalar(&[n], DType::I64, -1.0, device)
+        Tensor::<R>::full_scalar(&[n], DType::I64, -1.0, device)?
     };
 
     Ok(OpticsResult {
@@ -238,5 +238,5 @@ where
         }
     }
 
-    Ok(Tensor::<R>::from_slice(&labels_vec, &[n], device))
+    Tensor::<R>::from_slice(&labels_vec, &[n], device)
 }

@@ -42,8 +42,8 @@ pub trait DistanceAlgorithms<R: Runtime<DType = DType>> {
     /// # let device = CpuDevice::new();
     /// # let client = CpuClient::new(device.clone());
     /// // Points in 3D space
-    /// # let x = Tensor::from_slice(&[0.0, 0.0, 0.0, 1.0, 1.0, 1.0], &[2, 3], &device);
-    /// # let y = Tensor::from_slice(&[1.0, 0.0, 0.0, 2.0, 2.0, 2.0], &[2, 3], &device);
+    /// # let x = Tensor::from_slice(&[0.0, 0.0, 0.0, 1.0, 1.0, 1.0], &[2, 3], &device)?;
+    /// # let y = Tensor::from_slice(&[1.0, 0.0, 0.0, 2.0, 2.0, 2.0], &[2, 3], &device)?;
     /// let d = client.cdist(&x, &y, DistanceMetric::Euclidean)?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
@@ -77,7 +77,7 @@ pub trait DistanceAlgorithms<R: Runtime<DType = DType>> {
     /// use solvr::spatial::{DistanceMetric, DistanceAlgorithms};
     /// # let device = CpuDevice::new();
     /// # let client = CpuClient::new(device.clone());
-    /// let x = Tensor::from_slice(&[0.0, 0.0, 1.0, 0.0, 0.0, 1.0], &[3, 2], &device);
+    /// let x = Tensor::from_slice(&[0.0, 0.0, 1.0, 0.0, 0.0, 1.0], &[3, 2], &device)?;
     /// let d = client.pdist(&x, DistanceMetric::Euclidean)?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```

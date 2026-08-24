@@ -129,7 +129,7 @@ where
     let device = client.device();
 
     if du > surface.degree_u || dv > surface.degree_v {
-        return Ok(Tensor::zeros(&[m, n_dims], DType::F64, device));
+        return Ok(Tensor::zeros(&[m, n_dims], DType::F64, device)?);
     }
 
     // Differentiate du times in u, dv times in v
@@ -151,17 +151,17 @@ where
         let dt = client.sub(&t_hi, &t_lo)?;
 
         // Safe division
-        let eps = Tensor::full_scalar(&[cur_nu - 1], DType::F64, 1e-300, device);
+        let eps = Tensor::full_scalar(&[cur_nu - 1], DType::F64, 1e-300, device)?;
         let abs_dt = client.abs(&dt)?;
         let dt_safe = client.maximum(&abs_dt, &eps)?;
-        let zero = Tensor::zeros(&[cur_nu - 1], DType::F64, device);
+        let zero = Tensor::zeros(&[cur_nu - 1], DType::F64, device)?;
         let mask = client.gt(&abs_dt, &zero)?;
 
         // scale_factors: [cur_nu-1] → [cur_nu-1, 1, 1] for broadcasting
         let cur_nv = diff_cp.shape()[1];
         let scale = client.mul_scalar(
             &client.mul(
-                &client.div(&Tensor::ones(&[cur_nu - 1], DType::F64, device), &dt_safe)?,
+                &client.div(&Tensor::ones(&[cur_nu - 1], DType::F64, device)?, &dt_safe)?,
                 &mask,
             )?,
             deg_u as f64,
@@ -193,16 +193,16 @@ where
         let t_lo = knots_v.narrow(0, 1, cur_nv - 1)?.contiguous()?;
         let dt = client.sub(&t_hi, &t_lo)?;
 
-        let eps = Tensor::full_scalar(&[cur_nv - 1], DType::F64, 1e-300, device);
+        let eps = Tensor::full_scalar(&[cur_nv - 1], DType::F64, 1e-300, device)?;
         let abs_dt = client.abs(&dt)?;
         let dt_safe = client.maximum(&abs_dt, &eps)?;
-        let zero = Tensor::zeros(&[cur_nv - 1], DType::F64, device);
+        let zero = Tensor::zeros(&[cur_nv - 1], DType::F64, device)?;
         let mask = client.gt(&abs_dt, &zero)?;
 
         let cur_nu_now = diff_cp.shape()[0];
         let scale = client.mul_scalar(
             &client.mul(
-                &client.div(&Tensor::ones(&[cur_nv - 1], DType::F64, device), &dt_safe)?,
+                &client.div(&Tensor::ones(&[cur_nv - 1], DType::F64, device)?, &dt_safe)?,
                 &mask,
             )?,
             deg_v as f64,
@@ -273,9 +273,12 @@ mod tests {
             &[0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0],
             &[2, 2, 3],
             &device,
-        );
-        let knots_u = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[4], &device);
-        let knots_v = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[4], &device);
+        )
+        .unwrap();
+        let knots_u =
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[4], &device).unwrap();
+        let knots_v =
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[4], &device).unwrap();
 
         let surface = BSplineSurface {
             control_points: cp,
@@ -285,8 +288,8 @@ mod tests {
             degree_v: 1,
         };
 
-        let u = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.5, 1.0], &[3], &device);
-        let v = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.5, 1.0], &[3], &device);
+        let u = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.5, 1.0], &[3], &device).unwrap();
+        let v = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.5, 1.0], &[3], &device).unwrap();
         let result = bspline_surface_evaluate_impl(&client, &surface, &u, &v).unwrap();
         let vals: Vec<f64> = result.to_vec();
 

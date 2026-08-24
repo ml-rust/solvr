@@ -531,7 +531,7 @@ where
     let n_params = p.numel();
 
     // Initialize gradient accumulator
-    let mut gradient = Tensor::<R>::zeros(&[n_params], dtype, device);
+    let mut gradient = Tensor::<R>::zeros(&[n_params], dtype, device)?;
     let mut nfev_adjoint = 0usize;
 
     // Current adjoint state
@@ -707,8 +707,8 @@ mod tests {
 
         let t_span = [0.0, 1.0];
         let k_val = 0.5f64;
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
-        let k = Tensor::<CpuRuntime>::from_slice(&[k_val], &[1], &device);
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
+        let k = Tensor::<CpuRuntime>::from_slice(&[k_val], &[1], &device).unwrap();
 
         // ODE: dy/dt = -k * y
         let f = |_t: &Var<CpuRuntime>,
@@ -751,8 +751,8 @@ mod tests {
         let (device, client) = setup();
 
         let t_span = [0.0, 1.0];
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
-        let k = Tensor::<CpuRuntime>::from_slice(&[0.5f64], &[1], &device);
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
+        let k = Tensor::<CpuRuntime>::from_slice(&[0.5f64], &[1], &device).unwrap();
 
         // ODE: dy/dt = -k * y
         let f = |_t: &Var<CpuRuntime>,
@@ -871,8 +871,8 @@ mod tests {
 
         let k_val = 50.0f64;
         let t_span = [0.0, 0.1];
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
-        let k = Tensor::<CpuRuntime>::from_slice(&[k_val], &[1], &device);
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
+        let k = Tensor::<CpuRuntime>::from_slice(&[k_val], &[1], &device).unwrap();
 
         // ODE: dy/dt = -k * y  (stiff for large k)
         let f = |_t: &Var<CpuRuntime>,
@@ -919,8 +919,8 @@ mod tests {
         // This validates the BDF forward trajectory is correct independently of the
         // adjoint backward pass.
         let eps = 1e-4;
-        let k_plus = Tensor::<CpuRuntime>::from_slice(&[k_val + eps], &[1], &device);
-        let k_minus = Tensor::<CpuRuntime>::from_slice(&[k_val - eps], &[1], &device);
+        let k_plus = Tensor::<CpuRuntime>::from_slice(&[k_val + eps], &[1], &device).unwrap();
+        let k_minus = Tensor::<CpuRuntime>::from_slice(&[k_val - eps], &[1], &device).unwrap();
 
         let f_for_fd = |_t: &Var<CpuRuntime>,
                         y: &Var<CpuRuntime>,
@@ -999,8 +999,8 @@ mod tests {
     fn adjoint_with_method(method: ODEMethod) -> bool {
         let (device, client) = setup();
         let t_span = [0.0, 1.0];
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
-        let k = Tensor::<CpuRuntime>::from_slice(&[0.5f64], &[1], &device);
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
+        let k = Tensor::<CpuRuntime>::from_slice(&[0.5f64], &[1], &device).unwrap();
 
         let f = |_t: &Var<CpuRuntime>,
                  y: &Var<CpuRuntime>,
@@ -1023,8 +1023,8 @@ mod tests {
     fn adjoint_error_msg(method: ODEMethod) -> String {
         let (device, client) = setup();
         let t_span = [0.0, 1.0];
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
-        let k = Tensor::<CpuRuntime>::from_slice(&[0.5f64], &[1], &device);
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
+        let k = Tensor::<CpuRuntime>::from_slice(&[0.5f64], &[1], &device).unwrap();
 
         let f = |_t: &Var<CpuRuntime>,
                  y: &Var<CpuRuntime>,

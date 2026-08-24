@@ -30,12 +30,12 @@ where
     let n_basis = n + 1;
 
     if n == 0 {
-        return Ok(Tensor::ones(&[m, 1], DType::F64, device));
+        return Ok(Tensor::ones(&[m, 1], DType::F64, device)?);
     }
 
     // t_col: [m, 1], one_minus_t: [m, 1]
     let t_col = t.reshape(&[m, 1])?;
-    let one = Tensor::ones(&[m, 1], DType::F64, device);
+    let one = Tensor::ones(&[m, 1], DType::F64, device)?;
     let one_minus_t = client.sub(&one, &t_col)?;
 
     // i_vals: [1, n+1] = [0, 1, ..., n]
@@ -43,8 +43,8 @@ where
     let i_row = i_vals.reshape(&[1, n_basis])?;
 
     // Binomial coefficients: C(n, i) = exp(lgamma(n+1) - lgamma(i+1) - lgamma(n-i+1))
-    let n_plus_1 = Tensor::full_scalar(&[1, n_basis], DType::F64, (n + 1) as f64, device);
-    let one_1n = Tensor::ones(&[1, n_basis], DType::F64, device);
+    let n_plus_1 = Tensor::full_scalar(&[1, n_basis], DType::F64, (n + 1) as f64, device)?;
+    let one_1n = Tensor::ones(&[1, n_basis], DType::F64, device)?;
     let i_plus_1 = client.add(&i_row, &one_1n)?;
     let n_minus_i_plus_1 = client.sub(&n_plus_1, &i_row)?;
 
@@ -61,7 +61,7 @@ where
     let t_pow_i = client.pow(&t_broad, &i_broad)?;
 
     // (1-t)^(n-i): exponent = n - i
-    let n_tensor = Tensor::full_scalar(&[1, n_basis], DType::F64, n as f64, device);
+    let n_tensor = Tensor::full_scalar(&[1, n_basis], DType::F64, n as f64, device)?;
     let n_minus_i = client.sub(&n_tensor, &i_row)?;
     let omt_broad = one_minus_t.broadcast_to(&[m, n_basis])?.contiguous()?;
     let nmi_broad = n_minus_i.broadcast_to(&[m, n_basis])?.contiguous()?;
@@ -127,7 +127,7 @@ where
         let m = t.shape()[0];
         let n_dims = curve.control_points.shape()[1];
         let device = client.device();
-        return Ok(Tensor::zeros(&[m, n_dims], DType::F64, device));
+        return Ok(Tensor::zeros(&[m, n_dims], DType::F64, device)?);
     }
 
     // Compute derivative control points via forward differences.
@@ -235,12 +235,12 @@ mod tests {
     #[test]
     fn test_bezier_linear() {
         let (device, client) = setup();
-        let cp = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[2, 2], &device);
+        let cp = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[2, 2], &device).unwrap();
         let curve = BezierCurve {
             control_points: cp,
             degree: 1,
         };
-        let t = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.5, 1.0], &[3], &device);
+        let t = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.5, 1.0], &[3], &device).unwrap();
         let result = bezier_evaluate_impl(&client, &curve, &t).unwrap();
         let vals: Vec<f64> = result.to_vec();
         assert!((vals[0] - 0.0).abs() < 1e-10);
@@ -256,12 +256,13 @@ mod tests {
         let (device, client) = setup();
         // Quadratic Bezier: P0=(0,0), P1=(0.5,1), P2=(1,0)
         let cp =
-            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 0.5, 1.0, 1.0, 0.0], &[3, 2], &device);
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 0.5, 1.0, 1.0, 0.0], &[3, 2], &device)
+                .unwrap();
         let curve = BezierCurve {
             control_points: cp,
             degree: 2,
         };
-        let t = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.5, 1.0], &[3], &device);
+        let t = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.5, 1.0], &[3], &device).unwrap();
         let result = bezier_evaluate_impl(&client, &curve, &t).unwrap();
         let vals: Vec<f64> = result.to_vec();
         // At t=0: (0,0)
@@ -278,12 +279,12 @@ mod tests {
     #[test]
     fn test_bezier_derivative_linear() {
         let (device, client) = setup();
-        let cp = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 2.0, 4.0], &[2, 2], &device);
+        let cp = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 2.0, 4.0], &[2, 2], &device).unwrap();
         let curve = BezierCurve {
             control_points: cp,
             degree: 1,
         };
-        let t = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.5, 1.0], &[3], &device);
+        let t = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.5, 1.0], &[3], &device).unwrap();
         let deriv = bezier_derivative_impl(&client, &curve, &t, 1).unwrap();
         let vals: Vec<f64> = deriv.to_vec();
         // Derivative of linear Bezier is constant: (2, 4)
@@ -296,7 +297,7 @@ mod tests {
     #[test]
     fn test_bezier_subdivide() {
         let (device, client) = setup();
-        let cp = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[2, 2], &device);
+        let cp = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[2, 2], &device).unwrap();
         let curve = BezierCurve {
             control_points: cp,
             degree: 1,
@@ -304,11 +305,14 @@ mod tests {
         let (left, right) = bezier_subdivide_impl(&client, &curve, 0.5).unwrap();
 
         // Evaluate both halves at their midpoints
-        let t_mid = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
+        let t_mid = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
         let left_end = bezier_evaluate_impl(&client, &left, &t_mid).unwrap();
-        let right_start =
-            bezier_evaluate_impl(&client, &right, &Tensor::from_slice(&[0.0], &[1], &device))
-                .unwrap();
+        let right_start = bezier_evaluate_impl(
+            &client,
+            &right,
+            &Tensor::from_slice(&[0.0], &[1], &device).unwrap(),
+        )
+        .unwrap();
         let lv: Vec<f64> = left_end.to_vec();
         let rv: Vec<f64> = right_start.to_vec();
         // Both should meet at the split point (0.5, 0.5)

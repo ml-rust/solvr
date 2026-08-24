@@ -77,14 +77,10 @@ mod tests {
                 .zip(y_data.iter())
                 .map(|(&x, &y)| p_data[0] + p_data[1] * x - y)
                 .collect();
-            Ok(Tensor::from_slice(
-                &residuals,
-                &[residuals.len()],
-                p.device(),
-            ))
+            Tensor::from_slice(&residuals, &[residuals.len()], p.device())
         };
 
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[2], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[2], &device).unwrap();
         let result = client
             .leastsq(residual, &x0, &LeastSquaresOptions::default())
             .expect("leastsq failed");
@@ -110,14 +106,10 @@ mod tests {
                 .zip(y_data.iter())
                 .map(|(&x, &y)| p_data[0] * (-p_data[1] * x).exp() - y)
                 .collect();
-            Ok(Tensor::from_slice(
-                &residuals,
-                &[residuals.len()],
-                p.device(),
-            ))
+            Tensor::from_slice(&residuals, &[residuals.len()], p.device())
         };
 
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device).unwrap();
         let result = client
             .leastsq(residual, &x0, &LeastSquaresOptions::default())
             .expect("leastsq failed");
@@ -143,16 +135,12 @@ mod tests {
                 .zip(y_data.iter())
                 .map(|(&x, &y)| p_data[0] + p_data[1] * x - y)
                 .collect();
-            Ok(Tensor::from_slice(
-                &residuals,
-                &[residuals.len()],
-                p.device(),
-            ))
+            Tensor::from_slice(&residuals, &[residuals.len()], p.device())
         };
 
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device);
-        let lower = Tensor::<CpuRuntime>::from_slice(&[-10.0, 0.0], &[2], &device);
-        let upper = Tensor::<CpuRuntime>::from_slice(&[10.0, 1.5], &[2], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device).unwrap();
+        let lower = Tensor::<CpuRuntime>::from_slice(&[-10.0, 0.0], &[2], &device).unwrap();
+        let upper = Tensor::<CpuRuntime>::from_slice(&[10.0, 1.5], &[2], &device).unwrap();
 
         let result = client
             .least_squares(

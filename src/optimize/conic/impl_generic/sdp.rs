@@ -109,7 +109,7 @@ where
         }
 
         // Convert residuals to tensor and subtract b_vec
-        let residuals_tensor = Tensor::<R>::from_slice(&residuals, &[m], client.device());
+        let residuals_tensor = Tensor::<R>::from_slice(&residuals, &[m], client.device())?;
         let residuals_tensor =
             client
                 .sub(&residuals_tensor, b_vec)

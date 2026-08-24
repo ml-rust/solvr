@@ -82,7 +82,7 @@ where
         )
         .map_err(PdeError::from)?;
 
-        let rhs = Tensor::<R>::from_slice(&rhs_data, &[n], device);
+        let rhs = Tensor::<R>::from_slice(&rhs_data, &[n], device)?;
         let result = solve_sparse_system(client, &a, &rhs, options, "Poisson solver (Dirichlet)")?;
 
         return Ok(FdmResult {
@@ -114,7 +114,7 @@ where
         (a, "Poisson solver (Neumann/Periodic)")
     };
 
-    let rhs = Tensor::<R>::from_slice(&rhs_data, &[n], device);
+    let rhs = Tensor::<R>::from_slice(&rhs_data, &[n], device)?;
 
     // The ghost-node Neumann rows (and the gauge fix) make the system
     // non-symmetric; use GMRES unless the caller explicitly picked a solver.
@@ -184,9 +184,9 @@ fn pin_first_dof<R: Runtime<DType = DType>>(
         new_row_ptrs[row + 1] = dst as i64;
     }
 
-    let rp = Tensor::<R>::from_slice(&new_row_ptrs, &[n + 1], device);
-    let ci = Tensor::<R>::from_slice(&new_cols, &[new_total_nnz], device);
-    let vv = Tensor::<R>::from_slice(&new_vals, &[new_total_nnz], device);
+    let rp = Tensor::<R>::from_slice(&new_row_ptrs, &[n + 1], device)?;
+    let ci = Tensor::<R>::from_slice(&new_cols, &[new_total_nnz], device)?;
+    let vv = Tensor::<R>::from_slice(&new_vals, &[new_total_nnz], device)?;
 
     CsrData::new(rp, ci, vv, [n, n]).map_err(PdeError::from)
 }

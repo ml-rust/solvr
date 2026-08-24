@@ -313,8 +313,8 @@ mod tests {
         let x_data: Vec<f64> = (0..n).map(|i| i as f64 / (n - 1) as f64).collect();
         let y_data: Vec<f64> = x_data.iter().map(|&xi| xi * xi).collect();
 
-        let x = Tensor::<CudaRuntime>::from_slice(&x_data, &[n], &device);
-        let y = Tensor::<CudaRuntime>::from_slice(&y_data, &[n], &device);
+        let x = Tensor::<CudaRuntime>::from_slice(&x_data, &[n], &device).unwrap();
+        let y = Tensor::<CudaRuntime>::from_slice(&y_data, &[n], &device).unwrap();
 
         let result = client.trapezoid(&y, &x).unwrap();
         let result_val: Vec<f64> = result.to_vec();
@@ -334,11 +334,7 @@ mod tests {
                 |x| {
                     let data: Vec<f64> = x.to_vec();
                     let sin_data: Vec<f64> = data.iter().map(|&xi| xi.sin()).collect();
-                    Ok(Tensor::<CudaRuntime>::from_slice(
-                        &sin_data,
-                        x.shape(),
-                        &device,
-                    ))
+                    Tensor::<CudaRuntime>::from_slice(&sin_data, x.shape(), &device)
                 },
                 0.0,
                 std::f64::consts::PI,
@@ -362,11 +358,7 @@ mod tests {
                 |x| {
                     let data: Vec<f64> = x.to_vec();
                     let sin_data: Vec<f64> = data.iter().map(|&xi| xi.sin()).collect();
-                    Ok(Tensor::<CudaRuntime>::from_slice(
-                        &sin_data,
-                        x.shape(),
-                        &device,
-                    ))
+                    Tensor::<CudaRuntime>::from_slice(&sin_data, x.shape(), &device)
                 },
                 0.0,
                 std::f64::consts::PI,
@@ -391,11 +383,7 @@ mod tests {
                 |x| {
                     let data: Vec<f64> = x.to_vec();
                     let exp_data: Vec<f64> = data.iter().map(|&xi| xi.exp()).collect();
-                    Ok(Tensor::<CudaRuntime>::from_slice(
-                        &exp_data,
-                        x.shape(),
-                        &device,
-                    ))
+                    Tensor::<CudaRuntime>::from_slice(&exp_data, x.shape(), &device)
                 },
                 0.0,
                 1.0,

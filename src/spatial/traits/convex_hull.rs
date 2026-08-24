@@ -78,7 +78,7 @@ pub trait ConvexHullAlgorithms<R: Runtime<DType = DType>> {
     /// #     1.0, 1.0,
     /// #     0.0, 1.0,
     /// #     0.5, 0.5,
-    /// # ], &[5, 2], &device);
+    /// # ], &[5, 2], &device)?;
     /// let hull = client.convex_hull(&points)?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```

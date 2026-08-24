@@ -238,7 +238,7 @@ impl ContinuousDistribution for InverseGamma {
         let term1 = client.mul_scalar(&ln_x, -(self.alpha + 1.0))?;
 
         // Compute β/x = (1/x) * β
-        let ones = Tensor::<R>::ones(x.shape(), x.dtype(), client.device());
+        let ones = Tensor::<R>::ones(x.shape(), x.dtype(), client.device())?;
         let recip_x = client.div(&ones, x)?;
         let term2 = client.mul_scalar(&recip_x, -self.beta)?;
 
@@ -255,8 +255,8 @@ impl ContinuousDistribution for InverseGamma {
         C: TensorOps<R> + ScalarOps<R> + SpecialFunctions<R> + RuntimeClient<R>,
     {
         // CDF(x) = gammaincc(α, β/x)
-        let alpha_t = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.alpha, client.device());
-        let ones = Tensor::<R>::ones(x.shape(), x.dtype(), client.device());
+        let alpha_t = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.alpha, client.device())?;
+        let ones = Tensor::<R>::ones(x.shape(), x.dtype(), client.device())?;
         let recip_x = client.div(&ones, x)?;
         let beta_over_x = client.mul_scalar(&recip_x, self.beta)?;
         client.gammaincc(&alpha_t, &beta_over_x)
@@ -271,8 +271,8 @@ impl ContinuousDistribution for InverseGamma {
         C: TensorOps<R> + ScalarOps<R> + SpecialFunctions<R> + RuntimeClient<R>,
     {
         // SF(x) = gammainc(α, β/x)
-        let alpha_t = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.alpha, client.device());
-        let ones = Tensor::<R>::ones(x.shape(), x.dtype(), client.device());
+        let alpha_t = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.alpha, client.device())?;
+        let ones = Tensor::<R>::ones(x.shape(), x.dtype(), client.device())?;
         let recip_x = client.div(&ones, x)?;
         let beta_over_x = client.mul_scalar(&recip_x, self.beta)?;
         client.gammainc(&alpha_t, &beta_over_x)
@@ -300,13 +300,13 @@ impl ContinuousDistribution for InverseGamma {
         C: TensorOps<R> + ScalarOps<R> + SpecialFunctions<R> + RuntimeClient<R>,
     {
         // PPF(p) = β / gammaincinv(α, 1-p)
-        let alpha_t = Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.alpha, client.device());
+        let alpha_t = Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.alpha, client.device())?;
         let neg_p = client.mul_scalar(p, -1.0)?;
         let one_minus_p = client.add_scalar(&neg_p, 1.0)?;
         let gamma_inv = client.gammaincinv(&alpha_t, &one_minus_p)?;
 
         // Compute β / gamma_inv
-        let beta_t = Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.beta, client.device());
+        let beta_t = Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.beta, client.device())?;
         client.div(&beta_t, &gamma_inv)
     }
 
@@ -319,11 +319,11 @@ impl ContinuousDistribution for InverseGamma {
         C: TensorOps<R> + ScalarOps<R> + SpecialFunctions<R> + RuntimeClient<R>,
     {
         // ISF(p) = PPF(1 - p) = β / gammaincinv(α, p)
-        let alpha_t = Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.alpha, client.device());
+        let alpha_t = Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.alpha, client.device())?;
         let gamma_inv = client.gammaincinv(&alpha_t, p)?;
 
         // Compute β / gamma_inv
-        let beta_t = Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.beta, client.device());
+        let beta_t = Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.beta, client.device())?;
         client.div(&beta_t, &gamma_inv)
     }
 }

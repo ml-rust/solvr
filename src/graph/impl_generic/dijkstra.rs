@@ -73,8 +73,8 @@ where
     }
 
     // Create output tensors
-    let dist_tensor = Tensor::<R>::from_slice(&distances, &[n], &device);
-    let pred_tensor = Tensor::<R>::from_slice(&predecessors, &[n], &device);
+    let dist_tensor = Tensor::<R>::from_slice(&distances, &[n], &device)?;
+    let pred_tensor = Tensor::<R>::from_slice(&predecessors, &[n], &device)?;
 
     Ok(ShortestPathResult {
         distances: dist_tensor,

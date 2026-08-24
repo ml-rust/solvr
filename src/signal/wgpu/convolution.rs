@@ -67,8 +67,9 @@ mod tests {
 
         // WebGPU only supports F32
         let signal =
-            Tensor::<WgpuRuntime>::from_slice(&[1.0f32, 2.0, 3.0, 4.0, 5.0], &[5], &device);
-        let kernel = Tensor::<WgpuRuntime>::from_slice(&[1.0f32, 1.0, 1.0], &[3], &device);
+            Tensor::<WgpuRuntime>::from_slice(&[1.0f32, 2.0, 3.0, 4.0, 5.0], &[5], &device)
+                .unwrap();
+        let kernel = Tensor::<WgpuRuntime>::from_slice(&[1.0f32, 1.0, 1.0], &[3], &device).unwrap();
 
         // Convolution uses FFT → Complex64, which wgpu doesn't support.
         let result = match client.convolve(&signal, &kernel, ConvMode::Full) {

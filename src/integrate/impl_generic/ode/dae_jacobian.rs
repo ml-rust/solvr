@@ -112,9 +112,9 @@ mod tests {
         // ∂F/∂y' = I (derivative of y' - 2*y w.r.t. y' is 1)
         // Combined with coeff=1.0: J = -2*I + 1.0*I = -I
 
-        let t = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0], &[2], &device);
-        let yp = Tensor::<CpuRuntime>::from_slice(&[2.0, 4.0], &[2], &device);
+        let t = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0], &[2], &device).unwrap();
+        let yp = Tensor::<CpuRuntime>::from_slice(&[2.0, 4.0], &[2], &device).unwrap();
 
         let f = |_t: &DualTensor<CpuRuntime>,
                  y: &DualTensor<CpuRuntime>,
@@ -150,9 +150,9 @@ mod tests {
         let (device, client) = setup();
 
         // F(t, y, y') = y' - 2*y
-        let t = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[1.0, 3.0], &[2], &device);
-        let yp = Tensor::<CpuRuntime>::from_slice(&[2.0, 6.0], &[2], &device);
+        let t = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&[1.0, 3.0], &[2], &device).unwrap();
+        let yp = Tensor::<CpuRuntime>::from_slice(&[2.0, 6.0], &[2], &device).unwrap();
 
         let f = |_t: &DualTensor<CpuRuntime>,
                  y: &DualTensor<CpuRuntime>,
@@ -177,9 +177,9 @@ mod tests {
         // F = y' - y (simple: ∂F/∂y = -I, ∂F/∂y' = I)
         // With coeff=2.0: J = -I + 2*I = I
 
-        let t = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
-        let yp = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
+        let t = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
+        let yp = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
 
         let f = |_t: &DualTensor<CpuRuntime>,
                  y: &DualTensor<CpuRuntime>,

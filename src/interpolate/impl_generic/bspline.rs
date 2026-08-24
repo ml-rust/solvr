@@ -57,7 +57,7 @@ where
         &x.narrow(0, 1, n - 1)?.contiguous()?,
         &x.narrow(0, 0, n - 1)?.contiguous()?,
     )?;
-    let zero_dx = Tensor::zeros(&[n - 1], DType::F64, device);
+    let zero_dx = Tensor::zeros(&[n - 1], DType::F64, device)?;
     let non_pos = client.le(&dx, &zero_dx)?;
     let bad_count = client.sum(&non_pos, &[0], false)?;
     if bad_count.item::<f64>().unwrap_or(0.0) > 0.0 {
@@ -136,7 +136,7 @@ where
     if order > spline.degree {
         let m = x_new.shape()[0];
         let device = client.device();
-        return Ok(Tensor::zeros(&[m], DType::F64, device));
+        return Ok(Tensor::zeros(&[m], DType::F64, device)?);
     }
 
     // Differentiate the B-spline representation on-device
@@ -173,7 +173,7 @@ where
 
     // C_0 = 0, C_i = cumsum(terms)[i-1]
     let cumsum = client.cumsum(&terms, 0)?;
-    let zero_1 = Tensor::zeros(&[1], DType::F64, device);
+    let zero_1 = Tensor::zeros(&[1], DType::F64, device)?;
     let anti_coeffs = client.cat(&[&zero_1, &cumsum], 0)?;
 
     // Anti-derivative knot vector: add one copy at each end
@@ -188,7 +188,7 @@ where
     };
 
     // Evaluate anti-derivative at b and a, return difference
-    let ab = Tensor::from_slice(&[b, a], &[2], device);
+    let ab = Tensor::from_slice(&[b, a], &[2], device)?;
     let vals = bspline_evaluate_impl(client, &anti_spline, &ab)?;
     let val_b = vals.narrow(0, 0, 1)?.contiguous()?;
     let val_a = vals.narrow(0, 1, 1)?.contiguous()?;
@@ -242,7 +242,7 @@ where
     // Handle right endpoint: x == knots[last] → set last valid span basis to 1
     let right_span_idx = n_knots - degree - 2;
     let idx = client.arange(0.0, n_basis_0 as f64, 1.0, DType::F64)?;
-    let target = Tensor::full_scalar(&[n_basis_0], DType::F64, right_span_idx as f64, device);
+    let target = Tensor::full_scalar(&[n_basis_0], DType::F64, right_span_idx as f64, device)?;
     let right_col_mask = client.eq(&idx, &target)?; // [n_basis_0]
 
     let last_knot = knots
@@ -265,7 +265,7 @@ where
     let mut basis = client.maximum(&in_span, &right_correction)?;
 
     // === Recurrence for degrees 1..k ===
-    let eps_val = Tensor::full_scalar(&[1], DType::F64, 1e-300, device);
+    let eps_val = Tensor::full_scalar(&[1], DType::F64, 1e-300, device)?;
 
     for p in 1..=degree {
         let n_active = n_knots - p - 1;
@@ -291,7 +291,7 @@ where
         let abs_d1 = client.abs(&denom1)?;
         let eps_broad1 = eps_val.broadcast_to(&[1, n_active])?.contiguous()?;
         let d1_safe = client.maximum(&abs_d1, &eps_broad1)?;
-        let zero_1n = Tensor::zeros(&[1, n_active], DType::F64, device);
+        let zero_1n = Tensor::zeros(&[1, n_active], DType::F64, device)?;
         let mask1 = client.gt(&abs_d1, &zero_1n)?;
         let w1 = client.mul(
             &client.div(
@@ -333,7 +333,7 @@ where
 
         // Pad to n_basis_0 columns for next iteration
         if n_active < n_basis_0 {
-            let padding = Tensor::zeros(&[m, n_basis_0 - n_active], DType::F64, device);
+            let padding = Tensor::zeros(&[m, n_basis_0 - n_active], DType::F64, device)?;
             basis = client.cat(&[&new_active, &padding], 1)?;
         } else {
             basis = new_active;
@@ -442,8 +442,8 @@ where
             let col_mat = client.cat(&[&dbasis_left, &basis, &dbasis_right], 0)?;
 
             // RHS: [left, y[0], ..., y[n-1], right]
-            let left_t = Tensor::from_slice(&[*left], &[1, 1], device);
-            let right_t = Tensor::from_slice(&[*right], &[1, 1], device);
+            let left_t = Tensor::from_slice(&[*left], &[1, 1], device)?;
+            let right_t = Tensor::from_slice(&[*right], &[1, 1], device)?;
             let y_col = y.reshape(&[n, 1])?;
             let rhs_col = client.cat(&[&left_t, &y_col, &right_t], 0)?;
 
@@ -466,7 +466,7 @@ where
 
             let col_mat = client.cat(&[&d2basis_left, &basis, &d2basis_right], 0)?;
 
-            let zero_1 = Tensor::zeros(&[1, 1], DType::F64, device);
+            let zero_1 = Tensor::zeros(&[1, 1], DType::F64, device)?;
             let y_col = y.reshape(&[n, 1])?;
             let rhs_col = client.cat(&[&zero_1, &y_col, &zero_1], 0)?;
 
@@ -497,7 +497,7 @@ where
     if degree == 0 {
         let m = x.shape()[0];
         let device = client.device();
-        return Ok(Tensor::zeros(&[m, n_coeffs], DType::F64, device));
+        return Ok(Tensor::zeros(&[m, n_coeffs], DType::F64, device)?);
     }
 
     let device = client.device();
@@ -532,8 +532,8 @@ where
     let denom2 = client.sub(&t_hi_k1, &t_lo1)?;
 
     // Safe division with zero masking
-    let eps = Tensor::full_scalar(&[1, n_coeffs], DType::F64, 1e-300, device);
-    let zero = Tensor::zeros(&[1, n_coeffs], DType::F64, device);
+    let eps = Tensor::full_scalar(&[1, n_coeffs], DType::F64, 1e-300, device)?;
+    let zero = Tensor::zeros(&[1, n_coeffs], DType::F64, device)?;
 
     let abs_d1 = client.abs(&denom1)?;
     let d1_safe = client.maximum(&abs_d1, &eps)?;
@@ -579,7 +579,7 @@ where
     if degree < 2 {
         let m = x.shape()[0];
         let device = client.device();
-        return Ok(Tensor::zeros(&[m, n_coeffs], DType::F64, device));
+        return Ok(Tensor::zeros(&[m, n_coeffs], DType::F64, device)?);
     }
 
     let device = client.device();
@@ -612,8 +612,8 @@ where
         .reshape(&[1, n_coeffs])?;
     let denom2 = client.sub(&t_hi_k1, &t_lo1)?;
 
-    let eps = Tensor::full_scalar(&[1, n_coeffs], DType::F64, 1e-300, device);
-    let zero = Tensor::zeros(&[1, n_coeffs], DType::F64, device);
+    let eps = Tensor::full_scalar(&[1, n_coeffs], DType::F64, 1e-300, device)?;
+    let zero = Tensor::zeros(&[1, n_coeffs], DType::F64, device)?;
 
     let abs_d1 = client.abs(&denom1)?;
     let d1_safe = client.maximum(&abs_d1, &eps)?;
@@ -678,10 +678,10 @@ where
         let dt = client.sub(&t_hi, &t_lo)?;
 
         // Safe division (zero dt → zero coefficient)
-        let eps = Tensor::full_scalar(&[n - 1], DType::F64, 1e-300, client.device());
+        let eps = Tensor::full_scalar(&[n - 1], DType::F64, 1e-300, client.device())?;
         let abs_dt = client.abs(&dt)?;
         let dt_safe = client.maximum(&abs_dt, &eps)?;
-        let zero = Tensor::zeros(&[n - 1], DType::F64, client.device());
+        let zero = Tensor::zeros(&[n - 1], DType::F64, client.device())?;
         let mask = client.gt(&abs_dt, &zero)?;
         let new_coeffs =
             client.mul_scalar(&client.mul(&client.div(&dc, &dt_safe)?, &mask)?, k as f64)?;
@@ -715,13 +715,13 @@ mod tests {
     #[test]
     fn test_linear_bspline() {
         let (device, client) = setup();
-        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 2.0, 4.0, 6.0], &[4], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 2.0, 4.0, 6.0], &[4], &device).unwrap();
 
         let spline = make_interp_spline_impl(&client, &x, &y, 1, &BSplineBoundary::NotAKnot)
             .expect("linear bspline failed");
 
-        let x_new = Tensor::<CpuRuntime>::from_slice(&[0.5, 1.5, 2.5], &[3], &device);
+        let x_new = Tensor::<CpuRuntime>::from_slice(&[0.5, 1.5, 2.5], &[3], &device).unwrap();
         let result = bspline_evaluate_impl(&client, &spline, &x_new).unwrap();
         let vals: Vec<f64> = result.to_vec();
 
@@ -740,8 +740,10 @@ mod tests {
     #[test]
     fn test_cubic_bspline_interpolates_knots() {
         let (device, client) = setup();
-        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0, 4.0], &[5], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 4.0, 9.0, 16.0], &[5], &device);
+        let x =
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0, 4.0], &[5], &device).unwrap();
+        let y =
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 4.0, 9.0, 16.0], &[5], &device).unwrap();
 
         let spline = make_interp_spline_impl(&client, &x, &y, 3, &BSplineBoundary::NotAKnot)
             .expect("cubic bspline failed");
@@ -764,8 +766,8 @@ mod tests {
     #[test]
     fn test_bspline_quadratic() {
         let (device, client) = setup();
-        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 4.0, 9.0], &[4], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 4.0, 9.0], &[4], &device).unwrap();
 
         let spline = make_interp_spline_impl(&client, &x, &y, 2, &BSplineBoundary::NotAKnot)
             .expect("quadratic bspline failed");
@@ -788,13 +790,13 @@ mod tests {
     #[test]
     fn test_bspline_derivative_linear() {
         let (device, client) = setup();
-        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 2.0, 4.0, 6.0], &[4], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 2.0, 4.0, 6.0], &[4], &device).unwrap();
 
         let spline = make_interp_spline_impl(&client, &x, &y, 1, &BSplineBoundary::NotAKnot)
             .expect("linear bspline for deriv");
 
-        let x_new = Tensor::<CpuRuntime>::from_slice(&[0.5, 1.5, 2.5], &[3], &device);
+        let x_new = Tensor::<CpuRuntime>::from_slice(&[0.5, 1.5, 2.5], &[3], &device).unwrap();
         let deriv = bspline_derivative_impl(&client, &spline, &x_new, 1).unwrap();
         let vals: Vec<f64> = deriv.to_vec();
 
@@ -806,8 +808,8 @@ mod tests {
     #[test]
     fn test_bspline_integrate_linear() {
         let (device, client) = setup();
-        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 2.0, 4.0, 6.0], &[4], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 2.0, 4.0, 6.0], &[4], &device).unwrap();
 
         let spline = make_interp_spline_impl(&client, &x, &y, 1, &BSplineBoundary::NotAKnot)
             .expect("linear bspline for integrate");

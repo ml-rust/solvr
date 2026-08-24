@@ -141,15 +141,15 @@ where
 
     if n_coeffs == 0 {
         return Ok((
-            Tensor::zeros(&[n_freqs], dtype, device),
-            Tensor::zeros(&[n_freqs], dtype, device),
+            Tensor::zeros(&[n_freqs], dtype, device)?,
+            Tensor::zeros(&[n_freqs], dtype, device)?,
         ));
     }
 
     // Create power indices: [max_power, max_power-1, ..., max_power-n_coeffs+1]
     // For each coefficient k, the power is max_power - k
     let powers_vec: Vec<f64> = (0..n_coeffs).map(|k| (max_power - k) as f64).collect();
-    let powers = Tensor::from_slice(&powers_vec, &[n_coeffs], device);
+    let powers = Tensor::from_slice(&powers_vec, &[n_coeffs], device)?;
 
     // Expand omega to [n_freqs, 1] for broadcasting
     let omega_expanded = omega.reshape(&[n_freqs, 1])?;
@@ -190,8 +190,8 @@ where
         }
     }
 
-    let sign_re = Tensor::from_slice(&sign_re_vec, &[1, n_coeffs], device);
-    let sign_im = Tensor::from_slice(&sign_im_vec, &[1, n_coeffs], device);
+    let sign_re = Tensor::from_slice(&sign_re_vec, &[1, n_coeffs], device)?;
+    let sign_im = Tensor::from_slice(&sign_im_vec, &[1, n_coeffs], device)?;
 
     // Expand coefficients to [1, n_coeffs] for broadcasting
     let coeffs_expanded = coeffs.reshape(&[1, n_coeffs])?;

@@ -61,8 +61,9 @@ mod tests {
     fn test_convolve_full() {
         let (client, device) = setup();
 
-        let signal = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device);
-        let kernel = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0, -1.0], &[3], &device);
+        let signal =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device).unwrap();
+        let kernel = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0, -1.0], &[3], &device).unwrap();
 
         let result = client.convolve(&signal, &kernel, ConvMode::Full).unwrap();
 
@@ -77,8 +78,9 @@ mod tests {
     fn test_convolve_same() {
         let (client, device) = setup();
 
-        let signal = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device);
-        let kernel = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 1.0, 1.0], &[3], &device);
+        let signal =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device).unwrap();
+        let kernel = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 1.0, 1.0], &[3], &device).unwrap();
 
         let result = client.convolve(&signal, &kernel, ConvMode::Same).unwrap();
 
@@ -89,8 +91,9 @@ mod tests {
     fn test_convolve_valid() {
         let (client, device) = setup();
 
-        let signal = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device);
-        let kernel = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 1.0, 1.0], &[3], &device);
+        let signal =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device).unwrap();
+        let kernel = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 1.0, 1.0], &[3], &device).unwrap();
 
         let result = client.convolve(&signal, &kernel, ConvMode::Valid).unwrap();
 
@@ -110,8 +113,10 @@ mod tests {
             &[1.0f64, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
             &[3, 3],
             &device,
-        );
-        let kernel = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0, 0.0, 1.0], &[2, 2], &device);
+        )
+        .unwrap();
+        let kernel =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0, 0.0, 1.0], &[2, 2], &device).unwrap();
 
         let result = client.convolve2d(&signal, &kernel, ConvMode::Full).unwrap();
 
@@ -122,8 +127,9 @@ mod tests {
     fn test_correlate() {
         let (client, device) = setup();
 
-        let signal = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device);
-        let kernel = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0], &[2], &device);
+        let signal =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device).unwrap();
+        let kernel = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0], &[2], &device).unwrap();
 
         let result = client.correlate(&signal, &kernel, ConvMode::Full).unwrap();
 
@@ -134,8 +140,9 @@ mod tests {
     fn test_convolve_f32() {
         let (client, device) = setup();
 
-        let signal = Tensor::<CpuRuntime>::from_slice(&[1.0f32, 2.0, 3.0, 4.0, 5.0], &[5], &device);
-        let kernel = Tensor::<CpuRuntime>::from_slice(&[1.0f32, 1.0], &[2], &device);
+        let signal =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f32, 2.0, 3.0, 4.0, 5.0], &[5], &device).unwrap();
+        let kernel = Tensor::<CpuRuntime>::from_slice(&[1.0f32, 1.0], &[2], &device).unwrap();
 
         let result = client.convolve(&signal, &kernel, ConvMode::Full).unwrap();
 

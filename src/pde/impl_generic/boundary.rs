@@ -194,7 +194,7 @@ mod tests {
 
     fn scalar_tensor(val: f64) -> Tensor<CpuRuntime> {
         let dev = device();
-        Tensor::<CpuRuntime>::from_slice(&[val], &[1], &dev)
+        Tensor::<CpuRuntime>::from_slice(&[val], &[1], &dev).unwrap()
     }
 
     // ------------------------------------------------------------------
@@ -286,11 +286,9 @@ mod tests {
         // Left Dirichlet = 7.0 on a 4x3 grid fills the left column (j = 0..ny).
         let bcs = vec![BoundarySpec {
             side: BoundarySide::Left,
-            condition: BoundaryCondition::Dirichlet(Tensor::<CpuRuntime>::from_slice(
-                &[7.0, 7.0, 7.0],
-                &[3],
-                &device(),
-            )),
+            condition: BoundaryCondition::Dirichlet(
+                Tensor::<CpuRuntime>::from_slice(&[7.0, 7.0, 7.0], &[3], &device()).unwrap(),
+            ),
         }];
         let (nx, ny) = (4, 3);
         let values = extract_boundary_values_2d(&bcs, nx, ny).unwrap();

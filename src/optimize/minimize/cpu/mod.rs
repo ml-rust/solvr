@@ -140,7 +140,7 @@ mod tests {
     #[test]
     fn test_bfgs_cpu() {
         let (device, client) = setup();
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device).unwrap();
 
         let result = client
             .bfgs(
@@ -160,7 +160,7 @@ mod tests {
     #[test]
     fn test_lbfgs_cpu() {
         let (device, client) = setup();
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device).unwrap();
 
         let result = client
             .lbfgs(
@@ -184,7 +184,7 @@ mod tests {
         // For n=100, BFGS needs 100x100 = 10K floats, L-BFGS needs ~10*100 = 1K floats
         let n = 100;
         let initial: Vec<f64> = (0..n).map(|i| (i as f64 / 10.0) + 1.0).collect();
-        let x0 = Tensor::<CpuRuntime>::from_slice(&initial, &[n], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&initial, &[n], &device).unwrap();
 
         // Minimize Rosenbrock function: sum((1-x_i)^2 + 100*(x_{i+1} - x_i^2)^2)
         let result = client
@@ -220,7 +220,7 @@ mod tests {
     #[test]
     fn test_nelder_mead_cpu() {
         let (device, client) = setup();
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0], &[2], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0], &[2], &device).unwrap();
 
         let result = client
             .nelder_mead(

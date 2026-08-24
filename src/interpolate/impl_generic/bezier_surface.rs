@@ -104,7 +104,7 @@ where
     let device = client.device();
 
     if du > surface.degree_u || dv > surface.degree_v {
-        return Ok(Tensor::zeros(&[m, n_dims], DType::F64, device));
+        return Ok(Tensor::zeros(&[m, n_dims], DType::F64, device)?);
     }
 
     // Differentiate control points du times in u direction
@@ -220,15 +220,16 @@ mod tests {
             &[0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 1.0],
             &[2, 2, 3],
             &device,
-        );
+        )
+        .unwrap();
         let surface = BezierSurface {
             control_points: cp,
             degree_u: 1,
             degree_v: 1,
         };
 
-        let u = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.5, 1.0], &[3], &device);
-        let v = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.5, 1.0], &[3], &device);
+        let u = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.5, 1.0], &[3], &device).unwrap();
+        let v = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.5, 1.0], &[3], &device).unwrap();
         let result = bezier_surface_evaluate_impl(&client, &surface, &u, &v).unwrap();
         let vals: Vec<f64> = result.to_vec();
 
@@ -256,15 +257,16 @@ mod tests {
             &[0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0],
             &[2, 2, 3],
             &device,
-        );
+        )
+        .unwrap();
         let surface = BezierSurface {
             control_points: cp,
             degree_u: 1,
             degree_v: 1,
         };
 
-        let u = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 0.0, 1.0], &[4], &device);
-        let v = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[4], &device);
+        let u = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 0.0, 1.0], &[4], &device).unwrap();
+        let v = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[4], &device).unwrap();
         let result = bezier_surface_evaluate_impl(&client, &surface, &u, &v).unwrap();
         let vals: Vec<f64> = result.to_vec();
 
@@ -284,15 +286,16 @@ mod tests {
             &[0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0],
             &[2, 2, 3],
             &device,
-        );
+        )
+        .unwrap();
         let surface = BezierSurface {
             control_points: cp,
             degree_u: 1,
             degree_v: 1,
         };
 
-        let u = Tensor::<CpuRuntime>::from_slice(&[0.5], &[1], &device);
-        let v = Tensor::<CpuRuntime>::from_slice(&[0.5], &[1], &device);
+        let u = Tensor::<CpuRuntime>::from_slice(&[0.5], &[1], &device).unwrap();
+        let v = Tensor::<CpuRuntime>::from_slice(&[0.5], &[1], &device).unwrap();
         let normal = bezier_surface_normal_impl(&client, &surface, &u, &v).unwrap();
         let vals: Vec<f64> = normal.to_vec();
 

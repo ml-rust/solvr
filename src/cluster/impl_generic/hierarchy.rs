@@ -116,9 +116,9 @@ where
     dists = client.masked_fill(&dists, &diag_mask, f64::INFINITY)?;
 
     // active[i] = 1.0 if cluster i is still active, 0.0 otherwise
-    let mut active = Tensor::<R>::ones(&[n], dtype, device);
+    let mut active = Tensor::<R>::ones(&[n], dtype, device)?;
     // sizes[i] = number of points in cluster i
-    let mut sizes = Tensor::<R>::ones(&[n], dtype, device);
+    let mut sizes = Tensor::<R>::ones(&[n], dtype, device)?;
 
     // Pre-allocate linkage output: we'll collect rows and stack at end
     let mut z_rows: Vec<Tensor<R>> = Vec::with_capacity(n - 1);
@@ -129,7 +129,7 @@ where
         let active_col = active.unsqueeze(0)?; // [1, n]
         let active_mask = client.mul(&active_row, &active_col)?; // [n, n]
         let inactive = client.cast(
-            &client.eq(&active_mask, &Tensor::<R>::zeros(&[1], dtype, device))?,
+            &client.eq(&active_mask, &Tensor::<R>::zeros(&[1], dtype, device)?)?,
             DType::U8,
         )?;
         let masked_dists = client.masked_fill(&dists, &inactive, f64::INFINITY)?;
@@ -146,7 +146,7 @@ where
         let n_f = n as f64;
         let row_f = client.div_scalar(&flat_f, n_f)?;
         // floor
-        let row_f = client.sub(&row_f, &Tensor::<R>::full_scalar(&[1], dtype, 0.5, device))?;
+        let row_f = client.sub(&row_f, &Tensor::<R>::full_scalar(&[1], dtype, 0.5, device)?)?;
         // Use cast to I64 to floor
         let row_i64 = client.cast(&row_f, DType::I64)?;
         let row_f = client.cast(&row_i64, dtype)?;
@@ -212,7 +212,7 @@ where
 
                 let numer = client.sub(&client.add(&term1, &term2)?, &term3)?;
                 let result = client.div(&numer, &total)?;
-                let result = client.maximum(&result, &Tensor::<R>::zeros(&[1], dtype, device))?;
+                let result = client.maximum(&result, &Tensor::<R>::zeros(&[1], dtype, device)?)?;
                 client.sqrt(&result)?
             }
             LinkageMethod::Centroid | LinkageMethod::Median => {
@@ -236,7 +236,7 @@ where
         dists = client.scatter(&dists, 1, &row_idx_col, &new_dists_col)?;
 
         // Deactivate col cluster
-        let col_zero = Tensor::<R>::zeros(&[1], dtype, device);
+        let col_zero = Tensor::<R>::zeros(&[1], dtype, device)?;
         active = client
             .scatter(
                 &active.unsqueeze(0)?,
@@ -330,14 +330,14 @@ where
     let dists_col = z.z.narrow(1, 2, 1)?.squeeze(Some(1)); // [n-1]
 
     // Merge mask: which merges are below threshold [n-1] (0/1)
-    let thresh_t = Tensor::<R>::full_scalar(&[n_merges], dtype, threshold, device);
+    let thresh_t = Tensor::<R>::full_scalar(&[n_merges], dtype, threshold, device)?;
     let merge_mask = client.le(&dists_col, &thresh_t)?;
 
     // Build adjacency [n, n] via scatter: for valid merges, set adj[id1, id2] = 1, adj[id2, id1] = 1
     let id1_i64 = client.cast(&id1_f, DType::I64)?;
     let id2_i64 = client.cast(&id2_f, DType::I64)?;
 
-    let mut adjacency = Tensor::<R>::zeros(&[n, n], dtype, device);
+    let mut adjacency = Tensor::<R>::zeros(&[n, n], dtype, device)?;
 
     // Scatter merge_mask into adjacency at (id1, id2) and (id2, id1)
     // For each merge i: adj[id1[i], id2[i]] = merge_mask[i]
@@ -348,7 +348,7 @@ where
 
     // Approach: create [1, n_merges] index tensors and scatter into [n, n]
     // adj_sparse[i, id2[i]] = merge_mask[i] for each merge i (row = merge index)
-    let merge_row = Tensor::<R>::zeros(&[n_merges, n], dtype, device);
+    let merge_row = Tensor::<R>::zeros(&[n_merges, n], dtype, device)?;
     let merge_row = client.scatter(
         &merge_row,
         1,
@@ -369,7 +369,7 @@ where
     )?;
 
     // Symmetrize: adj[id2, id1] too
-    let merge_col = Tensor::<R>::zeros(&[n_merges, n], dtype, device);
+    let merge_col = Tensor::<R>::zeros(&[n_merges, n], dtype, device)?;
     let merge_col = client.scatter(
         &merge_col,
         1,
@@ -397,14 +397,14 @@ where
     adjacency = client.maximum(&adjacency, &eye_mask)?;
 
     // Label propagation: find connected components
-    let ones_n = Tensor::<R>::ones(&[n], dtype, device);
-    let large_val = Tensor::<R>::full_scalar(&[n, n], dtype, (n + 1) as f64, device);
+    let ones_n = Tensor::<R>::ones(&[n], dtype, device)?;
+    let large_val = Tensor::<R>::full_scalar(&[n, n], dtype, (n + 1) as f64, device)?;
     let mut labels = client.arange(0.0, n as f64, 1.0, dtype)?;
 
     for _ in 0..n {
         let labels_row = labels.unsqueeze(0)?.broadcast_to(&[n, n])?;
         // Where not adjacent, use large value; where adjacent, use label
-        let not_adj = client.sub(&Tensor::<R>::ones(&[n, n], dtype, device), &adjacency)?;
+        let not_adj = client.sub(&Tensor::<R>::ones(&[n, n], dtype, device)?, &adjacency)?;
         let masked = client.add(
             &client.mul(&not_adj, &large_val)?,
             &client.mul(&adjacency, &labels_row)?,
@@ -433,7 +433,7 @@ where
     // Remap to contiguous 0..k using scatter_reduce + cumsum + gather
     let labels_i64 = client.cast(&labels, DType::I64)?;
 
-    let used = Tensor::<R>::zeros(&[1, n], dtype, device);
+    let used = Tensor::<R>::zeros(&[1, n], dtype, device)?;
     let used = client
         .scatter_reduce(
             &used,
@@ -509,7 +509,7 @@ where
         }
     }
 
-    Ok(Tensor::<R>::from_slice(&order, &[n], device))
+    Tensor::<R>::from_slice(&order, &[n], device)
 }
 
 /// Cut tree at multiple cluster counts.

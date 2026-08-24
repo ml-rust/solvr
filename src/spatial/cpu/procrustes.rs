@@ -42,7 +42,8 @@ mod tests {
         let (client, device) = setup();
 
         let points =
-            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 0.0, 0.5, 1.0], &[3, 2], &device);
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 0.0, 0.5, 1.0], &[3, 2], &device)
+                .unwrap();
 
         let result = client.procrustes(&points, &points, false, false).unwrap();
 
@@ -56,11 +57,13 @@ mod tests {
         let (client, device) = setup();
 
         let source =
-            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 0.0, 0.5, 1.0], &[3, 2], &device);
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 0.0, 0.5, 1.0], &[3, 2], &device)
+                .unwrap();
 
         // Target is source shifted by (2, 3)
         let target =
-            Tensor::<CpuRuntime>::from_slice(&[2.0, 3.0, 3.0, 3.0, 2.5, 4.0], &[3, 2], &device);
+            Tensor::<CpuRuntime>::from_slice(&[2.0, 3.0, 3.0, 3.0, 2.5, 4.0], &[3, 2], &device)
+                .unwrap();
 
         let result = client.procrustes(&source, &target, false, false).unwrap();
 
@@ -76,11 +79,13 @@ mod tests {
         let (client, device) = setup();
 
         let source =
-            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 0.0, 0.5, 1.0], &[3, 2], &device);
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 0.0, 0.5, 1.0], &[3, 2], &device)
+                .unwrap();
 
         // Target is source scaled by 2
         let target =
-            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 2.0, 0.0, 1.0, 2.0], &[3, 2], &device);
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 2.0, 0.0, 1.0, 2.0], &[3, 2], &device)
+                .unwrap();
 
         let result = client.procrustes(&source, &target, true, false).unwrap();
 
@@ -98,7 +103,8 @@ mod tests {
             &[1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
             &[4, 3],
             &device,
-        );
+        )
+        .unwrap();
 
         let b = a.clone();
 

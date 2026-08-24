@@ -199,7 +199,7 @@ where
 
     // If derivative order exceeds degree, result is zero
     if dx > spline.degree_x || dy > spline.degree_y {
-        return Ok(Tensor::zeros(&[m], DType::F64, device));
+        return Ok(Tensor::zeros(&[m], DType::F64, device)?);
     }
 
     // Differentiate along x: apply knot differencing dx times to rows of C
@@ -309,10 +309,10 @@ where
             .reshape(&[n - 1, 1])?
             .broadcast_to(&[n - 1, ncy])?
             .contiguous()?;
-        let eps = Tensor::full_scalar(&[n - 1, ncy], DType::F64, 1e-300, client.device());
+        let eps = Tensor::full_scalar(&[n - 1, ncy], DType::F64, 1e-300, client.device())?;
         let abs_dt = client.abs(&dt_col)?;
         let dt_safe = client.maximum(&abs_dt, &eps)?;
-        let zero = Tensor::zeros(&[n - 1, ncy], DType::F64, client.device());
+        let zero = Tensor::zeros(&[n - 1, ncy], DType::F64, client.device())?;
         let mask = client.gt(&abs_dt, &zero)?;
 
         let new_coeffs =
@@ -398,11 +398,11 @@ where
     //   prepend zero row → [n_coeffs+1, n_coeffs]
     let terms_matrix = LinearAlgebraAlgorithms::diagflat(client, &dt_scaled)?; // [n_coeffs, n_coeffs]
     let cumsum_matrix = client.cumsum(&terms_matrix, 0)?; // [n_coeffs, n_coeffs]
-    let zero_row = Tensor::zeros(&[1, n_coeffs], DType::F64, device);
+    let zero_row = Tensor::zeros(&[1, n_coeffs], DType::F64, device)?;
     let anti_coeffs_all = client.cat(&[&zero_row, &cumsum_matrix], 0)?; // [n_coeffs+1, n_coeffs]
 
     // Evaluate anti-derivative basis at [b, a]: shared basis matrix [2, ncx_anti]
-    let ab = Tensor::from_slice(&[b, a], &[2], device);
+    let ab = Tensor::from_slice(&[b, a], &[2], device)?;
     let basis_ab = compute_basis_matrix(client, &ab, &anti_knots, k + 1, ncx_anti)?; // [2, ncx_anti]
 
     // Matmul: [2, ncx_anti] @ [ncx_anti, n_coeffs] → [2, n_coeffs]
@@ -429,8 +429,8 @@ mod tests {
     fn test_bilinear_exact() {
         // z = x + 2y should be exact with degree 1
         let (device, client) = setup();
-        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0], &[3], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0], &[3], &device).unwrap();
 
         let mut z_data = vec![0.0f64; 12];
         for i in 0..4 {
@@ -438,15 +438,15 @@ mod tests {
                 z_data[i * 3 + j] = i as f64 + 2.0 * j as f64;
             }
         }
-        let z = Tensor::<CpuRuntime>::from_slice(&z_data, &[4, 3], &device);
+        let z = Tensor::<CpuRuntime>::from_slice(&z_data, &[4, 3], &device).unwrap();
 
         let spline =
             rect_bivariate_spline_fit_impl(&client, &x, &y, &z, 1, 1, &BSplineBoundary::NotAKnot)
                 .expect("fit failed");
 
         // Evaluate at scattered query points
-        let xi = Tensor::<CpuRuntime>::from_slice(&[0.5, 1.5, 2.5], &[3], &device);
-        let yi = Tensor::<CpuRuntime>::from_slice(&[0.5, 1.0, 1.5], &[3], &device);
+        let xi = Tensor::<CpuRuntime>::from_slice(&[0.5, 1.5, 2.5], &[3], &device).unwrap();
+        let yi = Tensor::<CpuRuntime>::from_slice(&[0.5, 1.0, 1.5], &[3], &device).unwrap();
         let result = rect_bivariate_spline_evaluate_impl(&client, &spline, &xi, &yi).unwrap();
         let vals: Vec<f64> = result.to_vec();
 
@@ -466,8 +466,8 @@ mod tests {
     fn test_grid_evaluation() {
         // z = x * y
         let (device, client) = setup();
-        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], &device).unwrap();
 
         let mut z_data = vec![0.0f64; 16];
         for i in 0..4 {
@@ -475,14 +475,14 @@ mod tests {
                 z_data[i * 4 + j] = i as f64 * j as f64;
             }
         }
-        let z = Tensor::<CpuRuntime>::from_slice(&z_data, &[4, 4], &device);
+        let z = Tensor::<CpuRuntime>::from_slice(&z_data, &[4, 4], &device).unwrap();
 
         let spline =
             rect_bivariate_spline_fit_impl(&client, &x, &y, &z, 3, 3, &BSplineBoundary::NotAKnot)
                 .expect("fit failed");
 
-        let xi = Tensor::<CpuRuntime>::from_slice(&[0.5, 1.5], &[2], &device);
-        let yi = Tensor::<CpuRuntime>::from_slice(&[0.5, 1.5, 2.5], &[3], &device);
+        let xi = Tensor::<CpuRuntime>::from_slice(&[0.5, 1.5], &[2], &device).unwrap();
+        let yi = Tensor::<CpuRuntime>::from_slice(&[0.5, 1.5, 2.5], &[3], &device).unwrap();
         let grid = rect_bivariate_spline_evaluate_grid_impl(&client, &spline, &xi, &yi).unwrap();
 
         assert_eq!(grid.shape(), &[2, 3]);
@@ -505,8 +505,10 @@ mod tests {
     fn test_partial_derivative() {
         // z = x^2 + y^2, dz/dx = 2x, dz/dy = 2y
         let (device, client) = setup();
-        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0, 4.0], &[5], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0, 4.0], &[5], &device);
+        let x =
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0, 4.0], &[5], &device).unwrap();
+        let y =
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0, 4.0], &[5], &device).unwrap();
 
         let mut z_data = vec![0.0f64; 25];
         for i in 0..5 {
@@ -514,15 +516,15 @@ mod tests {
                 z_data[i * 5 + j] = (i * i + j * j) as f64;
             }
         }
-        let z = Tensor::<CpuRuntime>::from_slice(&z_data, &[5, 5], &device);
+        let z = Tensor::<CpuRuntime>::from_slice(&z_data, &[5, 5], &device).unwrap();
 
         let spline =
             rect_bivariate_spline_fit_impl(&client, &x, &y, &z, 3, 3, &BSplineBoundary::NotAKnot)
                 .expect("fit failed");
 
         // dz/dx at (2.0, 1.0) should be ~4.0
-        let xi = Tensor::<CpuRuntime>::from_slice(&[2.0], &[1], &device);
-        let yi = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
+        let xi = Tensor::<CpuRuntime>::from_slice(&[2.0], &[1], &device).unwrap();
+        let yi = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
         let dzdx = rect_bivariate_spline_partial_derivative_impl(&client, &spline, &xi, &yi, 1, 0)
             .unwrap();
         let val: Vec<f64> = dzdx.to_vec();
@@ -533,8 +535,8 @@ mod tests {
         );
 
         // dz/dy at (1.0, 2.0) should be ~4.0
-        let xi2 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
-        let yi2 = Tensor::<CpuRuntime>::from_slice(&[2.0], &[1], &device);
+        let xi2 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
+        let yi2 = Tensor::<CpuRuntime>::from_slice(&[2.0], &[1], &device).unwrap();
         let dzdy =
             rect_bivariate_spline_partial_derivative_impl(&client, &spline, &xi2, &yi2, 0, 1)
                 .unwrap();
@@ -550,9 +552,9 @@ mod tests {
     fn test_integrate_constant() {
         // z = 1.0 everywhere, integral over [0,3]×[0,2] should be 6.0
         let (device, client) = setup();
-        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0], &[3], &device);
-        let z = Tensor::<CpuRuntime>::from_slice(&[1.0f64; 12], &[4, 3], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0], &[3], &device).unwrap();
+        let z = Tensor::<CpuRuntime>::from_slice(&[1.0f64; 12], &[4, 3], &device).unwrap();
 
         let spline =
             rect_bivariate_spline_fit_impl(&client, &x, &y, &z, 1, 1, &BSplineBoundary::NotAKnot)

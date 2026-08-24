@@ -48,7 +48,8 @@ mod tests {
             ],
             &[10, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         let options = HdbscanOptions {
             min_cluster_size: 3,
@@ -74,7 +75,8 @@ mod tests {
             ],
             &[10, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         let options = HdbscanOptions {
             min_cluster_size: 3,
@@ -110,7 +112,8 @@ mod tests {
             ],
             &[6, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         let options = HdbscanOptions {
             min_cluster_size: 3,

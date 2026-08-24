@@ -78,7 +78,8 @@ mod tests {
             return;
         };
 
-        let pk = Tensor::<CudaRuntime>::from_slice(&[0.25f64, 0.25, 0.25, 0.25], &[4], &device);
+        let pk =
+            Tensor::<CudaRuntime>::from_slice(&[0.25f64, 0.25, 0.25, 0.25], &[4], &device).unwrap();
         let result = client.entropy(&pk, None).unwrap();
         let val = extract_scalar(&result).unwrap();
         assert!((val - 4.0_f64.ln()).abs() < 1e-6);

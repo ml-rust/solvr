@@ -53,7 +53,8 @@ mod tests {
             ],
             &[6, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         let options = KMeansOptions {
             n_clusters: 2,
@@ -82,7 +83,8 @@ mod tests {
         let (client, device) = setup();
 
         let data =
-            Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0, 3.0, 4.0, 5.0, 6.0], &[3, 2], &device);
+            Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0, 3.0, 4.0, 5.0, 6.0], &[3, 2], &device)
+                .unwrap();
 
         let options = KMeansOptions {
             n_clusters: 3,
@@ -101,10 +103,12 @@ mod tests {
     fn test_kmeans_predict() {
         let (client, device) = setup();
 
-        let centroids = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 10.0, 10.0], &[2, 2], &device);
+        let centroids =
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 10.0, 10.0], &[2, 2], &device).unwrap();
 
         let data =
-            Tensor::<CpuRuntime>::from_slice(&[0.1, 0.1, 9.9, 9.9, 0.2, -0.1], &[3, 2], &device);
+            Tensor::<CpuRuntime>::from_slice(&[0.1, 0.1, 9.9, 9.9, 0.2, -0.1], &[3, 2], &device)
+                .unwrap();
 
         let labels = client.kmeans_predict(&centroids, &data).unwrap();
         let labels_vec: Vec<i64> = labels.to_vec();
@@ -118,7 +122,8 @@ mod tests {
         let (client, device) = setup();
 
         let data =
-            Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0, 3.0, 4.0, 5.0, 6.0], &[3, 2], &device);
+            Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0, 3.0, 4.0, 5.0, 6.0], &[3, 2], &device)
+                .unwrap();
 
         let options = KMeansOptions {
             n_clusters: 1,
@@ -147,10 +152,11 @@ mod tests {
             ],
             &[6, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         let init_centroids =
-            Tensor::<CpuRuntime>::from_slice(&[0.1, 0.03, 10.1, 10.03], &[2, 2], &device);
+            Tensor::<CpuRuntime>::from_slice(&[0.1, 0.03, 10.1, 10.03], &[2, 2], &device).unwrap();
 
         let options = KMeansOptions {
             n_clusters: 2,
@@ -181,10 +187,11 @@ mod tests {
             &[0.0, 0.0, 0.1, 0.1, 10.0, 10.0, 10.1, 10.1],
             &[4, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         let init_centroids =
-            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 10.0, 10.0], &[2, 2], &device);
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 10.0, 10.0], &[2, 2], &device).unwrap();
 
         let options = KMeansOptions {
             n_clusters: 2,

@@ -47,7 +47,7 @@ where
     let mut r_curr = vec![0.0; options.max_levels];
 
     // Initial trapezoidal estimate (1 interval) - batch evaluate endpoints
-    let endpoints = Tensor::<R>::from_slice(&[a, b], &[2], client.device());
+    let endpoints = Tensor::<R>::from_slice(&[a, b], &[2], client.device())?;
     let f_endpoints = f(&endpoints)?;
     let f_ab: Vec<f64> = f_endpoints.to_vec();
     neval += 2;
@@ -72,7 +72,7 @@ where
 
         // Single batch evaluation - 2 device transfers total (up and down)
         let x_tensor =
-            Tensor::<R>::from_slice(&new_points, &[num_new_points as usize], client.device());
+            Tensor::<R>::from_slice(&new_points, &[num_new_points as usize], client.device())?;
         let f_values = f(&x_tensor)?;
         let f_data: Vec<f64> = f_values.to_vec();
 
@@ -95,7 +95,7 @@ where
 
         if error <= tolerance {
             return Ok(QuadResult {
-                integral: Tensor::<R>::from_slice(&[r_curr[k]], &[], client.device()),
+                integral: Tensor::<R>::from_slice(&[r_curr[k]], &[], client.device())?,
                 error,
                 neval,
                 converged: true,
@@ -114,7 +114,7 @@ where
     };
 
     Ok(QuadResult {
-        integral: Tensor::<R>::from_slice(&[r_prev[k]], &[], client.device()),
+        integral: Tensor::<R>::from_slice(&[r_prev[k]], &[], client.device())?,
         error,
         neval,
         converged: false,

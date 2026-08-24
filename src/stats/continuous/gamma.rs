@@ -242,7 +242,7 @@ impl ContinuousDistribution for Gamma {
         C: TensorOps<R> + ScalarOps<R> + SpecialFunctions<R> + RuntimeClient<R>,
     {
         // CDF(x) = gammainc(α, β*x)
-        let alpha_t = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.alpha, client.device());
+        let alpha_t = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.alpha, client.device())?;
         let beta_x = client.mul_scalar(x, self.beta)?;
         client.gammainc(&alpha_t, &beta_x)
     }
@@ -256,7 +256,7 @@ impl ContinuousDistribution for Gamma {
         C: TensorOps<R> + ScalarOps<R> + SpecialFunctions<R> + RuntimeClient<R>,
     {
         // SF(x) = gammaincc(α, β*x)
-        let alpha_t = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.alpha, client.device());
+        let alpha_t = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.alpha, client.device())?;
         let beta_x = client.mul_scalar(x, self.beta)?;
         client.gammaincc(&alpha_t, &beta_x)
     }
@@ -283,7 +283,7 @@ impl ContinuousDistribution for Gamma {
         C: TensorOps<R> + ScalarOps<R> + SpecialFunctions<R> + RuntimeClient<R>,
     {
         // PPF(p) = gammaincinv(α, p) / β
-        let alpha_t = Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.alpha, client.device());
+        let alpha_t = Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.alpha, client.device())?;
         let gamma_inv = client.gammaincinv(&alpha_t, p)?;
         client.mul_scalar(&gamma_inv, 1.0 / self.beta)
     }
@@ -299,7 +299,7 @@ impl ContinuousDistribution for Gamma {
         // ISF(p) = PPF(1 - p) = gammaincinv(α, 1-p) / β
         let neg_p = client.mul_scalar(p, -1.0)?;
         let one_minus_p = client.add_scalar(&neg_p, 1.0)?;
-        let alpha_t = Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.alpha, client.device());
+        let alpha_t = Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.alpha, client.device())?;
         let gamma_inv = client.gammaincinv(&alpha_t, &one_minus_p)?;
         client.mul_scalar(&gamma_inv, 1.0 / self.beta)
     }

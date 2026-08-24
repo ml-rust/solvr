@@ -32,7 +32,7 @@ mod tests {
     fn test_bfgs_cpu() {
         let device = CpuDevice::new();
         let client = CpuClient::new(device.clone());
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device).unwrap();
 
         let result = client
             .bfgs(

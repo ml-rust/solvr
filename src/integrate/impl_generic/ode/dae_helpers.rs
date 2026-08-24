@@ -169,7 +169,7 @@ where
             }
         })
         .collect();
-    let mask_tensor = Tensor::<R>::from_slice(&mask, &[n], client.device());
+    let mask_tensor = Tensor::<R>::from_slice(&mask, &[n], client.device())?;
 
     // Mask the error
     let masked_error = client.mul(error, &mask_tensor)?;
@@ -249,7 +249,7 @@ where
     C: TensorOps<R> + RuntimeClient<R>,
 {
     let n_steps = t_values.len();
-    let t_tensor = Tensor::<R>::from_slice(t_values, &[n_steps], client.device());
+    let t_tensor = Tensor::<R>::from_slice(t_values, &[n_steps], client.device())?;
 
     let y_refs: Vec<&Tensor<R>> = y_values.iter().collect();
     let y_tensor = client

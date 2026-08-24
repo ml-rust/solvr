@@ -54,8 +54,8 @@ where
         // Constant numerator has no zeros
         let device = b.device();
         numr::algorithm::polynomial::types::PolynomialRoots {
-            roots_real: Tensor::zeros(&[0], b.dtype(), device),
-            roots_imag: Tensor::zeros(&[0], b.dtype(), device),
+            roots_real: Tensor::zeros(&[0], b.dtype(), device)?,
+            roots_imag: Tensor::zeros(&[0], b.dtype(), device)?,
         }
     };
 
@@ -65,8 +65,8 @@ where
     } else {
         let device = a.device();
         numr::algorithm::polynomial::types::PolynomialRoots {
-            roots_real: Tensor::zeros(&[0], a.dtype(), device),
-            roots_imag: Tensor::zeros(&[0], a.dtype(), device),
+            roots_real: Tensor::zeros(&[0], a.dtype(), device)?,
+            roots_imag: Tensor::zeros(&[0], a.dtype(), device)?,
         }
     };
 
@@ -98,7 +98,7 @@ where
     // Build numerator from zeros
     let b = if zpk.num_zeros() == 0 {
         // No zeros: numerator is just [gain]
-        Tensor::from_slice(&[zpk.gain], &[1], device)
+        Tensor::from_slice(&[zpk.gain], &[1], device)?
     } else {
         // Build polynomial from roots, then scale by gain
         let b_monic = client.polyfromroots(&zpk.zeros_real, &zpk.zeros_imag)?;
@@ -110,7 +110,7 @@ where
     // Build denominator from poles
     let a = if zpk.num_poles() == 0 {
         // No poles: denominator is just [1]
-        Tensor::from_slice(&[1.0], &[1], device)
+        Tensor::from_slice(&[1.0], &[1], device)?
     } else {
         let a_monic = client.polyfromroots(&zpk.poles_real, &zpk.poles_imag)?;
         // polyfromroots returns ascending order, we need descending

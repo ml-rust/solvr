@@ -26,7 +26,7 @@ where
     }
 
     // H = -Σ p * log(p), treating 0*log(0) = 0
-    let epsilon = Tensor::<R>::full_scalar(pk_contig.shape(), pk.dtype(), 1e-300, client.device());
+    let epsilon = Tensor::<R>::full_scalar(pk_contig.shape(), pk.dtype(), 1e-300, client.device())?;
     let pk_safe = client.maximum(&pk_contig, &epsilon)?;
     let log_pk = client.log(&pk_safe)?;
 
@@ -40,12 +40,7 @@ where
         h /= b.ln();
     }
 
-    Ok(Tensor::<R>::full_scalar(
-        &[],
-        pk.dtype(),
-        h,
-        client.device(),
-    ))
+    Tensor::<R>::full_scalar(&[], pk.dtype(), h, client.device())
 }
 
 /// Generic implementation of differential entropy via k-NN spacing estimator.
@@ -103,7 +98,7 @@ where
     // For the estimator we need log(2 * rho_i) for each point
     // Use the spacing as an approximation of 2*rho for interior points
     // (standard approach for 1-D KL estimator with sorted data)
-    let epsilon = Tensor::<R>::full_scalar(spacings.shape(), dtype, 1e-300, device);
+    let epsilon = Tensor::<R>::full_scalar(spacings.shape(), dtype, 1e-300, device)?;
     let safe_spacings = client.maximum(&spacings, &epsilon)?;
     let log_spacings = client.log(&safe_spacings)?;
 
@@ -122,7 +117,7 @@ where
 
     let h = digamma_n - digamma_k + log_sum / n_eff;
 
-    Ok(Tensor::<R>::full_scalar(&[], dtype, h, device))
+    Tensor::<R>::full_scalar(&[], dtype, h, device)
 }
 
 /// Generic implementation of KL divergence.
@@ -150,7 +145,7 @@ where
     let qk_contig = qk.contiguous()?;
 
     // D_KL = Σ p * log(p/q) = Σ p * (log(p) - log(q))
-    let epsilon = Tensor::<R>::full_scalar(pk_contig.shape(), pk.dtype(), 1e-300, client.device());
+    let epsilon = Tensor::<R>::full_scalar(pk_contig.shape(), pk.dtype(), 1e-300, client.device())?;
     let pk_safe = client.maximum(&pk_contig, &epsilon)?;
     let qk_safe = client.maximum(&qk_contig, &epsilon)?;
 
@@ -168,12 +163,7 @@ where
         kl /= b.ln();
     }
 
-    Ok(Tensor::<R>::full_scalar(
-        &[],
-        pk.dtype(),
-        kl,
-        client.device(),
-    ))
+    Tensor::<R>::full_scalar(&[], pk.dtype(), kl, client.device())
 }
 
 /// Generic implementation of mutual information via histogram binning.
@@ -233,29 +223,29 @@ where
 
     // Compute bin indices on device: bin_i = clamp(round((x - min) / range * (bins-1)), 0, bins-1)
     let bins_f = (bins - 1) as f64;
-    let x_min_t = Tensor::<R>::full_scalar(x_contig.shape(), dtype, x_min, device);
+    let x_min_t = Tensor::<R>::full_scalar(x_contig.shape(), dtype, x_min, device)?;
     let x_shifted = client.sub(&x_contig, &x_min_t)?;
-    let x_scale_t = Tensor::<R>::full_scalar(x_contig.shape(), dtype, bins_f / x_range, device);
+    let x_scale_t = Tensor::<R>::full_scalar(x_contig.shape(), dtype, bins_f / x_range, device)?;
     let x_scaled = client.mul(&x_shifted, &x_scale_t)?;
     let x_rounded = client.round(&x_scaled)?;
     let x_bins = client.clamp(&x_rounded, 0.0, bins_f)?;
 
-    let y_min_t = Tensor::<R>::full_scalar(y_contig.shape(), dtype, y_min, device);
+    let y_min_t = Tensor::<R>::full_scalar(y_contig.shape(), dtype, y_min, device)?;
     let y_shifted = client.sub(&y_contig, &y_min_t)?;
-    let y_scale_t = Tensor::<R>::full_scalar(y_contig.shape(), dtype, bins_f / y_range, device);
+    let y_scale_t = Tensor::<R>::full_scalar(y_contig.shape(), dtype, bins_f / y_range, device)?;
     let y_scaled = client.mul(&y_shifted, &y_scale_t)?;
     let y_rounded = client.round(&y_scaled)?;
     let y_bins = client.clamp(&y_rounded, 0.0, bins_f)?;
 
     // Flatten to 1-D joint index: joint_idx = x_bin * bins + y_bin
-    let bins_scale_t = Tensor::<R>::full_scalar(x_bins.shape(), dtype, bins as f64, device);
+    let bins_scale_t = Tensor::<R>::full_scalar(x_bins.shape(), dtype, bins as f64, device)?;
     let x_bins_scaled = client.mul(&x_bins, &bins_scale_t)?;
     let joint_idx_f = client.add(&x_bins_scaled, &y_bins)?;
     let joint_idx = client.cast(&joint_idx_f, numr::dtype::DType::I64)?;
 
     // Build joint histogram via scatter_reduce (sum ones at joint indices)
-    let ones = Tensor::<R>::full_scalar(&[n], dtype, 1.0, device);
-    let joint_zeros = Tensor::<R>::full_scalar(&[bins * bins], dtype, 0.0, device);
+    let ones = Tensor::<R>::full_scalar(&[n], dtype, 1.0, device)?;
+    let joint_zeros = Tensor::<R>::full_scalar(&[bins * bins], dtype, 0.0, device)?;
     let joint_hist = client.scatter_reduce(
         &joint_zeros,
         0,
@@ -266,7 +256,7 @@ where
     )?;
 
     // Normalize to joint probability
-    let n_t = Tensor::<R>::full_scalar(&[1], dtype, n as f64, device);
+    let n_t = Tensor::<R>::full_scalar(&[1], dtype, n as f64, device)?;
     let pxy = client.div(&joint_hist, &n_t)?; // [bins*bins]
 
     // Marginals: reshape to [bins, bins], sum along axes
@@ -282,7 +272,7 @@ where
     let px_py_flat = px_py.reshape(&[bins * bins])?;
 
     // Compute log(pxy / (px*py)) where both > 0
-    let epsilon = Tensor::<R>::full_scalar(&[bins * bins], dtype, 1e-300, device);
+    let epsilon = Tensor::<R>::full_scalar(&[bins * bins], dtype, 1e-300, device)?;
     let pxy_safe = client.maximum(&pxy, &epsilon)?;
     let pxpy_safe = client.maximum(&px_py_flat, &epsilon)?;
     let ratio = client.div(&pxy_safe, &pxpy_safe)?;
@@ -301,7 +291,7 @@ where
     // MI can be slightly negative due to floating point; clamp to 0
     mi = mi.max(0.0);
 
-    Ok(Tensor::<R>::full_scalar(&[], dtype, mi, device))
+    Tensor::<R>::full_scalar(&[], dtype, mi, device)
 }
 
 /// Generic implementation of cross-entropy.
@@ -331,7 +321,7 @@ where
     let qk_contig = qk.contiguous()?;
 
     // H(p, q) = -Σ p * log(q)
-    let epsilon = Tensor::<R>::full_scalar(qk_contig.shape(), qk.dtype(), 1e-300, client.device());
+    let epsilon = Tensor::<R>::full_scalar(qk_contig.shape(), qk.dtype(), 1e-300, client.device())?;
     let qk_safe = client.maximum(&qk_contig, &epsilon)?;
     let log_qk = client.log(&qk_safe)?;
 
@@ -345,12 +335,7 @@ where
         h /= b.ln();
     }
 
-    Ok(Tensor::<R>::full_scalar(
-        &[],
-        pk.dtype(),
-        h,
-        client.device(),
-    ))
+    Tensor::<R>::full_scalar(&[], pk.dtype(), h, client.device())
 }
 
 /// Generic implementation of negative log-likelihood loss.
@@ -402,5 +387,5 @@ where
     let sum = extract_scalar(&client.sum(&neg_selected, &all_dims, false)?)?;
     let loss = sum / n as f64;
 
-    Ok(Tensor::<R>::full_scalar(&[], dtype, loss, device))
+    Tensor::<R>::full_scalar(&[], dtype, loss, device)
 }

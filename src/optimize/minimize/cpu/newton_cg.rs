@@ -43,7 +43,7 @@ mod tests {
         let (device, client) = setup();
 
         // f(x) = sum(x²), minimum at x = 0
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device).unwrap();
 
         let result = client
             .newton_cg(
@@ -71,13 +71,14 @@ mod tests {
         let (device, client) = setup();
 
         // f(x) = sum((x - 1)²), minimum at x = [1, 1, 1]
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.0f64, 0.0, 0.0], &[3], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.0f64, 0.0, 0.0], &[3], &device).unwrap();
 
         let result = client
             .newton_cg(
                 |x_var, c| {
                     let one = Var::new(
-                        Tensor::<CpuRuntime>::from_slice(&[1.0f64, 1.0, 1.0], &[3], &device),
+                        Tensor::<CpuRuntime>::from_slice(&[1.0f64, 1.0, 1.0], &[3], &device)
+                            .unwrap(),
                         false,
                     );
                     let diff = numr::autograd::var_sub(x_var, &one, c)?;

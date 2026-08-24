@@ -59,7 +59,7 @@ where
     let mut centroids = init_result.centroids;
 
     // Per-centroid counts for learning rate
-    let mut counts = Tensor::<R>::ones(&[k], dtype, device);
+    let mut counts = Tensor::<R>::ones(&[k], dtype, device)?;
 
     let mut best_inertia = f64::INFINITY;
     let mut no_improvement = 0usize;
@@ -81,7 +81,7 @@ where
         // For each point in batch: count[c] += 1, eta = 1/count[c], centroid[c] += eta * (x - centroid[c])
         // Batch version: accumulate sums and counts per cluster, then update
         let labels_exp = labels.unsqueeze(1)?.broadcast_to(&[batch_size, d])?;
-        let dst = Tensor::<R>::zeros(&[k, d], dtype, device);
+        let dst = Tensor::<R>::zeros(&[k, d], dtype, device)?;
         let batch_sums = client.scatter_reduce(
             &dst,
             0,
@@ -101,13 +101,13 @@ where
         let eta_exp = eta.unsqueeze(1)?.broadcast_to(&[k, d])?;
 
         // New centroid positions from batch
-        let bc_safe = client.maximum(&batch_counts_f, &Tensor::<R>::ones(&[k], dtype, device))?;
+        let bc_safe = client.maximum(&batch_counts_f, &Tensor::<R>::ones(&[k], dtype, device)?)?;
         let bc_exp = bc_safe.unsqueeze(1)?.broadcast_to(&[k, d])?;
         let batch_centroids = client.div(&batch_sums, &bc_exp)?;
 
         // centroid = centroid + eta * (batch_centroid - centroid)
         // Only update clusters that got assignments
-        let has_points = client.gt(&batch_counts_f, &Tensor::<R>::zeros(&[k], dtype, device))?;
+        let has_points = client.gt(&batch_counts_f, &Tensor::<R>::zeros(&[k], dtype, device)?)?;
         let has_points_exp = has_points.unsqueeze(1)?.broadcast_to(&[k, d])?;
         let has_points_f = client.cast(&has_points_exp, dtype)?;
 

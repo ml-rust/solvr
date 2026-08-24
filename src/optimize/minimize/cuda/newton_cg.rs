@@ -45,7 +45,7 @@ mod tests {
         };
 
         // f(x) = sum(x²), minimum at x = 0
-        let x0 = Tensor::<CudaRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device);
+        let x0 = Tensor::<CudaRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device).unwrap();
 
         let result = client
             .newton_cg(

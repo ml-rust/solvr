@@ -206,7 +206,7 @@ mod tests {
         // Integrate y = x from 0 to 1 with 5 points
         // Points: [0, 0.25, 0.5, 0.75, 1.0]
         // Exact integral = 0.5
-        let y = Tensor::from_slice(&[0.0, 0.25, 0.5, 0.75, 1.0], &[5], client.device());
+        let y = Tensor::from_slice(&[0.0, 0.25, 0.5, 0.75, 1.0], &[5], client.device()).unwrap();
         let result = trapezoid_uniform_impl(&client, &y, 0.25).unwrap();
 
         let values: Vec<f64> = result.to_vec();
@@ -218,8 +218,8 @@ mod tests {
         let client = get_client();
 
         // Integrate y = x from 0 to 1
-        let x = Tensor::from_slice(&[0.0, 0.25, 0.5, 0.75, 1.0], &[5], client.device());
-        let y = Tensor::from_slice(&[0.0, 0.25, 0.5, 0.75, 1.0], &[5], client.device());
+        let x = Tensor::from_slice(&[0.0, 0.25, 0.5, 0.75, 1.0], &[5], client.device()).unwrap();
+        let y = Tensor::from_slice(&[0.0, 0.25, 0.5, 0.75, 1.0], &[5], client.device()).unwrap();
         let result = trapezoid_impl(&client, &y, &x).unwrap();
 
         let values: Vec<f64> = result.to_vec();
@@ -233,8 +233,9 @@ mod tests {
         // Batch integration: two rows
         // Row 0: y = x, integral = 0.5
         // Row 1: y = 2x, integral = 1.0
-        let x = Tensor::from_slice(&[0.0, 0.5, 1.0], &[3], client.device());
-        let y = Tensor::from_slice(&[0.0, 0.5, 1.0, 0.0, 1.0, 2.0], &[2, 3], client.device());
+        let x = Tensor::from_slice(&[0.0, 0.5, 1.0], &[3], client.device()).unwrap();
+        let y =
+            Tensor::from_slice(&[0.0, 0.5, 1.0, 0.0, 1.0, 2.0], &[2, 3], client.device()).unwrap();
         let result = trapezoid_impl(&client, &y, &x).unwrap();
 
         let values: Vec<f64> = result.to_vec();
@@ -248,7 +249,7 @@ mod tests {
 
         // Cumulative integral of y = 1 (constant)
         // With dx = 1: cumulative = [1, 2, 3, 4]
-        let y = Tensor::from_slice(&[1.0, 1.0, 1.0, 1.0, 1.0], &[5], client.device());
+        let y = Tensor::from_slice(&[1.0, 1.0, 1.0, 1.0, 1.0], &[5], client.device()).unwrap();
         let result = cumulative_trapezoid_impl(&client, &y, None, 1.0).unwrap();
 
         let values: Vec<f64> = result.to_vec();
@@ -264,8 +265,8 @@ mod tests {
         let client = get_client();
 
         // Cumulative integral with variable spacing
-        let x = Tensor::from_slice(&[0.0, 1.0, 3.0, 6.0], &[4], client.device());
-        let y = Tensor::from_slice(&[1.0, 1.0, 1.0, 1.0], &[4], client.device());
+        let x = Tensor::from_slice(&[0.0, 1.0, 3.0, 6.0], &[4], client.device()).unwrap();
+        let y = Tensor::from_slice(&[1.0, 1.0, 1.0, 1.0], &[4], client.device()).unwrap();
         let result = cumulative_trapezoid_impl(&client, &y, Some(&x), 1.0).unwrap();
 
         let values: Vec<f64> = result.to_vec();

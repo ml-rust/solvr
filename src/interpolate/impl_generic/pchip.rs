@@ -60,7 +60,7 @@ where
 
     let interior_len = n - 2;
     let epsilon_data = vec![1e-14; interior_len];
-    let epsilon = Tensor::<R>::from_slice(&epsilon_data, &[interior_len], device);
+    let epsilon = Tensor::<R>::from_slice(&epsilon_data, &[interior_len], device)?;
 
     // Compute product s0 * s1 to check monotonicity
     let product = client.mul(&s0, &s1)?;
@@ -143,7 +143,7 @@ where
     C: TensorOps<R> + ScalarOps<R> + RuntimeClient<R>,
 {
     let device = client.device();
-    let epsilon = Tensor::<R>::from_slice(&[1e-14], &[1], device);
+    let epsilon = Tensor::<R>::from_slice(&[1e-14], &[1], device)?;
 
     // Make inputs contiguous
     let s1 = s1.contiguous()?;
@@ -176,7 +176,7 @@ where
     let s1_s2_same_sign = client.div(&s1_s2_sum, &s1_s2_denom)?; // ~1 if same sign
 
     // s1_s2_diff_sign = 1 - s1_s2_same_sign
-    let ones = Tensor::<R>::from_slice(&[1.0], &[1], device);
+    let ones = Tensor::<R>::from_slice(&[1.0], &[1], device)?;
     let s1_s2_diff_sign = client.sub(&ones, &s1_s2_same_sign)?;
 
     // Check if |d| > 3*|s1|
@@ -225,8 +225,8 @@ mod tests {
     fn test_pchip_slopes_linear_data() {
         let (device, client) = setup();
 
-        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[1.0, 3.0, 5.0, 7.0], &[4], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&[1.0, 3.0, 5.0, 7.0], &[4], &device).unwrap();
 
         let slopes = pchip_slopes(&client, &x, &y).unwrap();
         let slopes_vec: Vec<f64> = slopes.to_vec();

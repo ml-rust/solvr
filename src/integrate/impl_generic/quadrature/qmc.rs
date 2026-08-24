@@ -82,7 +82,7 @@ where
         0.0
     };
 
-    let integral_tensor = Tensor::<R>::from_slice(&[integral], &[1], device);
+    let integral_tensor = Tensor::<R>::from_slice(&[integral], &[1], device)?;
 
     Ok(QuadResult {
         integral: integral_tensor,
@@ -112,8 +112,8 @@ where
     let scales: Vec<f64> = bounds.iter().map(|(a, b)| b - a).collect();
     let offsets: Vec<f64> = bounds.iter().map(|(a, _)| *a).collect();
 
-    let scale_tensor = Tensor::<R>::from_slice(&scales, &[1, n_dims], device);
-    let offset_tensor = Tensor::<R>::from_slice(&offsets, &[1, n_dims], device);
+    let scale_tensor = Tensor::<R>::from_slice(&scales, &[1, n_dims], device)?;
+    let offset_tensor = Tensor::<R>::from_slice(&offsets, &[1, n_dims], device)?;
 
     // x = offset + scale * samples (broadcasting handles [1, n_dims] with [n_samples, n_dims])
     let scaled = client.mul(samples, &scale_tensor)?;
@@ -143,7 +143,7 @@ mod tests {
                 let shape = _x.shape();
                 let n = shape[0];
                 let ones = vec![1.0; n];
-                Ok(Tensor::<CpuRuntime>::from_slice(&ones, &[n], &device))
+                Tensor::<CpuRuntime>::from_slice(&ones, &[n], &device)
             },
             &[(0.0, 1.0), (0.0, 1.0)],
             &QMCOptions::with_samples(4096),
@@ -168,7 +168,7 @@ mod tests {
             |x| {
                 let data: Vec<f64> = x.to_vec();
                 let sq: Vec<f64> = data.iter().map(|&xi| xi * xi).collect();
-                Ok(Tensor::<CpuRuntime>::from_slice(&sq, &[sq.len()], &device))
+                Tensor::<CpuRuntime>::from_slice(&sq, &[sq.len()], &device)
             },
             &[(0.0, 1.0)],
             &QMCOptions::with_samples(4096).sequence(QMCSequence::Sobol),
@@ -199,7 +199,7 @@ mod tests {
                     let yi = data[i * 2 + 1];
                     vals.push(if xi * xi + yi * yi <= 1.0 { 1.0 } else { 0.0 });
                 }
-                Ok(Tensor::<CpuRuntime>::from_slice(&vals, &[n], &device))
+                Tensor::<CpuRuntime>::from_slice(&vals, &[n], &device)
             },
             &[(-1.0, 1.0), (-1.0, 1.0)],
             &QMCOptions::with_samples(16384).sequence(QMCSequence::Halton),
@@ -227,7 +227,7 @@ mod tests {
                 let n = shape[0];
                 // f(x) = 1, integral over [0,1]^10 = 1
                 let ones = vec![1.0; n];
-                Ok(Tensor::<CpuRuntime>::from_slice(&ones, &[n], &device))
+                Tensor::<CpuRuntime>::from_slice(&ones, &[n], &device)
             },
             &[(0.0, 1.0); 10],
             &QMCOptions::with_samples(8192).sequence(QMCSequence::Sobol),
@@ -255,7 +255,7 @@ mod tests {
                 let shape = x.shape();
                 let n = shape[0];
                 let ones = vec![1.0; n];
-                Ok(Tensor::<CpuRuntime>::from_slice(&ones, &[n], &device))
+                Tensor::<CpuRuntime>::from_slice(&ones, &[n], &device)
             },
             &[(0.0, 1.0)],
             &opts,
@@ -268,7 +268,7 @@ mod tests {
                 let shape = x.shape();
                 let n = shape[0];
                 let ones = vec![1.0; n];
-                Ok(Tensor::<CpuRuntime>::from_slice(&ones, &[n], &device))
+                Tensor::<CpuRuntime>::from_slice(&ones, &[n], &device)
             },
             &[(0.0, 1.0)],
             &opts,

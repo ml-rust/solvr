@@ -83,7 +83,7 @@ where
             path_vec.reverse();
 
             let distance = g_score[target];
-            let path = Tensor::<R>::from_slice(&path_vec, &[path_vec.len()], &device);
+            let path = Tensor::<R>::from_slice(&path_vec, &[path_vec.len()], &device)?;
 
             return Ok(PathResult { distance, path });
         }
@@ -113,7 +113,7 @@ where
     }
 
     // Target not reached
-    let empty_path = Tensor::<R>::from_slice(&[] as &[i64], &[0], &device);
+    let empty_path = Tensor::<R>::from_slice(&[] as &[i64], &[0], &device)?;
     Ok(PathResult {
         distance: f64::INFINITY,
         path: empty_path,

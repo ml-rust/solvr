@@ -62,7 +62,7 @@ where
                 .collect::<Vec<_>>(),
             &[n, n],
             device,
-        );
+        )?;
         kernel_mat = client.add(&kernel_mat, &eye)?;
     }
 
@@ -108,11 +108,11 @@ where
         // [ P^T 0 ] [ c ] = [ 0 ]
         let p_cols = 1 + d; // constant + linear terms
         // Build polynomial matrix P [n, 1+d]: [1, x1, x2, ..., xd]
-        let ones_col = Tensor::full_scalar(&[n, 1], DType::F64, 1.0, device);
+        let ones_col = Tensor::full_scalar(&[n, 1], DType::F64, 1.0, device)?;
         let p_mat = client.cat(&[&ones_col, points], -1)?;
 
         // Build augmented system
-        let zeros_pp = Tensor::zeros(&[p_cols, p_cols], DType::F64, device);
+        let zeros_pp = Tensor::zeros(&[p_cols, p_cols], DType::F64, device)?;
 
         // Top row: [K, P]
         let kernel_mat = kernel_mat.contiguous()?;
@@ -131,7 +131,7 @@ where
             values.clone()
         };
         let n_out = vals_col.shape().get(1).copied().unwrap_or(1);
-        let zeros_rhs = Tensor::zeros(&[p_cols, n_out], DType::F64, device);
+        let zeros_rhs = Tensor::zeros(&[p_cols, n_out], DType::F64, device)?;
         let aug_rhs = client.cat(&[&vals_col, &zeros_rhs], 0)?;
 
         let aug_mat = aug_mat.contiguous()?;
@@ -204,7 +204,7 @@ where
 
     // Add polynomial contribution if present
     if let Some(ref poly_coeffs) = model.poly_coeffs {
-        let ones_col: Tensor<R> = Tensor::full_scalar(&[m, 1], DType::F64, 1.0, device);
+        let ones_col: Tensor<R> = Tensor::full_scalar(&[m, 1], DType::F64, 1.0, device)?;
         let p_query = client.cat(&[&ones_col, query], -1)?;
         let pc = if poly_coeffs.shape().len() == 1 {
             poly_coeffs.reshape(&[poly_coeffs.shape()[0], 1])?
@@ -269,7 +269,7 @@ where
     let dist_sq = client.sub(&sum_sq, &two_ab)?;
 
     // Clamp to non-negative before sqrt (numerical safety)
-    let zero = Tensor::zeros(&[n, m], DType::F64, device);
+    let zero = Tensor::zeros(&[n, m], DType::F64, device)?;
     let dist_sq_safe = client.maximum(&dist_sq, &zero)?;
     let dist = client.sqrt(&dist_sq_safe)?;
 
@@ -297,7 +297,7 @@ where
             let ln_r = client.log(dist)?;
             let result = client.mul(&r2, &ln_r)?;
             // Replace NaN (from 0*ln(0)) with 0
-            let zero = Tensor::zeros(&shape, DType::F64, device);
+            let zero = Tensor::zeros(&shape, DType::F64, device)?;
             let is_zero = client.eq(dist, &zero)?;
             Ok(client.where_cond(&is_zero, &zero, &result)?)
         }
@@ -314,7 +314,7 @@ where
             let r_eps2 = client.mul(&r_eps, &r_eps)?;
             let one_plus = client.add_scalar(&r_eps2, 1.0)?;
             let sq = client.sqrt(&one_plus)?;
-            let one = Tensor::full_scalar(&shape, DType::F64, 1.0, device);
+            let one = Tensor::full_scalar(&shape, DType::F64, 1.0, device)?;
             Ok(client.div(&one, &sq)?)
         }
         RbfKernel::Gaussian => {
@@ -356,7 +356,7 @@ where
     let dist = cdist_euclidean(client, points, points)?;
 
     // Add large value to diagonal so self-distance isn't the minimum
-    let big = Tensor::full_scalar(&[n], DType::F64, 1e30, client.device());
+    let big = Tensor::full_scalar(&[n], DType::F64, 1e30, client.device())?;
     let big_diag = client.diagflat(&big)?;
     let dist_masked = client.add(&dist, &big_diag)?;
 
@@ -385,8 +385,10 @@ mod tests {
     fn test_rbf_gaussian_1d() {
         let (device, client) = setup();
         // 1D points as [n, 1]
-        let points = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4, 1], &device);
-        let values = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 4.0, 9.0], &[4], &device);
+        let points =
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4, 1], &device).unwrap();
+        let values =
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 4.0, 9.0], &[4], &device).unwrap();
 
         let model = rbf_fit_impl(
             &client,
@@ -422,8 +424,10 @@ mod tests {
             &[0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0],
             &[4, 2],
             &device,
-        );
-        let values = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 1.0, 2.0], &[4], &device);
+        )
+        .unwrap();
+        let values =
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 1.0, 2.0], &[4], &device).unwrap();
 
         let model = rbf_fit_impl(
             &client,
@@ -454,8 +458,10 @@ mod tests {
     #[test]
     fn test_rbf_multiquadric() {
         let (device, client) = setup();
-        let points = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4, 1], &device);
-        let values = Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0, 1.0, 0.0], &[4], &device);
+        let points =
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4, 1], &device).unwrap();
+        let values =
+            Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0, 1.0, 0.0], &[4], &device).unwrap();
 
         let model = rbf_fit_impl(
             &client,

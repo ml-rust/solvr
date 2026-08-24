@@ -172,8 +172,8 @@ fn lfilter_impl(
 
     let device = x.device();
     Ok(LfilterResult {
-        y: Tensor::from_slice(&y, &[n_samples], device),
-        zf: Tensor::from_slice(&z, &[state_len], device),
+        y: Tensor::from_slice(&y, &[n_samples], device)?,
+        zf: Tensor::from_slice(&z, &[state_len], device)?,
     })
 }
 
@@ -239,7 +239,7 @@ fn filtfilt_impl(
     };
 
     let device = x.device();
-    let x_padded = Tensor::from_slice(&padded, &[padded.len()], device);
+    let x_padded = Tensor::from_slice(&padded, &[padded.len()], device)?;
 
     // Forward filter
     let forward = lfilter_impl(b, a, &x_padded, None)?;
@@ -247,7 +247,7 @@ fn filtfilt_impl(
     // Reverse
     let y1: Vec<f64> = forward.y.to_vec();
     let y1_rev: Vec<f64> = y1.into_iter().rev().collect();
-    let y1_rev_tensor = Tensor::from_slice(&y1_rev, &[y1_rev.len()], device);
+    let y1_rev_tensor = Tensor::from_slice(&y1_rev, &[y1_rev.len()], device)?;
 
     // Backward filter
     let backward = lfilter_impl(b, a, &y1_rev_tensor, None)?;
@@ -265,7 +265,7 @@ fn filtfilt_impl(
     };
 
     let output: Vec<f64> = y2_rev[start..end].to_vec();
-    Ok(Tensor::from_slice(&output, &[n], device))
+    Tensor::from_slice(&output, &[n], device)
 }
 
 /// Apply filter in second-order sections form.
@@ -280,7 +280,7 @@ fn sosfilt_impl(
     if n_sections == 0 {
         return Ok(SosfiltResult {
             y: x.clone(),
-            zf: Tensor::zeros(&[0, 2], x.dtype(), device),
+            zf: Tensor::zeros(&[0, 2], x.dtype(), device)?,
         });
     }
 
@@ -346,8 +346,8 @@ fn sosfilt_impl(
     let zf_flat: Vec<f64> = z.into_iter().flatten().collect();
 
     Ok(SosfiltResult {
-        y: Tensor::from_slice(&y, &[n_samples], device),
-        zf: Tensor::from_slice(&zf_flat, &[n_sections, 2], device),
+        y: Tensor::from_slice(&y, &[n_samples], device)?,
+        zf: Tensor::from_slice(&zf_flat, &[n_sections, 2], device)?,
     })
 }
 
@@ -410,7 +410,7 @@ fn sosfiltfilt_impl(
     };
 
     let device = x.device();
-    let x_padded = Tensor::from_slice(&padded, &[padded.len()], device);
+    let x_padded = Tensor::from_slice(&padded, &[padded.len()], device)?;
 
     // Forward filter
     let forward = sosfilt_impl(sos, &x_padded, None)?;
@@ -418,7 +418,7 @@ fn sosfiltfilt_impl(
     // Reverse
     let y1: Vec<f64> = forward.y.to_vec();
     let y1_rev: Vec<f64> = y1.into_iter().rev().collect();
-    let y1_rev_tensor = Tensor::from_slice(&y1_rev, &[y1_rev.len()], device);
+    let y1_rev_tensor = Tensor::from_slice(&y1_rev, &[y1_rev.len()], device)?;
 
     // Backward filter
     let backward = sosfilt_impl(sos, &y1_rev_tensor, None)?;
@@ -436,7 +436,7 @@ fn sosfiltfilt_impl(
     };
 
     let output: Vec<f64> = y2_rev[start..end].to_vec();
-    Ok(Tensor::from_slice(&output, &[n], device))
+    Tensor::from_slice(&output, &[n], device)
 }
 
 // ============================================================================
@@ -460,14 +460,16 @@ mod tests {
         let (client, device) = setup();
 
         // Simple moving average (FIR)
-        let b = Tensor::<CpuRuntime>::from_slice(&[0.25f64, 0.25, 0.25, 0.25], &[4], &device);
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
+        let b =
+            Tensor::<CpuRuntime>::from_slice(&[0.25f64, 0.25, 0.25, 0.25], &[4], &device).unwrap();
+        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
 
         let x = Tensor::<CpuRuntime>::from_slice(
             &[1.0f64, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
             &[8],
             &device,
-        );
+        )
+        .unwrap();
 
         let result = client.lfilter(&b, &a, &x, None).unwrap();
         let y: Vec<f64> = result.y.to_vec();
@@ -484,10 +486,11 @@ mod tests {
         let (client, device) = setup();
 
         // Simple first-order IIR: y[n] = x[n] + 0.5*y[n-1]
-        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -0.5], &[2], &device);
+        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
+        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -0.5], &[2], &device).unwrap();
 
-        let x = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0, 0.0, 0.0, 0.0], &[5], &device);
+        let x =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0, 0.0, 0.0, 0.0], &[5], &device).unwrap();
 
         let result = client.lfilter(&b, &a, &x, None).unwrap();
         let y: Vec<f64> = result.y.to_vec();
@@ -513,7 +516,7 @@ mod tests {
         for i in 0..100 {
             signal.push((i as f64 * 0.1).sin() + 0.1 * ((i as f64 * 2.5).sin()));
         }
-        let x = Tensor::<CpuRuntime>::from_slice(&signal, &[100], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&signal, &[100], &device).unwrap();
 
         let y = client.filtfilt(&tf.b, &tf.a, &x, None, None).unwrap();
 
@@ -534,7 +537,8 @@ mod tests {
             &[1.0f64, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
             &[8],
             &device,
-        );
+        )
+        .unwrap();
 
         let result = client.sosfilt(sos, &x, None).unwrap();
 

@@ -36,9 +36,9 @@ mod tests {
         let device = _device.clone();
         // min trace(C*X) = trace([[1,0],[0,1]]*X) = x11 + x22
         // s.t. trace(A*X) = 1, where A = [[1, 0], [0, 1]]
-        let c = Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device);
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device);
-        let b = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
+        let c = Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device).unwrap();
+        let a = Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device).unwrap();
+        let b = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
 
         let result = client
             .solve_sdp(&c, &[a], &b, &SdpOptions::default())

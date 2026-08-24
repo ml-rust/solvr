@@ -58,7 +58,7 @@ mod tests {
              0.0, -1.0,  0.0,
              0.0,  0.0,  1.0,
              0.0,  0.0, -1.0,
-        ], &[6, 3], &device);
+        ], &[6, 3], &device).unwrap();
 
         let sv = client.spherical_voronoi(&points, 1.0, None).unwrap();
 
@@ -80,7 +80,7 @@ mod tests {
              a, -a, -a,
             -a,  a, -a,
             -a, -a,  a,
-        ], &[4, 3], &device);
+        ], &[4, 3], &device).unwrap();
 
         let sv = client.spherical_voronoi(&points, 1.0, None).unwrap();
 
@@ -102,7 +102,7 @@ mod tests {
              0.0, -1.0,  0.0,
              0.0,  0.0,  1.0,
              0.0,  0.0, -1.0,
-        ], &[6, 3], &device);
+        ], &[6, 3], &device).unwrap();
 
         let sv = client.spherical_voronoi(&points, 1.0, None).unwrap();
         let sv = client.spherical_voronoi_sort_regions(&sv).unwrap();
@@ -134,7 +134,7 @@ mod tests {
              0.0,-r,  0.0,
              0.0, 0.0, r,
              0.0, 0.0,-r,
-        ], &[6, 3], &device);
+        ], &[6, 3], &device).unwrap();
 
         let sv = client.spherical_voronoi(&points, r, None).unwrap();
         assert_eq!(sv.radius, r);
@@ -146,7 +146,8 @@ mod tests {
         let (client, device) = setup();
 
         let points =
-            Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0, 0.0, -1.0, 0.0, 0.0], &[2, 3], &device);
+            Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0, 0.0, -1.0, 0.0, 0.0], &[2, 3], &device)
+                .unwrap();
         assert!(client.spherical_voronoi(&points, 1.0, None).is_err());
     }
 }

@@ -67,7 +67,7 @@ where
                     1.0 / d as f64
                 }
             };
-            let neg_gamma = Tensor::<R>::full_scalar(&[n, n], dtype, -gamma_val, device);
+            let neg_gamma = Tensor::<R>::full_scalar(&[n, n], dtype, -gamma_val, device)?;
             let scaled = client.mul(&neg_gamma, &sq_dists)?;
             client.exp(&scaled)?
         }
@@ -108,7 +108,7 @@ where
             // L_sym = I - D^{-1/2} W D^{-1/2}
             let d_inv_sqrt = client.pow_scalar(&degree, -0.5)?; // [n]
             // Handle zero degree
-            let zero = Tensor::<R>::zeros(&[n], dtype, device);
+            let zero = Tensor::<R>::zeros(&[n], dtype, device)?;
             let is_zero = client.eq(&degree, &zero)?;
             let d_inv_sqrt = client.where_cond(&is_zero, &zero, &d_inv_sqrt)?;
 
@@ -118,7 +118,7 @@ where
                 client.mul(&client.mul(&d_inv_sqrt_row, &affinity)?, &d_inv_sqrt_col)?;
 
             // L_sym = I - normalized
-            let eye = LinalgOps::diagflat(client, &Tensor::<R>::ones(&[n], dtype, device))?;
+            let eye = LinalgOps::diagflat(client, &Tensor::<R>::ones(&[n], dtype, device)?)?;
             let laplacian = client.sub(&eye, &normalized)?;
 
             let eig = client.eig_decompose_symmetric(&laplacian)?;
@@ -128,7 +128,7 @@ where
         LaplacianType::RandomWalk => {
             // L_rw = I - D^{-1} W
             let d_inv = client.pow_scalar(&degree, -1.0)?;
-            let zero = Tensor::<R>::zeros(&[n], dtype, device);
+            let zero = Tensor::<R>::zeros(&[n], dtype, device)?;
             let is_zero = client.eq(&degree, &zero)?;
             let d_inv = client.where_cond(&is_zero, &zero, &d_inv)?;
 
@@ -140,7 +140,7 @@ where
             let d_inv_sqrt_col = d_inv_sqrt.unsqueeze(0)?.broadcast_to(&[n, n])?;
             let normalized =
                 client.mul(&client.mul(&d_inv_sqrt_row, &affinity)?, &d_inv_sqrt_col)?;
-            let eye = LinalgOps::diagflat(client, &Tensor::<R>::ones(&[n], dtype, device))?;
+            let eye = LinalgOps::diagflat(client, &Tensor::<R>::ones(&[n], dtype, device)?)?;
             let laplacian = client.sub(&eye, &normalized)?;
 
             let eig = client.eig_decompose_symmetric(&laplacian)?;
@@ -154,7 +154,7 @@ where
     let row_norms = client.sqrt(&row_norms)?;
     let safe_norms = client.maximum(
         &row_norms,
-        &Tensor::<R>::full_scalar(&[1, 1], dtype, 1e-10, device),
+        &Tensor::<R>::full_scalar(&[1, 1], dtype, 1e-10, device)?,
     )?;
     let embedding = client.div(&embedding, &safe_norms.broadcast_to(&[n, k])?)?;
 

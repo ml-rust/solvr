@@ -74,7 +74,7 @@ pub trait VoronoiAlgorithms<R: Runtime<DType = DType>> {
     /// #     0.0, 0.0,
     /// #     1.0, 0.0,
     /// #     0.5, 1.0,
-    /// # ], &[3, 2], &device);
+    /// # ], &[3, 2], &device)?;
     /// let vor = client.voronoi(&points)?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```

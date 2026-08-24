@@ -104,8 +104,8 @@ where
     }
 
     // Solve K * u_interior = F
-    let k_tensor = Tensor::<R>::from_slice(&k_data, &[n_interior, n_interior], device);
-    let f_tensor = Tensor::<R>::from_slice(&f_vec, &[n_interior, 1], device);
+    let k_tensor = Tensor::<R>::from_slice(&k_data, &[n_interior, n_interior], device)?;
+    let f_tensor = Tensor::<R>::from_slice(&f_vec, &[n_interior, 1], device)?;
 
     let u_interior = client.solve(&k_tensor, &f_tensor).map_err(PdeError::from)?;
     let u_int_data: Vec<f64> = u_interior.to_vec();
@@ -116,7 +116,7 @@ where
     full_solution[1..(n_interior + 1)].copy_from_slice(&u_int_data[..n_interior]);
     full_solution[n - 1] = bc_right;
 
-    let solution = Tensor::<R>::from_slice(&full_solution, &[n], device);
+    let solution = Tensor::<R>::from_slice(&full_solution, &[n], device)?;
 
     Ok(FemResult {
         solution,

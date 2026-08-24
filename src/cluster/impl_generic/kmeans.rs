@@ -39,7 +39,7 @@ where
     let first_idx_val: f64 = first_idx_f.item()?;
     let first_idx = (first_idx_val as usize).min(n - 1);
 
-    let idx_tensor = Tensor::<R>::from_slice(&[first_idx as i64], &[1], device);
+    let idx_tensor = Tensor::<R>::from_slice(&[first_idx as i64], &[1], device)?;
     let mut centroids = client.index_select(data, 0, &idx_tensor)?;
 
     for _ in 1..k {
@@ -118,7 +118,7 @@ where
     // For each cluster, compute mean of assigned points
     // Expand labels to [n, d] for scatter
     let labels_expanded = labels.unsqueeze(1)?.broadcast_to(&[n, d])?;
-    let dst = Tensor::<R>::zeros(&[k, d], dtype, device);
+    let dst = Tensor::<R>::zeros(&[k, d], dtype, device)?;
     let new_sums = client.scatter_reduce(
         &dst,
         0,
@@ -132,8 +132,8 @@ where
     let counts = client.bincount(&labels, None, k)?; // [k] I64
     let counts_f = client.cast(&counts, dtype)?; // [k] float
     // Avoid division by zero: replace 0 counts with 1
-    let zeros = Tensor::<R>::zeros(&[k], dtype, device);
-    let ones_t = Tensor::<R>::ones(&[k], dtype, device);
+    let zeros = Tensor::<R>::zeros(&[k], dtype, device)?;
+    let ones_t = Tensor::<R>::ones(&[k], dtype, device)?;
     let is_zero = client.eq(&counts_f, &zeros)?;
     let safe_counts = client.where_cond(&is_zero, &ones_t, &counts_f)?;
     let safe_counts_expanded = safe_counts.unsqueeze(1)?.broadcast_to(&[k, d])?;
@@ -193,10 +193,10 @@ where
 
     // Step 2: For each centroid, find distance to nearest other centroid: s(c) = min_{c'!=c} d(c,c')/2
     // Set diagonal to infinity so self-distance is excluded
-    let inf_val = Tensor::<R>::full_scalar(&[k, k], dtype, f64::INFINITY, device);
-    let ones_k = Tensor::<R>::ones(&[k], dtype, device);
+    let inf_val = Tensor::<R>::full_scalar(&[k, k], dtype, f64::INFINITY, device)?;
+    let ones_k = Tensor::<R>::ones(&[k], dtype, device)?;
     let eye = client.diagflat(&ones_k)?;
-    let eye_bool = client.gt(&eye, &Tensor::<R>::zeros(&[k, k], dtype, device))?;
+    let eye_bool = client.gt(&eye, &Tensor::<R>::zeros(&[k, k], dtype, device)?)?;
     let half_center_masked = client.where_cond(&eye_bool, &inf_val, &half_center_dists)?;
     let s_c = client.min(&half_center_masked, &[1], false)?; // [k]
 
@@ -229,7 +229,7 @@ where
 
     // Step 9: Update centroids (same as Lloyd's)
     let labels_expanded = new_labels.unsqueeze(1)?.broadcast_to(&[n, d])?;
-    let dst = Tensor::<R>::zeros(&[k, d], dtype, device);
+    let dst = Tensor::<R>::zeros(&[k, d], dtype, device)?;
     let new_sums = client.scatter_reduce(
         &dst,
         0,
@@ -240,8 +240,8 @@ where
     )?;
     let counts = client.bincount(&new_labels, None, k)?;
     let counts_f = client.cast(&counts, dtype)?;
-    let zeros = Tensor::<R>::zeros(&[k], dtype, device);
-    let ones_t = Tensor::<R>::ones(&[k], dtype, device);
+    let zeros = Tensor::<R>::zeros(&[k], dtype, device)?;
+    let ones_t = Tensor::<R>::ones(&[k], dtype, device)?;
     let is_zero = client.eq(&counts_f, &zeros)?;
     let safe_counts = client.where_cond(&is_zero, &ones_t, &counts_f)?;
     let safe_counts_expanded = safe_counts.unsqueeze(1)?.broadcast_to(&[k, d])?;
@@ -259,7 +259,7 @@ where
     // new_lower[i, c] = max(0, lower[i, c] - shift[c])
     let shift_broadcast = shift_diag.unsqueeze(0)?.broadcast_to(&[n, k])?;
     let adjusted_lower = client.sub(&new_lower, &shift_broadcast)?;
-    let zero_mat = Tensor::<R>::zeros(&[n, k], dtype, device);
+    let zero_mat = Tensor::<R>::zeros(&[n, k], dtype, device)?;
     let new_lower = client.maximum(&adjusted_lower, &zero_mat)?;
 
     // Upper bounds increase by the shift of the assigned centroid:
@@ -370,8 +370,8 @@ where
 {
     let mut centroids = initial_centroids.clone();
     let mut prev_inertia = f64::INFINITY;
-    let mut labels = Tensor::<R>::zeros(&[data.shape()[0]], DType::I64, data.device());
-    let mut inertia = Tensor::<R>::zeros(&[], data.dtype(), data.device());
+    let mut labels = Tensor::<R>::zeros(&[data.shape()[0]], DType::I64, data.device())?;
+    let mut inertia = Tensor::<R>::zeros(&[], data.dtype(), data.device())?;
     let mut n_iter = 0;
 
     for i in 0..max_iter {

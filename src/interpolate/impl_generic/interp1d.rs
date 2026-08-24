@@ -50,8 +50,8 @@ where
     let indices = client.searchsorted(x, x_new, false)?;
 
     // Create constant tensors for clamping
-    let ones = Tensor::<R>::from_slice(&vec![1i64; m], &[m], device);
-    let n_minus_1 = Tensor::<R>::from_slice(&vec![(n - 1) as i64; m], &[m], device);
+    let ones = Tensor::<R>::from_slice(&vec![1i64; m], &[m], device)?;
+    let n_minus_1 = Tensor::<R>::from_slice(&vec![(n - 1) as i64; m], &[m], device)?;
 
     // Clamp indices to valid range [1, n-1], then get interval [0, n-2]
     let indices_clamped = client.maximum(&client.minimum(&indices, &n_minus_1)?, &ones)?;
@@ -73,13 +73,13 @@ where
     // Use smooth indicator: (d1 - d0 + |d1 - d0|) / (2 * |d1 - d0| + eps)
     let diff = client.sub(&d1, &d0)?;
     let diff_abs = client.abs(&diff)?;
-    let epsilon = Tensor::<R>::from_slice(&vec![1e-14; m], &[m], device);
+    let epsilon = Tensor::<R>::from_slice(&vec![1e-14; m], &[m], device)?;
     let sum = client.add(&diff, &diff_abs)?;
     let denom = client.add(&client.mul_scalar(&diff_abs, 2.0)?, &epsilon)?;
     let indicator = client.div(&sum, &denom)?; // ~1 if d0 <= d1
 
     // result = y0 * indicator + y1 * (1 - indicator)
-    let ones_f64 = Tensor::<R>::from_slice(&vec![1.0; m], &[m], device);
+    let ones_f64 = Tensor::<R>::from_slice(&vec![1.0; m], &[m], device)?;
     let one_minus_ind = client.sub(&ones_f64, &indicator)?;
     let term0 = client.mul(&y0, &indicator)?;
     let term1 = client.mul(&y1, &one_minus_ind)?;
@@ -107,8 +107,8 @@ where
     let indices = client.searchsorted(x, x_new, false)?;
 
     // Create constant tensors for clamping
-    let ones = Tensor::<R>::from_slice(&vec![1i64; m], &[m], device);
-    let n_minus_1 = Tensor::<R>::from_slice(&vec![(n - 1) as i64; m], &[m], device);
+    let ones = Tensor::<R>::from_slice(&vec![1i64; m], &[m], device)?;
+    let n_minus_1 = Tensor::<R>::from_slice(&vec![(n - 1) as i64; m], &[m], device)?;
 
     // Clamp indices to valid range [1, n-1], then get interval [0, n-2]
     let indices_clamped = client.maximum(&client.minimum(&indices, &n_minus_1)?, &ones)?;
@@ -127,7 +127,7 @@ where
     let x_offset = client.sub(x_new, &x0)?;
 
     // t = (x - x0) / (x1 - x0)
-    let epsilon = Tensor::<R>::from_slice(&vec![1e-14; m], &[m], device);
+    let epsilon = Tensor::<R>::from_slice(&vec![1e-14; m], &[m], device)?;
     let dx_safe = client.add(&dx, &epsilon)?;
     let t = client.div(&x_offset, &dx_safe)?;
 
@@ -157,9 +157,9 @@ where
     let indices = client.searchsorted(x, x_new, false)?;
 
     // Create constant tensors
-    let zeros_i64 = Tensor::<R>::from_slice(&vec![0i64; m], &[m], device);
-    let ones_i64 = Tensor::<R>::from_slice(&vec![1i64; m], &[m], device);
-    let n_minus_1 = Tensor::<R>::from_slice(&vec![(n - 1) as i64; m], &[m], device);
+    let zeros_i64 = Tensor::<R>::from_slice(&vec![0i64; m], &[m], device)?;
+    let ones_i64 = Tensor::<R>::from_slice(&vec![1i64; m], &[m], device)?;
+    let n_minus_1 = Tensor::<R>::from_slice(&vec![(n - 1) as i64; m], &[m], device)?;
 
     // Clamp main indices to valid range [1, n-1], then get interval [0, n-2]
     let indices_clamped = client.maximum(&client.minimum(&indices, &n_minus_1)?, &ones_i64)?;
@@ -192,7 +192,7 @@ where
     let h2 = client.sub(&x3, &x2)?; // Right interval
 
     // Epsilon for safe division
-    let epsilon = Tensor::<R>::from_slice(&vec![1e-14; m], &[m], device);
+    let epsilon = Tensor::<R>::from_slice(&vec![1e-14; m], &[m], device)?;
     let h1_safe = client.add(&h1, &epsilon)?;
     let h0_safe = client.add(&h0, &epsilon)?;
     let h2_safe = client.add(&h2, &epsilon)?;
@@ -205,8 +205,8 @@ where
     // Detect boundaries using interval widths (h0 ≈ 0 means left boundary, h2 ≈ 0 means right)
     // When i0 == i1 (clamped), x0 == x1, so h0 = 0
     // left_boundary_indicator ≈ 1 when h0 ≈ 0, ≈ 0 otherwise
-    let ones_f64 = Tensor::<R>::from_slice(&vec![1.0; m], &[m], device);
-    let half = Tensor::<R>::from_slice(&vec![0.5; m], &[m], device);
+    let ones_f64 = Tensor::<R>::from_slice(&vec![1.0; m], &[m], device)?;
+    let half = Tensor::<R>::from_slice(&vec![0.5; m], &[m], device)?;
 
     // Smooth boundary indicator: 1 - h / (h + eps) ≈ 1 if h ≈ 0
     let h0_abs = client.abs(&h0)?;
@@ -284,10 +284,10 @@ mod tests {
     fn test_linear_interpolation() {
         let (device, client) = setup();
 
-        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 2.0, 4.0, 6.0], &[4], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 2.0, 4.0, 6.0], &[4], &device).unwrap();
 
-        let x_new = Tensor::<CpuRuntime>::from_slice(&[0.5, 1.5, 2.5], &[3], &device);
+        let x_new = Tensor::<CpuRuntime>::from_slice(&[0.5, 1.5, 2.5], &[3], &device).unwrap();
         let y_new = interp1d_evaluate(&client, &x, &y, &x_new, InterpMethod::Linear).unwrap();
         let y_result: Vec<f64> = y_new.to_vec();
 

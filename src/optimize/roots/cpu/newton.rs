@@ -38,7 +38,7 @@ mod tests {
     fn linear_system(x: &Tensor<CpuRuntime>) -> Result<Tensor<CpuRuntime>> {
         let data: Vec<f64> = x.to_vec();
         let residuals = vec![data[0] + data[1] - 3.0, 2.0 * data[0] - data[1]];
-        Ok(Tensor::from_slice(&residuals, &[2], x.device()))
+        Tensor::from_slice(&residuals, &[2], x.device())
     }
 
     fn quadratic_system(x: &Tensor<CpuRuntime>) -> Result<Tensor<CpuRuntime>> {
@@ -47,7 +47,7 @@ mod tests {
             data[0] * data[0] + data[1] * data[1] - 1.0,
             data[0] - data[1],
         ];
-        Ok(Tensor::from_slice(&residuals, &[2], x.device()))
+        Tensor::from_slice(&residuals, &[2], x.device())
     }
 
     #[test]
@@ -55,7 +55,7 @@ mod tests {
         let device = CpuDevice::new();
         let client = CpuClient::new(device.clone());
 
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[2], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[2], &device).unwrap();
         let result = client
             .newton_system(linear_system, &x0, &RootOptions::default())
             .expect("newton_system failed");
@@ -71,7 +71,7 @@ mod tests {
         let device = CpuDevice::new();
         let client = CpuClient::new(device.clone());
 
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.5, 0.5], &[2], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.5, 0.5], &[2], &device).unwrap();
         let result = client
             .newton_system(quadratic_system, &x0, &RootOptions::default())
             .expect("newton_system failed");

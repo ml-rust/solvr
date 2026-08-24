@@ -76,7 +76,7 @@ mod tests {
     fn test_grey_erosion() {
         let (client, device) = setup();
         let data = vec![5.0, 3.0, 7.0, 1.0, 4.0];
-        let input = Tensor::from_slice(&data, &[5], &device);
+        let input = Tensor::from_slice(&data, &[5], &device).unwrap();
         let result = client.grey_erosion(&input, &[3]).unwrap();
         let out: Vec<f64> = result.to_vec();
         // Position 2: min(3, 7, 1) = 1.0
@@ -87,7 +87,7 @@ mod tests {
     fn test_morphological_gradient() {
         let (client, device) = setup();
         let data = vec![0.0, 0.0, 5.0, 5.0, 5.0];
-        let input = Tensor::from_slice(&data, &[5], &device);
+        let input = Tensor::from_slice(&data, &[5], &device).unwrap();
         let result = client.morphological_gradient(&input, &[3]).unwrap();
         let out: Vec<f64> = result.to_vec();
         // At the edge (position 1-2), gradient should be large

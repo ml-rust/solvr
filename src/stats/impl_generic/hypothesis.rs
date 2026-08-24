@@ -114,8 +114,8 @@ where
     let pvalue = 2.0 * t_dist.sf(t_stat.abs());
 
     Ok(TensorTestResult {
-        statistic: Tensor::<R>::full_scalar(&[], x.dtype(), t_stat, client.device()),
-        pvalue: Tensor::<R>::full_scalar(&[], x.dtype(), pvalue, client.device()),
+        statistic: Tensor::<R>::full_scalar(&[], x.dtype(), t_stat, client.device())?,
+        pvalue: Tensor::<R>::full_scalar(&[], x.dtype(), pvalue, client.device())?,
     })
 }
 
@@ -169,8 +169,8 @@ where
     let pvalue = 2.0 * t_dist.sf(t_stat.abs());
 
     Ok(TensorTestResult {
-        statistic: Tensor::<R>::full_scalar(&[], a.dtype(), t_stat, client.device()),
-        pvalue: Tensor::<R>::full_scalar(&[], a.dtype(), pvalue, client.device()),
+        statistic: Tensor::<R>::full_scalar(&[], a.dtype(), t_stat, client.device())?,
+        pvalue: Tensor::<R>::full_scalar(&[], a.dtype(), pvalue, client.device())?,
     })
 }
 
@@ -226,8 +226,8 @@ where
     let mean_x = extract_scalar(&client.mean(&x_contig, &all_dims, false)?)?;
     let mean_y = extract_scalar(&client.mean(&y_contig, &all_dims, false)?)?;
 
-    let mean_x_b = Tensor::<R>::full_scalar(x_contig.shape(), x.dtype(), mean_x, client.device());
-    let mean_y_b = Tensor::<R>::full_scalar(y_contig.shape(), y.dtype(), mean_y, client.device());
+    let mean_x_b = Tensor::<R>::full_scalar(x_contig.shape(), x.dtype(), mean_x, client.device())?;
+    let mean_y_b = Tensor::<R>::full_scalar(y_contig.shape(), y.dtype(), mean_y, client.device())?;
 
     let dx = client.sub(&x_contig, &mean_x_b)?;
     let dy = client.sub(&y_contig, &mean_y_b)?;
@@ -258,8 +258,8 @@ where
     let pvalue = 2.0 * t_dist.sf(t_stat.abs());
 
     Ok(TensorTestResult {
-        statistic: Tensor::<R>::full_scalar(&[], x.dtype(), r, client.device()),
-        pvalue: Tensor::<R>::full_scalar(&[], x.dtype(), pvalue, client.device()),
+        statistic: Tensor::<R>::full_scalar(&[], x.dtype(), r, client.device())?,
+        pvalue: Tensor::<R>::full_scalar(&[], x.dtype(), pvalue, client.device())?,
     })
 }
 
@@ -368,8 +368,8 @@ where
     let pvalue = f_dist.sf(f_stat);
 
     Ok(TensorTestResult {
-        statistic: Tensor::<R>::full_scalar(&[], dtype, f_stat, device),
-        pvalue: Tensor::<R>::full_scalar(&[], dtype, pvalue, device),
+        statistic: Tensor::<R>::full_scalar(&[], dtype, f_stat, device)?,
+        pvalue: Tensor::<R>::full_scalar(&[], dtype, pvalue, device)?,
     })
 }
 
@@ -435,8 +435,8 @@ where
     let pvalue = chi2.sf(h);
 
     Ok(TensorTestResult {
-        statistic: Tensor::<R>::full_scalar(&[], dtype, h, device),
-        pvalue: Tensor::<R>::full_scalar(&[], dtype, pvalue, device),
+        statistic: Tensor::<R>::full_scalar(&[], dtype, h, device)?,
+        pvalue: Tensor::<R>::full_scalar(&[], dtype, pvalue, device)?,
     })
 }
 
@@ -498,7 +498,7 @@ where
         let r_col = r.reshape(&[k, 1])?;
         r_col.broadcast_to(&[k, n])?
     };
-    let zeros = Tensor::<R>::full_scalar(&[k, n], dtype, 0.0, device);
+    let zeros = Tensor::<R>::full_scalar(&[k, n], dtype, 0.0, device)?;
     let ranks = client.scatter(&zeros, 0, &indices, &ranks_seq)?; // [k, n]
 
     // Rank sums per treatment: sum along dim=1 → [k]
@@ -521,8 +521,8 @@ where
     let pvalue = chi2_dist.sf(chi2_stat);
 
     Ok(TensorTestResult {
-        statistic: Tensor::<R>::full_scalar(&[], dtype, chi2_stat, device),
-        pvalue: Tensor::<R>::full_scalar(&[], dtype, pvalue, device),
+        statistic: Tensor::<R>::full_scalar(&[], dtype, chi2_stat, device)?,
+        pvalue: Tensor::<R>::full_scalar(&[], dtype, pvalue, device)?,
     })
 }
 
@@ -565,7 +565,7 @@ where
     let a: Vec<f64> = m.iter().map(|v| v / m_norm).collect();
 
     // Transfer coefficients to device tensor for dot product
-    let a_tensor = Tensor::<R>::from_slice(&a, &[n], device);
+    let a_tensor = Tensor::<R>::from_slice(&a, &[n], device)?;
 
     // W = (Σ a_i * x_(i))^2 / Σ (x_i - x_bar)^2
     // Numerator: dot product a · sorted on device
@@ -576,7 +576,7 @@ where
 
     // Denominator: SS on device
     let mean_val = extract_scalar(&client.mean(&x_contig, &all_dims, false)?)?;
-    let mean_t = Tensor::<R>::full_scalar(x_contig.shape(), dtype, mean_val, device);
+    let mean_t = Tensor::<R>::full_scalar(x_contig.shape(), dtype, mean_val, device)?;
     let dx = client.sub(&x_contig, &mean_t)?;
     let dx2 = client.mul(&dx, &dx)?;
     let ss = extract_scalar(&client.sum(&dx2, &all_dims, false)?)?;
@@ -595,8 +595,8 @@ where
     let pvalue = normal.sf(z);
 
     Ok(TensorTestResult {
-        statistic: Tensor::<R>::full_scalar(&[], dtype, w, device),
-        pvalue: Tensor::<R>::full_scalar(&[], dtype, pvalue, device),
+        statistic: Tensor::<R>::full_scalar(&[], dtype, w, device)?,
+        pvalue: Tensor::<R>::full_scalar(&[], dtype, pvalue, device)?,
     })
 }
 
@@ -626,7 +626,7 @@ where
     let mean_val = extract_scalar(&client.mean(&x_contig, &all_dims, false)?)?;
 
     // Compute central moments
-    let mean_t = Tensor::<R>::full_scalar(x_contig.shape(), dtype, mean_val, device);
+    let mean_t = Tensor::<R>::full_scalar(x_contig.shape(), dtype, mean_val, device)?;
     let dx = client.sub(&x_contig, &mean_t)?;
     let dx2 = client.mul(&dx, &dx)?;
     let dx3 = client.mul(&dx2, &dx)?;
@@ -666,8 +666,8 @@ where
     let pvalue = chi2.sf(k2);
 
     Ok(TensorTestResult {
-        statistic: Tensor::<R>::full_scalar(&[], dtype, k2, device),
-        pvalue: Tensor::<R>::full_scalar(&[], dtype, pvalue, device),
+        statistic: Tensor::<R>::full_scalar(&[], dtype, k2, device)?,
+        pvalue: Tensor::<R>::full_scalar(&[], dtype, pvalue, device)?,
     })
 }
 
@@ -728,7 +728,7 @@ where
         };
 
         // |x - center| on device
-        let center_t = Tensor::<R>::full_scalar(g_contig.shape(), dtype, center_val, device);
+        let center_t = Tensor::<R>::full_scalar(g_contig.shape(), dtype, center_val, device)?;
         let diff = client.sub(&g_contig, &center_t)?;
         let abs_dev = client.abs(&diff)?;
         deviation_tensors.push(abs_dev);
@@ -767,8 +767,8 @@ where
     let pvalue = f_dist.sf(f_stat);
 
     Ok(TensorTestResult {
-        statistic: Tensor::<R>::full_scalar(&[], dtype, f_stat, device),
-        pvalue: Tensor::<R>::full_scalar(&[], dtype, pvalue, device),
+        statistic: Tensor::<R>::full_scalar(&[], dtype, f_stat, device)?,
+        pvalue: Tensor::<R>::full_scalar(&[], dtype, pvalue, device)?,
     })
 }
 
@@ -823,8 +823,8 @@ where
 
     if sp2 <= 0.0 {
         return Ok(TensorTestResult {
-            statistic: Tensor::<R>::full_scalar(&[], dtype, 0.0, device),
-            pvalue: Tensor::<R>::full_scalar(&[], dtype, 1.0, device),
+            statistic: Tensor::<R>::full_scalar(&[], dtype, 0.0, device)?,
+            pvalue: Tensor::<R>::full_scalar(&[], dtype, 1.0, device)?,
         });
     }
 
@@ -851,7 +851,7 @@ where
     let pvalue = chi2.sf(t_stat);
 
     Ok(TensorTestResult {
-        statistic: Tensor::<R>::full_scalar(&[], dtype, t_stat, device),
-        pvalue: Tensor::<R>::full_scalar(&[], dtype, pvalue, device),
+        statistic: Tensor::<R>::full_scalar(&[], dtype, t_stat, device)?,
+        pvalue: Tensor::<R>::full_scalar(&[], dtype, pvalue, device)?,
     })
 }

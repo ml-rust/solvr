@@ -53,8 +53,8 @@ where
     }
 
     // Convert to tensors for GPU operations
-    let mut d = Tensor::<R>::from_slice(&distances, &[n, n], &device);
-    let mut pred = Tensor::<R>::from_slice(&predecessors, &[n, n], &device);
+    let mut d = Tensor::<R>::from_slice(&distances, &[n, n], &device)?;
+    let mut pred = Tensor::<R>::from_slice(&predecessors, &[n, n], &device)?;
 
     // Floyd-Warshall iteration: D[i,j] = min(D[i,j], D[i,k] + D[k,j])
     for k in 0..n {
@@ -86,8 +86,8 @@ where
     let dist_vec: Vec<f64> = d.to_vec();
     let pred_vec: Vec<i64> = pred.to_vec();
 
-    let distances_tensor = Tensor::<R>::from_slice(&dist_vec, &[n, n], &device);
-    let predecessors_tensor = Tensor::<R>::from_slice(&pred_vec, &[n, n], &device);
+    let distances_tensor = Tensor::<R>::from_slice(&dist_vec, &[n, n], &device)?;
+    let predecessors_tensor = Tensor::<R>::from_slice(&pred_vec, &[n, n], &device)?;
 
     Ok(AllPairsResult {
         distances: distances_tensor,

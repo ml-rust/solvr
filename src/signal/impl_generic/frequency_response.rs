@@ -93,9 +93,9 @@ where
     }
 
     Ok(FreqzResult {
-        w: Tensor::from_slice(&w, &[n_freqs], device),
-        h_real: Tensor::from_slice(&h_real, &[n_freqs], device),
-        h_imag: Tensor::from_slice(&h_imag, &[n_freqs], device),
+        w: Tensor::from_slice(&w, &[n_freqs], device)?,
+        h_real: Tensor::from_slice(&h_real, &[n_freqs], device)?,
+        h_imag: Tensor::from_slice(&h_imag, &[n_freqs], device)?,
     })
 }
 
@@ -124,9 +124,9 @@ where
         };
         let n_freqs = w.len();
         return Ok(FreqzResult {
-            w: Tensor::from_slice(&w, &[n_freqs], device),
-            h_real: Tensor::from_slice(&vec![1.0; n_freqs], &[n_freqs], device),
-            h_imag: Tensor::from_slice(&vec![0.0; n_freqs], &[n_freqs], device),
+            w: Tensor::from_slice(&w, &[n_freqs], device)?,
+            h_real: Tensor::from_slice(&vec![1.0; n_freqs], &[n_freqs], device)?,
+            h_imag: Tensor::from_slice(&vec![0.0; n_freqs], &[n_freqs], device)?,
         });
     }
 
@@ -198,9 +198,9 @@ where
     }
 
     Ok(FreqzResult {
-        w: Tensor::from_slice(&w, &[n_freqs], device),
-        h_real: Tensor::from_slice(&h_real, &[n_freqs], device),
-        h_imag: Tensor::from_slice(&h_imag, &[n_freqs], device),
+        w: Tensor::from_slice(&w, &[n_freqs], device)?,
+        h_real: Tensor::from_slice(&h_real, &[n_freqs], device)?,
+        h_imag: Tensor::from_slice(&h_imag, &[n_freqs], device)?,
     })
 }
 
@@ -277,5 +277,5 @@ where
         }
     }
 
-    Ok(Tensor::from_slice(&tau, &[tau.len()], device))
+    Tensor::from_slice(&tau, &[tau.len()], device)
 }

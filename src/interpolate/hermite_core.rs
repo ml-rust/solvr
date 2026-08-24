@@ -407,7 +407,7 @@ where
 {
     // Create constant I64 tensor for index operations
     let data = vec![value; len];
-    Ok(Tensor::from_slice(&data, &[len], client.device()))
+    Ok(Tensor::from_slice(&data, &[len], client.device())?)
 }
 
 /// Convert numr error to interpolation error.
@@ -432,8 +432,8 @@ mod tests {
     fn test_validate_inputs() {
         let (device, _client) = setup();
 
-        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0], &[3], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 4.0], &[3], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0], &[3], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 4.0], &[3], &device).unwrap();
 
         let result = validate_inputs(&x, &y, "test");
         assert!(result.is_ok());
@@ -448,8 +448,8 @@ mod tests {
     fn test_validate_inputs_non_monotonic() {
         let (device, _client) = setup();
 
-        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 2.0, 1.0], &[3], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0], &[3], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 2.0, 1.0], &[3], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0], &[3], &device).unwrap();
 
         let result = validate_inputs(&x, &y, "test");
         assert!(matches!(result, Err(InterpolateError::NotMonotonic { .. })));
@@ -459,8 +459,8 @@ mod tests {
     fn test_validate_inputs_shape_mismatch() {
         let (device, _client) = setup();
 
-        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0], &[3], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0], &[2], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0], &[3], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0], &[2], &device).unwrap();
 
         let result = validate_inputs(&x, &y, "test");
         assert!(matches!(

@@ -63,7 +63,7 @@ mod tests {
         let (device, client) = setup();
 
         // F(x) = 2x (linear function)
-        let x = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device).unwrap();
 
         let jacobian =
             jacobian_forward_impl(&client, |dual_x, c| dual_mul_scalar(dual_x, 2.0, c), &x)
@@ -83,7 +83,7 @@ mod tests {
         let (device, client) = setup();
 
         // F(x) = x² (element-wise)
-        let x = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device).unwrap();
 
         let jacobian =
             jacobian_forward_impl(&client, |dual_x, c| dual_mul(dual_x, dual_x, c), &x).unwrap();

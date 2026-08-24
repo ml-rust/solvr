@@ -55,7 +55,8 @@ mod tests {
     #[test]
     fn test_describe() {
         let (client, device) = setup();
-        let data = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device);
+        let data =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device).unwrap();
 
         let stats = client.describe(&data).unwrap();
 
@@ -73,7 +74,8 @@ mod tests {
     #[test]
     fn test_percentile() {
         let (client, device) = setup();
-        let data = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device);
+        let data =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device).unwrap();
 
         let p50 = DescriptiveStatisticsAlgorithms::percentile(&client, &data, 50.0).unwrap();
         let p50_val = extract_scalar(&p50).unwrap();
@@ -83,7 +85,8 @@ mod tests {
     #[test]
     fn test_zscore() {
         let (client, device) = setup();
-        let data = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device);
+        let data =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device).unwrap();
 
         let z = client.zscore(&data).unwrap();
         let z_data: Vec<f64> = z.to_vec();
@@ -97,7 +100,8 @@ mod tests {
     fn test_skewness() {
         let (client, device) = setup();
         // Symmetric data should have ~0 skewness
-        let data = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device);
+        let data =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device).unwrap();
 
         let skew = client.skewness(&data).unwrap();
         let skew_val = extract_scalar(&skew).unwrap();
@@ -111,7 +115,8 @@ mod tests {
             &[1.0f64, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0],
             &[10],
             &device,
-        );
+        )
+        .unwrap();
 
         let kurt = client.kurtosis(&data).unwrap();
         let kurt_val = extract_scalar(&kurt).unwrap();
@@ -122,7 +127,8 @@ mod tests {
     #[test]
     fn test_iqr() {
         let (client, device) = setup();
-        let data = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device);
+        let data =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device).unwrap();
 
         let iqr = client.iqr(&data).unwrap();
         let iqr_val = extract_scalar(&iqr).unwrap();
@@ -133,7 +139,8 @@ mod tests {
     #[test]
     fn test_sem() {
         let (client, device) = setup();
-        let data = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device);
+        let data =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device).unwrap();
 
         let sem = client.sem(&data).unwrap();
         let sem_val = extract_scalar(&sem).unwrap();
@@ -150,7 +157,8 @@ mod tests {
         let (client, device) = setup();
         let n = crate::stats::Normal::standard();
 
-        let x = Tensor::<CpuRuntime>::from_slice(&[-2.0, -1.0, 0.0, 1.0, 2.0], &[5], &device);
+        let x =
+            Tensor::<CpuRuntime>::from_slice(&[-2.0, -1.0, 0.0, 1.0, 2.0], &[5], &device).unwrap();
         let pdf = n.pdf_tensor(&x, &client).unwrap();
         let pdf_data: Vec<f64> = pdf.to_vec();
 
@@ -170,7 +178,7 @@ mod tests {
         let (client, device) = setup();
         let n = crate::stats::Normal::standard();
 
-        let x = Tensor::<CpuRuntime>::from_slice(&[-2.0, 0.0, 2.0], &[3], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[-2.0, 0.0, 2.0], &[3], &device).unwrap();
         let cdf = n.cdf_tensor(&x, &client).unwrap();
         let cdf_data: Vec<f64> = cdf.to_vec();
 
@@ -190,7 +198,7 @@ mod tests {
         let (client, device) = setup();
         let n = crate::stats::Normal::standard();
 
-        let p = Tensor::<CpuRuntime>::from_slice(&[0.1, 0.5, 0.9], &[3], &device);
+        let p = Tensor::<CpuRuntime>::from_slice(&[0.1, 0.5, 0.9], &[3], &device).unwrap();
         let ppf = n.ppf_tensor(&p, &client).unwrap();
         let ppf_data: Vec<f64> = ppf.to_vec();
 
@@ -210,7 +218,7 @@ mod tests {
         let (client, device) = setup();
         let n = crate::stats::Normal::standard();
 
-        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.96], &[2], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.96], &[2], &device).unwrap();
         let sf = n.sf_tensor(&x, &client).unwrap();
         let sf_data: Vec<f64> = sf.to_vec();
 
@@ -226,7 +234,8 @@ mod tests {
         let (client, device) = setup();
         let u = crate::stats::Uniform::new(0.0, 1.0).unwrap();
 
-        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.25, 0.5, 0.75, 1.0], &[5], &device);
+        let x =
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.25, 0.5, 0.75, 1.0], &[5], &device).unwrap();
 
         // PDF should be constant = 1 over [0, 1]
         let pdf = u.pdf_tensor(&x, &client).unwrap();
@@ -249,7 +258,7 @@ mod tests {
         let (client, device) = setup();
         let b = crate::stats::Binomial::new(10, 0.5).unwrap();
 
-        let k = Tensor::<CpuRuntime>::from_slice(&[0.0, 5.0, 10.0], &[3], &device);
+        let k = Tensor::<CpuRuntime>::from_slice(&[0.0, 5.0, 10.0], &[3], &device).unwrap();
         let pmf = b.pmf_tensor(&k, &client).unwrap();
         let pmf_data: Vec<f64> = pmf.to_vec();
 
@@ -268,7 +277,7 @@ mod tests {
         let (client, device) = setup();
         let b = crate::stats::Binomial::new(10, 0.5).unwrap();
 
-        let k = Tensor::<CpuRuntime>::from_slice(&[0.0, 5.0, 10.0], &[3], &device);
+        let k = Tensor::<CpuRuntime>::from_slice(&[0.0, 5.0, 10.0], &[3], &device).unwrap();
         let cdf = b.cdf_tensor(&k, &client).unwrap();
         let cdf_data: Vec<f64> = cdf.to_vec();
 
@@ -289,7 +298,7 @@ mod tests {
         let (client, device) = setup();
         let b = crate::stats::Binomial::new(10, 0.5).unwrap();
 
-        let p = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.5, 1.0], &[3], &device);
+        let p = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.5, 1.0], &[3], &device).unwrap();
         let ppf = b.ppf_tensor(&p, &client).unwrap();
         let ppf_data: Vec<f64> = ppf.to_vec();
 
@@ -310,7 +319,8 @@ mod tests {
 
         // Test with 2D tensor
         let x =
-            Tensor::<CpuRuntime>::from_slice(&[-1.0, 0.0, 1.0, -2.0, 0.0, 2.0], &[2, 3], &device);
+            Tensor::<CpuRuntime>::from_slice(&[-1.0, 0.0, 1.0, -2.0, 0.0, 2.0], &[2, 3], &device)
+                .unwrap();
 
         let pdf = n.pdf_tensor(&x, &client).unwrap();
         let pdf_data: Vec<f64> = pdf.to_vec();

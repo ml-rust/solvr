@@ -53,8 +53,8 @@ mod tests {
             return;
         };
 
-        let x = Tensor::<CudaRuntime>::from_slice(&[0.0, 0.0, 1.0, 0.0], &[2, 2], &device);
-        let y = Tensor::<CudaRuntime>::from_slice(&[1.0, 1.0], &[1, 2], &device);
+        let x = Tensor::<CudaRuntime>::from_slice(&[0.0, 0.0, 1.0, 0.0], &[2, 2], &device).unwrap();
+        let y = Tensor::<CudaRuntime>::from_slice(&[1.0, 1.0], &[1, 2], &device).unwrap();
 
         let result = client.cdist(&x, &y, DistanceMetric::Euclidean).unwrap();
         assert_eq!(result.shape(), &[2, 1]);

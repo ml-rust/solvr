@@ -398,13 +398,13 @@ impl ContinuousDistribution for TruncatedNormal {
 
         // CDF = (Φ(z) - Φ(α)) / Z
         let phi_alpha_tensor =
-            Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.phi_alpha, client.device());
+            Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.phi_alpha, client.device())?;
         let numerator = client.sub(&phi_z, &phi_alpha_tensor)?;
         let cdf_unbounded = client.mul_scalar(&numerator, 1.0 / self.z_norm)?;
 
         // Clamp to [0, 1]
-        let zero = Tensor::<R>::full_scalar(x.shape(), x.dtype(), 0.0, client.device());
-        let one = Tensor::<R>::full_scalar(x.shape(), x.dtype(), 1.0, client.device());
+        let zero = Tensor::<R>::full_scalar(x.shape(), x.dtype(), 0.0, client.device())?;
+        let one = Tensor::<R>::full_scalar(x.shape(), x.dtype(), 1.0, client.device())?;
         let clamped = client.maximum(&cdf_unbounded, &zero)?;
         client.minimum(&clamped, &one)
     }
@@ -428,13 +428,13 @@ impl ContinuousDistribution for TruncatedNormal {
 
         // SF = (Φ(β) - Φ(z)) / Z
         let phi_beta_tensor =
-            Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.phi_beta, client.device());
+            Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.phi_beta, client.device())?;
         let numerator = client.sub(&phi_beta_tensor, &phi_z)?;
         let sf_unbounded = client.mul_scalar(&numerator, 1.0 / self.z_norm)?;
 
         // Clamp to [0, 1]
-        let zero = Tensor::<R>::full_scalar(x.shape(), x.dtype(), 0.0, client.device());
-        let one = Tensor::<R>::full_scalar(x.shape(), x.dtype(), 1.0, client.device());
+        let zero = Tensor::<R>::full_scalar(x.shape(), x.dtype(), 0.0, client.device())?;
+        let one = Tensor::<R>::full_scalar(x.shape(), x.dtype(), 1.0, client.device())?;
         let clamped = client.maximum(&sf_unbounded, &zero)?;
         client.minimum(&clamped, &one)
     }
@@ -461,9 +461,9 @@ impl ContinuousDistribution for TruncatedNormal {
     {
         // p_combined = Φ(α) + p * Z
         let phi_alpha_tensor =
-            Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.phi_alpha, client.device());
+            Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.phi_alpha, client.device())?;
         let z_norm_tensor =
-            Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.z_norm, client.device());
+            Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.z_norm, client.device())?;
         let p_scaled = client.mul(p, &z_norm_tensor)?;
         let p_combined = client.add(&phi_alpha_tensor, &p_scaled)?;
 

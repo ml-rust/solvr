@@ -90,7 +90,7 @@ where
         let m = t.shape()[0];
         let n_dims = curve.control_points.shape()[1];
         let device = client.device();
-        return Ok(Tensor::zeros(&[m, n_dims], DType::F64, device));
+        return Ok(Tensor::zeros(&[m, n_dims], DType::F64, device)?);
     }
 
     // Apply derivative formula per dimension using the 1D differentiate_bspline_tensor.
@@ -169,7 +169,7 @@ where
     // Find knot span on-device using searchsorted.
     // searchsorted(knots, [t], right=true) returns the first index where knots > t.
     // span = clamp(idx - 1, k, n_points - 1)
-    let t_tensor = Tensor::from_slice(&[t], &[1], device);
+    let t_tensor = Tensor::from_slice(&[t], &[1], device)?;
     let idx_tensor = client.searchsorted(&curve.knots, &t_tensor, true)?;
     // Single scalar extraction for control flow index
     let raw_idx: i64 = idx_tensor.item()?;
@@ -177,9 +177,9 @@ where
 
     // Count existing multiplicity of t on-device:
     // |knots - t| < eps, cast to F64, sum
-    let t_broadcast = Tensor::from_slice(&[t], &[1], device).broadcast_to(&[n_knots])?;
+    let t_broadcast = Tensor::from_slice(&[t], &[1], device)?.broadcast_to(&[n_knots])?;
     let diff = client.abs(&client.sub(&curve.knots, &t_broadcast)?)?;
-    let eps_tensor = Tensor::from_slice(&[1e-15], &[1], device).broadcast_to(&[n_knots])?;
+    let eps_tensor = Tensor::from_slice(&[1e-15], &[1], device)?.broadcast_to(&[n_knots])?;
     let near_mask = client.lt(&diff, &eps_tensor)?; // boolean/i64 mask
     let near_f64 = client.cast(&near_mask, DType::F64)?;
     let mult_tensor = client.sum(&near_f64, &[0], false)?;
@@ -226,7 +226,7 @@ where
 
         // Insert new knot value into knot vector
         let left_knots = knots.narrow(0, 0, current_span + 1)?.contiguous()?;
-        let t_knot = Tensor::from_slice(&[t], &[1], device);
+        let t_knot = Tensor::from_slice(&[t], &[1], device)?;
         let right_knots = knots
             .narrow(0, current_span + 1, n_kn - current_span - 1)?
             .contiguous()?;
@@ -246,19 +246,19 @@ where
         let knots_hi = knots.narrow(0, start + k + 1, n_affected)?.contiguous()?;
         let denom = client.sub(&knots_hi, &knots_lo)?;
 
-        let t_bcast = Tensor::from_slice(&[t], &[1], device).broadcast_to(&[n_affected])?;
+        let t_bcast = Tensor::from_slice(&[t], &[1], device)?.broadcast_to(&[n_affected])?;
         let numer = client.sub(&t_bcast, &knots_lo)?;
 
         // Safe division: where denom ~= 0, alpha = 0
-        let eps_bcast = Tensor::from_slice(&[1e-300], &[1], device).broadcast_to(&[n_affected])?;
+        let eps_bcast = Tensor::from_slice(&[1e-300], &[1], device)?.broadcast_to(&[n_affected])?;
         let safe_denom = client.where_cond(
             &client.lt(&client.abs(&denom)?, &eps_bcast)?,
-            &Tensor::from_slice(&[1.0], &[1], device).broadcast_to(&[n_affected])?,
+            &Tensor::from_slice(&[1.0], &[1], device)?.broadcast_to(&[n_affected])?,
             &denom,
         )?;
         let raw_alphas = client.div(&numer, &safe_denom)?;
         let zero_mask = client.lt(&client.abs(&denom)?, &eps_bcast)?;
-        let zeros = Tensor::zeros(&[n_affected], DType::F64, device);
+        let zeros = Tensor::zeros(&[n_affected], DType::F64, device)?;
         let alphas = client.where_cond(&zero_mask, &zeros, &raw_alphas)?; // [n_affected]
 
         // Blend control points: new[i] = (1-alpha[i]) * cp[i-1] + alpha[i] * cp[i]
@@ -266,7 +266,7 @@ where
         let n_dims = cp.shape()[1];
         let alphas_col = alphas.reshape(&[n_affected, 1])?; // [n_affected, 1]
         let one_minus_alpha = client.sub(
-            &Tensor::from_slice(&[1.0], &[1, 1], device).broadcast_to(&[n_affected, n_dims])?,
+            &Tensor::from_slice(&[1.0], &[1, 1], device)?.broadcast_to(&[n_affected, n_dims])?,
             &alphas_col.broadcast_to(&[n_affected, n_dims])?,
         )?;
         let alpha_broad = alphas_col.broadcast_to(&[n_affected, n_dims])?;
@@ -364,14 +364,14 @@ mod tests {
     fn test_bspline_curve_linear() {
         let (device, client) = setup();
         // Linear B-spline: 2 control points, degree 1, knots [0,0,1,1]
-        let cp = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[2, 2], &device);
-        let knots = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[4], &device);
+        let cp = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[2, 2], &device).unwrap();
+        let knots = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[4], &device).unwrap();
         let curve = BSplineCurve {
             control_points: cp,
             knots,
             degree: 1,
         };
-        let t = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.5, 1.0], &[3], &device);
+        let t = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.5, 1.0], &[3], &device).unwrap();
         let result = bspline_curve_evaluate_impl(&client, &curve, &t).unwrap();
         let vals: Vec<f64> = result.to_vec();
         assert!((vals[0] - 0.0).abs() < 1e-10);
@@ -387,18 +387,20 @@ mod tests {
             &[0.0, 0.0, 1.0, 2.0, 3.0, 2.0, 4.0, 0.0],
             &[4, 2],
             &device,
-        );
+        )
+        .unwrap();
         let knots = Tensor::<CpuRuntime>::from_slice(
             &[0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0],
             &[8],
             &device,
-        );
+        )
+        .unwrap();
         let curve = BSplineCurve {
             control_points: cp,
             knots,
             degree: 3,
         };
-        let t = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0], &[2], &device);
+        let t = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0], &[2], &device).unwrap();
         let result = bspline_curve_evaluate_impl(&client, &curve, &t).unwrap();
         let vals: Vec<f64> = result.to_vec();
         // Clamped: should pass through first and last control points
@@ -412,14 +414,14 @@ mod tests {
     fn test_bspline_curve_derivative() {
         let (device, client) = setup();
         // Linear: derivative should be constant
-        let cp = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 2.0, 4.0], &[2, 2], &device);
-        let knots = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[4], &device);
+        let cp = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 2.0, 4.0], &[2, 2], &device).unwrap();
+        let knots = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[4], &device).unwrap();
         let curve = BSplineCurve {
             control_points: cp,
             knots,
             degree: 1,
         };
-        let t = Tensor::<CpuRuntime>::from_slice(&[0.25, 0.75], &[2], &device);
+        let t = Tensor::<CpuRuntime>::from_slice(&[0.25, 0.75], &[2], &device).unwrap();
         let deriv = bspline_curve_derivative_impl(&client, &curve, &t, 1).unwrap();
         let vals: Vec<f64> = deriv.to_vec();
         assert!((vals[0] - 2.0).abs() < 1e-8);

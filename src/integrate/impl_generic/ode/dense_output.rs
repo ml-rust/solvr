@@ -243,10 +243,10 @@ mod tests {
     fn test_dense_eval_endpoints() {
         let (device, client) = setup();
 
-        let y_old = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device);
-        let y_new = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
-        let f_old = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
-        let f_new = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
+        let y_old = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device).unwrap();
+        let y_new = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
+        let f_old = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
+        let f_new = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
 
         let step = DenseOutputStep::new(0.0, 1.0, y_old, y_new, f_old, f_new);
 
@@ -265,10 +265,10 @@ mod tests {
         // Hermite should reproduce this exactly
         let (device, client) = setup();
 
-        let y_old = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device);
-        let y_new = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
-        let f_old = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
-        let f_new = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
+        let y_old = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device).unwrap();
+        let y_new = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
+        let f_old = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
+        let f_new = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
 
         let step = DenseOutputStep::new(0.0, 1.0, y_old, y_new, f_old, f_new);
 
@@ -290,10 +290,10 @@ mod tests {
         // Over [0, 1]: y(0) = 0, y(1) = 1, f(0) = 0, f(1) = 2
         let (device, client) = setup();
 
-        let y_old = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device);
-        let y_new = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
-        let f_old = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device); // f(0) = 0
-        let f_new = Tensor::<CpuRuntime>::from_slice(&[2.0], &[1], &device); // f(1) = 2
+        let y_old = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device).unwrap();
+        let y_new = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
+        let f_old = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device).unwrap(); // f(0) = 0
+        let f_new = Tensor::<CpuRuntime>::from_slice(&[2.0], &[1], &device).unwrap(); // f(1) = 2
 
         let step = DenseOutputStep::new(0.0, 1.0, y_old, y_new, f_old, f_new);
 
@@ -324,10 +324,10 @@ mod tests {
         // For dy/dt = 2t: check that derivative interpolation works
         let (device, client) = setup();
 
-        let y_old = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device);
-        let y_new = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
-        let f_old = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device);
-        let f_new = Tensor::<CpuRuntime>::from_slice(&[2.0], &[1], &device);
+        let y_old = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device).unwrap();
+        let y_new = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
+        let f_old = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device).unwrap();
+        let f_new = Tensor::<CpuRuntime>::from_slice(&[2.0], &[1], &device).unwrap();
 
         let step = DenseOutputStep::new(0.0, 1.0, y_old, y_new, f_old, f_new);
 
@@ -351,10 +351,10 @@ mod tests {
     fn test_dense_output_step_methods() {
         let (device, _client) = setup();
 
-        let y_old = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device);
-        let y_new = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
-        let f_old = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
-        let f_new = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
+        let y_old = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device).unwrap();
+        let y_new = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
+        let f_old = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
+        let f_new = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
 
         let step = DenseOutputStep::new(0.0, 2.0, y_old, y_new, f_old, f_new);
 

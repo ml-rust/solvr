@@ -66,10 +66,10 @@ fn tf2ss_impl(tf: &TransferFunction<CpuRuntime>) -> Result<StateSpace<CpuRuntime
         // Zero-order system (just a gain)
         // D = b[0] / a[0] = b_norm[0]
         return Ok(StateSpace::new(
-            Tensor::zeros(&[0, 0], DType::F64, device),
-            Tensor::zeros(&[0, 1], DType::F64, device),
-            Tensor::zeros(&[1, 0], DType::F64, device),
-            Tensor::from_slice(&[b_norm[0]], &[1, 1], device),
+            Tensor::zeros(&[0, 0], DType::F64, device)?,
+            Tensor::zeros(&[0, 1], DType::F64, device)?,
+            Tensor::zeros(&[1, 0], DType::F64, device)?,
+            Tensor::from_slice(&[b_norm[0]], &[1, 1], device)?,
         ));
     }
 
@@ -120,10 +120,10 @@ fn tf2ss_impl(tf: &TransferFunction<CpuRuntime>) -> Result<StateSpace<CpuRuntime
     let d_mat = vec![d_val];
 
     Ok(StateSpace::new(
-        Tensor::from_slice(&a_mat, &[n, n], device),
-        Tensor::from_slice(&b_mat, &[n, 1], device),
-        Tensor::from_slice(&c_mat, &[1, n], device),
-        Tensor::from_slice(&d_mat, &[1, 1], device),
+        Tensor::from_slice(&a_mat, &[n, n], device)?,
+        Tensor::from_slice(&b_mat, &[n, 1], device)?,
+        Tensor::from_slice(&c_mat, &[1, n], device)?,
+        Tensor::from_slice(&d_mat, &[1, 1], device)?,
     ))
 }
 
@@ -141,8 +141,8 @@ fn ss2tf_impl(ss: &StateSpace<CpuRuntime>) -> Result<TransferFunction<CpuRuntime
         let d_val = if d_data.is_empty() { 0.0 } else { d_data[0] };
 
         return Ok(TransferFunction::new(
-            Tensor::from_slice(&[d_val], &[1], device),
-            Tensor::from_slice(&[1.0], &[1], device),
+            Tensor::from_slice(&[d_val], &[1], device)?,
+            Tensor::from_slice(&[1.0], &[1], device)?,
         ));
     }
 
@@ -197,8 +197,8 @@ fn ss2tf_impl(ss: &StateSpace<CpuRuntime>) -> Result<TransferFunction<CpuRuntime
     }
 
     Ok(TransferFunction::new(
-        Tensor::from_slice(&numer, &[n + 1], device),
-        Tensor::from_slice(&denom, &[n + 1], device),
+        Tensor::from_slice(&numer, &[n + 1], device)?,
+        Tensor::from_slice(&denom, &[n + 1], device)?,
     ))
 }
 
@@ -329,8 +329,8 @@ mod tests {
 
         // First-order system: H(z) = 1 / (1 - 0.5z^-1) = z / (z - 0.5)
         // In transfer function form: b = [1], a = [1, -0.5]
-        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -0.5], &[2], &device);
+        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
+        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -0.5], &[2], &device).unwrap();
         let tf = TransferFunction::new(b, a);
 
         let ss = client.tf2ss(&tf).unwrap();
@@ -356,8 +356,8 @@ mod tests {
 
         // Second-order system
         // H(z) = (0.1 + 0.2z^-1) / (1 - 1.4z^-1 + 0.5z^-2)
-        let b = Tensor::<CpuRuntime>::from_slice(&[0.1f64, 0.2], &[2], &device);
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -1.4, 0.5], &[3], &device);
+        let b = Tensor::<CpuRuntime>::from_slice(&[0.1f64, 0.2], &[2], &device).unwrap();
+        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -1.4, 0.5], &[3], &device).unwrap();
         let tf = TransferFunction::new(b, a);
 
         let ss = client.tf2ss(&tf).unwrap();
@@ -381,8 +381,8 @@ mod tests {
         let (client, device) = setup();
 
         // System with direct feedthrough: H(z) = (1 + z^-1) / (1 - 0.5z^-1)
-        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 1.0], &[2], &device);
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -0.5], &[2], &device);
+        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 1.0], &[2], &device).unwrap();
+        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -0.5], &[2], &device).unwrap();
         let tf = TransferFunction::new(b, a);
 
         let ss = client.tf2ss(&tf).unwrap();
@@ -399,10 +399,10 @@ mod tests {
 
         // Simple first-order state-space: x[k+1] = 0.5*x[k] + u[k], y[k] = x[k]
         // This gives H(z) = z/(z-0.5) = 1/(1 - 0.5z^-1)
-        let a = Tensor::<CpuRuntime>::from_slice(&[0.5f64], &[1, 1], &device);
-        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1, 1], &device);
-        let c = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1, 1], &device);
-        let d = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1, 1], &device);
+        let a = Tensor::<CpuRuntime>::from_slice(&[0.5f64], &[1, 1], &device).unwrap();
+        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1, 1], &device).unwrap();
+        let c = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1, 1], &device).unwrap();
+        let d = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1, 1], &device).unwrap();
         let ss = StateSpace::new(a, b, c, d);
 
         let tf = client.ss2tf(&ss).unwrap();
@@ -424,8 +424,8 @@ mod tests {
         let (client, device) = setup();
 
         // Original transfer function
-        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0], &[2], &device);
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -0.8, 0.15], &[3], &device);
+        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0], &[2], &device).unwrap();
+        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -0.8, 0.15], &[3], &device).unwrap();
         let tf1 = TransferFunction::new(b, a);
 
         // Convert to state-space and back
@@ -477,8 +477,8 @@ mod tests {
         let (client, device) = setup();
 
         // Zero-order system: H(z) = 2 (just a gain)
-        let b = Tensor::<CpuRuntime>::from_slice(&[2.0f64], &[1], &device);
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
+        let b = Tensor::<CpuRuntime>::from_slice(&[2.0f64], &[1], &device).unwrap();
+        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
         let tf = TransferFunction::new(b, a);
 
         let ss = client.tf2ss(&tf).unwrap();

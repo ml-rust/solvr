@@ -46,8 +46,8 @@ mod tests {
 
         // min 0.5*x'*I*x + [-1,-1]'*x = min 0.5*(x1^2+x2^2) - x1 - x2
         // Solution: x = [1, 1], f = -1
-        let q = Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device);
-        let c = Tensor::<CpuRuntime>::from_slice(&[-1.0, -1.0], &[2], &device);
+        let q = Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device).unwrap();
+        let c = Tensor::<CpuRuntime>::from_slice(&[-1.0, -1.0], &[2], &device).unwrap();
 
         let result = client
             .solve_qp(&q, &c, None, None, None, None, &QpOptions::default())
@@ -66,10 +66,10 @@ mod tests {
 
         // min 0.5*(x1^2 + x2^2) s.t. x1 + x2 = 1
         // Solution: x = [0.5, 0.5], f = 0.25
-        let q = Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device);
-        let c = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[2], &device);
-        let a_eq = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[1, 2], &device);
-        let b_eq = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
+        let q = Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device).unwrap();
+        let c = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[2], &device).unwrap();
+        let a_eq = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[1, 2], &device).unwrap();
+        let b_eq = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
 
         let result = client
             .solve_qp(
@@ -96,11 +96,12 @@ mod tests {
         // min 0.5*(x1^2 + x2^2) - x1 - x2
         // s.t. x1 + x2 >= 0, x1 >= 0, x2 >= 0
         // Solution: x = [1, 1], f = -1
-        let q = Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device);
-        let c = Tensor::<CpuRuntime>::from_slice(&[-1.0, -1.0], &[2], &device);
+        let q = Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device).unwrap();
+        let c = Tensor::<CpuRuntime>::from_slice(&[-1.0, -1.0], &[2], &device).unwrap();
         let a_ineq =
-            Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0, 1.0, 0.0, 0.0, 1.0], &[3, 2], &device);
-        let b_ineq = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 0.0], &[3], &device);
+            Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0, 1.0, 0.0, 0.0, 1.0], &[3, 2], &device)
+                .unwrap();
+        let b_ineq = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 0.0], &[3], &device).unwrap();
 
         let result = client
             .solve_qp(

@@ -107,7 +107,8 @@ mod tests {
             return;
         };
 
-        let data = Tensor::<CudaRuntime>::from_slice(&[1.2f64, 1.5, 1.3, 1.4, 1.6], &[5], &device);
+        let data = Tensor::<CudaRuntime>::from_slice(&[1.2f64, 1.5, 1.3, 1.4, 1.6], &[5], &device)
+            .unwrap();
         let result = client.ttest_1samp(&data, 1.0).unwrap();
 
         let stat = extract_scalar(&result.statistic).unwrap();
@@ -124,9 +125,11 @@ mod tests {
             return;
         };
 
-        let a = Tensor::<CudaRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device);
+        let a = Tensor::<CudaRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device)
+            .unwrap();
         let b =
-            Tensor::<CudaRuntime>::from_slice(&[10.0f64, 11.0, 12.0, 13.0, 14.0], &[5], &device);
+            Tensor::<CudaRuntime>::from_slice(&[10.0f64, 11.0, 12.0, 13.0, 14.0], &[5], &device)
+                .unwrap();
 
         let result = client.f_oneway(&[&a, &b]).unwrap();
         let pval = extract_scalar(&result.pvalue).unwrap();

@@ -124,7 +124,7 @@ pub trait NewtonCGAlgorithms<R: Runtime<DType = DType>> {
     /// use solvr::optimize::NewtonCGAlgorithms;
     /// let device = CpuDevice::new();
     /// let client = CpuClient::new(device.clone());
-    /// let x0 = Tensor::from_slice(&[1.0], &[1], &device);
+    /// let x0 = Tensor::from_slice(&[1.0], &[1], &device)?;
     /// // Minimize f(x) = sum(x²)
     /// let result = client.newton_cg(
     ///     |_x: &Var<CpuRuntime>, _c: &CpuClient| {

@@ -94,9 +94,9 @@ fn dlsim_ss_impl(
         let t: Vec<f64> = (0..n_samples).map(|i| i as f64).collect();
 
         return Ok(DlsimResult {
-            t: Tensor::from_slice(&t, &[n_samples], device),
-            y: Tensor::from_slice(&y, &[n_samples], device),
-            x: Tensor::zeros(&[n_samples, 0], u.dtype(), device),
+            t: Tensor::from_slice(&t, &[n_samples], device)?,
+            y: Tensor::from_slice(&y, &[n_samples], device)?,
+            x: Tensor::zeros(&[n_samples, 0], u.dtype(), device)?,
         });
     }
 
@@ -154,9 +154,9 @@ fn dlsim_ss_impl(
     let t: Vec<f64> = (0..n_samples).map(|i| i as f64).collect();
 
     Ok(DlsimResult {
-        t: Tensor::from_slice(&t, &[n_samples], device),
-        y: Tensor::from_slice(&y_out, &[n_samples], device),
-        x: Tensor::from_slice(&x_out, &[n_samples, n_states], device),
+        t: Tensor::from_slice(&t, &[n_samples], device)?,
+        y: Tensor::from_slice(&y_out, &[n_samples], device)?,
+        x: Tensor::from_slice(&x_out, &[n_samples, n_states], device)?,
     })
 }
 
@@ -181,14 +181,15 @@ mod tests {
         let (client, device) = setup();
 
         // First-order system: x[k+1] = 0.5*x[k] + u[k], y[k] = x[k]
-        let a = Tensor::<CpuRuntime>::from_slice(&[0.5f64], &[1, 1], &device);
-        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1, 1], &device);
-        let c = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1, 1], &device);
-        let d = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1, 1], &device);
+        let a = Tensor::<CpuRuntime>::from_slice(&[0.5f64], &[1, 1], &device).unwrap();
+        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1, 1], &device).unwrap();
+        let c = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1, 1], &device).unwrap();
+        let d = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1, 1], &device).unwrap();
         let ss = StateSpace::new(a, b, c, d);
 
         // Step input
-        let u = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 1.0, 1.0, 1.0, 1.0], &[5], &device);
+        let u =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 1.0, 1.0, 1.0, 1.0], &[5], &device).unwrap();
 
         let result = client.dlsim_ss(&ss, &u, None, &device).unwrap();
         let y: Vec<f64> = result.y.to_vec();
@@ -206,14 +207,15 @@ mod tests {
         let (client, device) = setup();
 
         // Same first-order system
-        let a = Tensor::<CpuRuntime>::from_slice(&[0.5f64], &[1, 1], &device);
-        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1, 1], &device);
-        let c = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1, 1], &device);
-        let d = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1, 1], &device);
+        let a = Tensor::<CpuRuntime>::from_slice(&[0.5f64], &[1, 1], &device).unwrap();
+        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1, 1], &device).unwrap();
+        let c = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1, 1], &device).unwrap();
+        let d = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1, 1], &device).unwrap();
         let ss = StateSpace::new(a, b, c, d);
 
         // Impulse input
-        let u = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0, 0.0, 0.0, 0.0], &[5], &device);
+        let u =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0, 0.0, 0.0, 0.0], &[5], &device).unwrap();
 
         let result = client.dlsim_ss(&ss, &u, None, &device).unwrap();
         let y: Vec<f64> = result.y.to_vec();
@@ -231,14 +233,14 @@ mod tests {
         let (client, device) = setup();
 
         // System with direct feedthrough
-        let a = Tensor::<CpuRuntime>::from_slice(&[0.5f64], &[1, 1], &device);
-        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1, 1], &device);
-        let c = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1, 1], &device);
-        let d = Tensor::<CpuRuntime>::from_slice(&[0.5f64], &[1, 1], &device);
+        let a = Tensor::<CpuRuntime>::from_slice(&[0.5f64], &[1, 1], &device).unwrap();
+        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1, 1], &device).unwrap();
+        let c = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1, 1], &device).unwrap();
+        let d = Tensor::<CpuRuntime>::from_slice(&[0.5f64], &[1, 1], &device).unwrap();
         let ss = StateSpace::new(a, b, c, d);
 
         // Impulse input
-        let u = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0, 0.0], &[3], &device);
+        let u = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0, 0.0], &[3], &device).unwrap();
 
         let result = client.dlsim_ss(&ss, &u, None, &device).unwrap();
         let y: Vec<f64> = result.y.to_vec();
@@ -256,14 +258,16 @@ mod tests {
         let (client, device) = setup();
 
         // Second-order oscillator
-        let a = Tensor::<CpuRuntime>::from_slice(&[0.0f64, 1.0, -0.5, 1.0], &[2, 2], &device);
-        let b = Tensor::<CpuRuntime>::from_slice(&[0.0f64, 1.0], &[2, 1], &device);
-        let c = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0], &[1, 2], &device);
-        let d = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1, 1], &device);
+        let a =
+            Tensor::<CpuRuntime>::from_slice(&[0.0f64, 1.0, -0.5, 1.0], &[2, 2], &device).unwrap();
+        let b = Tensor::<CpuRuntime>::from_slice(&[0.0f64, 1.0], &[2, 1], &device).unwrap();
+        let c = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0], &[1, 2], &device).unwrap();
+        let d = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1, 1], &device).unwrap();
         let ss = StateSpace::new(a, b, c, d);
 
         // Impulse input
-        let u = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0, 0.0, 0.0, 0.0], &[5], &device);
+        let u =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0, 0.0, 0.0, 0.0], &[5], &device).unwrap();
 
         let result = client.dlsim_ss(&ss, &u, None, &device).unwrap();
         let y: Vec<f64> = result.y.to_vec();
@@ -279,17 +283,17 @@ mod tests {
         let (client, device) = setup();
 
         // First-order system
-        let a = Tensor::<CpuRuntime>::from_slice(&[0.5f64], &[1, 1], &device);
-        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1, 1], &device);
-        let c = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1, 1], &device);
-        let d = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1, 1], &device);
+        let a = Tensor::<CpuRuntime>::from_slice(&[0.5f64], &[1, 1], &device).unwrap();
+        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1, 1], &device).unwrap();
+        let c = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1, 1], &device).unwrap();
+        let d = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1, 1], &device).unwrap();
         let ss = StateSpace::new(a, b, c, d);
 
         // Zero input
-        let u = Tensor::<CpuRuntime>::from_slice(&[0.0f64, 0.0, 0.0, 0.0], &[4], &device);
+        let u = Tensor::<CpuRuntime>::from_slice(&[0.0f64, 0.0, 0.0, 0.0], &[4], &device).unwrap();
 
         // Initial state x0 = 2
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[2.0f64], &[1], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[2.0f64], &[1], &device).unwrap();
 
         let result = client.dlsim_ss(&ss, &u, Some(&x0), &device).unwrap();
         let y: Vec<f64> = result.y.to_vec();
@@ -306,14 +310,14 @@ mod tests {
         let (client, device) = setup();
 
         // H(z) = 1 / (1 - 0.5z^-1)
-        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -0.5], &[2], &device);
+        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
+        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -0.5], &[2], &device).unwrap();
         let tf = TransferFunction::new(b, a);
 
         let system = DiscreteTimeSystem::new(SystemRepresentation::TransferFunction(tf), Some(1.0));
 
         // Impulse input
-        let u = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0, 0.0, 0.0], &[4], &device);
+        let u = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0, 0.0, 0.0], &[4], &device).unwrap();
 
         let result = client.dlsim(&system, &u, None, &device).unwrap();
         let y: Vec<f64> = result.y.to_vec();
@@ -335,24 +339,25 @@ mod tests {
         use crate::signal::filter::types::ZpkFilter;
 
         // ZPK: no zeros, one real pole at 0.5, gain=1
-        let zeros_re = Tensor::<CpuRuntime>::from_slice(&[] as &[f64], &[0], &device);
-        let zeros_im = Tensor::<CpuRuntime>::from_slice(&[] as &[f64], &[0], &device);
-        let poles_re = Tensor::<CpuRuntime>::from_slice(&[0.5f64], &[1], &device);
-        let poles_im = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1], &device);
+        let zeros_re = Tensor::<CpuRuntime>::from_slice(&[] as &[f64], &[0], &device).unwrap();
+        let zeros_im = Tensor::<CpuRuntime>::from_slice(&[] as &[f64], &[0], &device).unwrap();
+        let poles_re = Tensor::<CpuRuntime>::from_slice(&[0.5f64], &[1], &device).unwrap();
+        let poles_im = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1], &device).unwrap();
         let zpk = ZpkFilter::new(zeros_re, zeros_im, poles_re, poles_im, 1.0);
 
         let system_zpk =
             DiscreteTimeSystem::new(SystemRepresentation::ZeroPoleGain(zpk), Some(1.0));
 
         // Equivalent TF: b=[1], a=[1, -0.5]
-        let b_tf = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
-        let a_tf = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -0.5], &[2], &device);
+        let b_tf = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
+        let a_tf = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -0.5], &[2], &device).unwrap();
         let tf = TransferFunction::new(b_tf, a_tf);
         let system_tf =
             DiscreteTimeSystem::new(SystemRepresentation::TransferFunction(tf), Some(1.0));
 
         // Impulse input
-        let u = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0, 0.0, 0.0, 0.0], &[5], &device);
+        let u =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0, 0.0, 0.0, 0.0], &[5], &device).unwrap();
 
         let result_zpk = client.dlsim(&system_zpk, &u, None, &device).unwrap();
         let result_tf = client.dlsim(&system_tf, &u, None, &device).unwrap();
@@ -379,18 +384,19 @@ mod tests {
         use crate::signal::filter::types::ZpkFilter;
 
         let gain = 0.5_f64;
-        let zeros_re = Tensor::<CpuRuntime>::from_slice(&[] as &[f64], &[0], &device);
-        let zeros_im = Tensor::<CpuRuntime>::from_slice(&[] as &[f64], &[0], &device);
+        let zeros_re = Tensor::<CpuRuntime>::from_slice(&[] as &[f64], &[0], &device).unwrap();
+        let zeros_im = Tensor::<CpuRuntime>::from_slice(&[] as &[f64], &[0], &device).unwrap();
         // Complex conjugate pair: 0.5 + 0.5i, 0.5 - 0.5i
-        let poles_re = Tensor::<CpuRuntime>::from_slice(&[0.5f64, 0.5], &[2], &device);
-        let poles_im = Tensor::<CpuRuntime>::from_slice(&[0.5f64, -0.5], &[2], &device);
+        let poles_re = Tensor::<CpuRuntime>::from_slice(&[0.5f64, 0.5], &[2], &device).unwrap();
+        let poles_im = Tensor::<CpuRuntime>::from_slice(&[0.5f64, -0.5], &[2], &device).unwrap();
         let zpk = ZpkFilter::new(zeros_re, zeros_im, poles_re, poles_im, gain);
 
         let system_zpk =
             DiscreteTimeSystem::new(SystemRepresentation::ZeroPoleGain(zpk), Some(1.0));
 
         // Impulse input
-        let u = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0, 0.0, 0.0, 0.0, 0.0], &[6], &device);
+        let u = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0, 0.0, 0.0, 0.0, 0.0], &[6], &device)
+            .unwrap();
 
         let result = client.dlsim(&system_zpk, &u, None, &device).unwrap();
         let y: Vec<f64> = result.y.to_vec();
@@ -405,14 +411,15 @@ mod tests {
         // In descending coefficient form: b=[0.5], a=[1, -1, 0.5].
         // NOTE: b=[0.5, 0, 0] would be WRONG — that encodes 0.5*z^2/(z^2-z+0.5) which
         // is improper and has D=0.5 feedthrough. The ZPK system has no zeros, so no feedthrough.
-        let b_tf = Tensor::<CpuRuntime>::from_slice(&[gain], &[1], &device);
-        let a_tf = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -1.0, 0.5], &[3], &device);
+        let b_tf = Tensor::<CpuRuntime>::from_slice(&[gain], &[1], &device).unwrap();
+        let a_tf = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -1.0, 0.5], &[3], &device).unwrap();
         let tf = TransferFunction::new(b_tf, a_tf);
         let system_tf =
             DiscreteTimeSystem::new(SystemRepresentation::TransferFunction(tf), Some(1.0));
 
         let u2 =
-            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0, 0.0, 0.0, 0.0, 0.0], &[6], &device);
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0, 0.0, 0.0, 0.0, 0.0], &[6], &device)
+                .unwrap();
         let result_tf = client.dlsim(&system_tf, &u2, None, &device).unwrap();
         let y_tf: Vec<f64> = result_tf.y.to_vec();
 
@@ -429,13 +436,13 @@ mod tests {
     fn test_dlsim_time_indices() {
         let (client, device) = setup();
 
-        let a = Tensor::<CpuRuntime>::from_slice(&[0.5f64], &[1, 1], &device);
-        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1, 1], &device);
-        let c = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1, 1], &device);
-        let d = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1, 1], &device);
+        let a = Tensor::<CpuRuntime>::from_slice(&[0.5f64], &[1, 1], &device).unwrap();
+        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1, 1], &device).unwrap();
+        let c = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1, 1], &device).unwrap();
+        let d = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1, 1], &device).unwrap();
         let ss = StateSpace::new(a, b, c, d);
 
-        let u = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 1.0, 1.0], &[3], &device);
+        let u = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 1.0, 1.0], &[3], &device).unwrap();
 
         let result = client.dlsim_ss(&ss, &u, None, &device).unwrap();
         let t: Vec<f64> = result.t.to_vec();

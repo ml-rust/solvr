@@ -293,14 +293,14 @@ mod tests {
         let (device, client) = setup();
 
         // Fixed point of g(x) = cos(x): x* ≈ 0.7390851332
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
 
         let result = anderson_impl(
             &client,
             |x| {
                 let data: Vec<f64> = x.to_vec();
                 let result: Vec<f64> = data.iter().map(|xi| xi.cos()).collect();
-                Ok(Tensor::from_slice(&result, x.shape(), x.device()))
+                Tensor::from_slice(&result, x.shape(), x.device())
             },
             &x0,
             &AndersonOptions::default(),
@@ -317,14 +317,14 @@ mod tests {
         let (device, client) = setup();
 
         // g(x) = 0.5 * x + 1, fixed point at x = 2
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1], &device).unwrap();
 
         let result = anderson_impl(
             &client,
             |x| {
                 let data: Vec<f64> = x.to_vec();
                 let result: Vec<f64> = data.iter().map(|xi| 0.5 * xi + 1.0).collect();
-                Ok(Tensor::from_slice(&result, x.shape(), x.device()))
+                Tensor::from_slice(&result, x.shape(), x.device())
             },
             &x0,
             &AndersonOptions::default(),

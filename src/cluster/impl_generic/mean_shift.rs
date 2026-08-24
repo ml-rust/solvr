@@ -72,7 +72,7 @@ where
         let sq_dists = client.cdist(&points, data, DistanceMetric::SquaredEuclidean)?; // [n, n]
 
         // Gaussian kernel weights: exp(-dist^2 / (2 * bw^2))
-        let scale = Tensor::<R>::full_scalar(&[1, 1], dtype, -0.5 / bw_sq, device);
+        let scale = Tensor::<R>::full_scalar(&[1, 1], dtype, -0.5 / bw_sq, device)?;
         let scaled = client.mul(&sq_dists, &scale.broadcast_to(&[n, n])?)?;
         let weights = client.exp(&scaled)?; // [n, n]
 
@@ -80,7 +80,7 @@ where
         let weight_sum = client.sum(&weights, &[1], true)?; // [n, 1]
         let weight_sum_safe = client.maximum(
             &weight_sum,
-            &Tensor::<R>::full_scalar(&[1, 1], dtype, 1e-32, device),
+            &Tensor::<R>::full_scalar(&[1, 1], dtype, 1e-32, device)?,
         )?;
 
         // weights [n, n] @ data [n, d] = [n, d]
@@ -107,7 +107,7 @@ where
     // Merge converged points into cluster centers
     // Points that are within bandwidth of each other belong to the same cluster
     let center_dists = client.cdist(&points, &points, DistanceMetric::SquaredEuclidean)?; // [n, n]
-    let threshold = Tensor::<R>::full_scalar(&[n, n], dtype, bw_sq, device);
+    let threshold = Tensor::<R>::full_scalar(&[n, n], dtype, bw_sq, device)?;
     let close = client.le(&center_dists, &threshold)?;
     let close_f = client.cast(&close, DType::I64)?;
 
@@ -116,8 +116,8 @@ where
 
     for _ in 0..n {
         let labels_row = labels.unsqueeze(0)?.broadcast_to(&[n, n])?;
-        let large = Tensor::<R>::full_scalar(&[n, n], DType::I64, n as f64, device);
-        let not_close = client.eq(&close_f, &Tensor::<R>::zeros(&[n, n], DType::I64, device))?;
+        let large = Tensor::<R>::full_scalar(&[n, n], DType::I64, n as f64, device)?;
+        let not_close = client.eq(&close_f, &Tensor::<R>::zeros(&[n, n], DType::I64, device)?)?;
         let masked = client.where_cond(&not_close, &large, &labels_row)?;
         let new_labels = client.min(&masked, &[1], false)?;
         let own_smaller = client.le(&labels, &new_labels)?;
@@ -134,11 +134,11 @@ where
     }
 
     // Remap labels to contiguous 0..k using tensor ops
-    let ones_n_f = Tensor::<R>::ones(&[n], dtype, device);
+    let ones_n_f = Tensor::<R>::ones(&[n], dtype, device)?;
 
     // Mark which label values are used via scatter_reduce(Max)
-    let used = Tensor::<R>::zeros(&[1, n], dtype, device);
-    let ones_1n = Tensor::<R>::ones(&[1, n], dtype, device);
+    let used = Tensor::<R>::zeros(&[1, n], dtype, device)?;
+    let ones_1n = Tensor::<R>::ones(&[1, n], dtype, device)?;
     let used = client
         .scatter_reduce(
             &used,
@@ -166,7 +166,7 @@ where
     // Compute cluster centers as mean of converged points per cluster
     if n_clusters > 0 {
         let labels_exp = final_labels.unsqueeze(1)?.broadcast_to(&[n, d])?;
-        let dst = Tensor::<R>::zeros(&[n_clusters, d], dtype, device);
+        let dst = Tensor::<R>::zeros(&[n_clusters, d], dtype, device)?;
         let sums = client.scatter_reduce(
             &dst,
             0,
@@ -178,7 +178,7 @@ where
         let counts = client.bincount(&final_labels, None, n_clusters)?;
         let counts_f = client.cast(&counts, dtype)?;
         let counts_safe =
-            client.maximum(&counts_f, &Tensor::<R>::ones(&[n_clusters], dtype, device))?;
+            client.maximum(&counts_f, &Tensor::<R>::ones(&[n_clusters], dtype, device)?)?;
         let counts_exp = counts_safe.unsqueeze(1)?.broadcast_to(&[n_clusters, d])?;
         let cluster_centers = client.div(&sums, &counts_exp)?;
 
@@ -190,7 +190,7 @@ where
     } else {
         Ok(MeanShiftResult {
             labels: final_labels,
-            cluster_centers: Tensor::<R>::zeros(&[0, d], dtype, device),
+            cluster_centers: Tensor::<R>::zeros(&[0, d], dtype, device)?,
             n_iter,
         })
     }

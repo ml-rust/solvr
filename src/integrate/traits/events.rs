@@ -187,7 +187,7 @@ mod tests {
             Ok(y_data[0])
         });
 
-        let y = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0], &[2], &device);
+        let y = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0], &[2], &device).unwrap();
         let val = event.evaluate(&client, 0.0, &y).unwrap();
         assert!((val - 1.0).abs() < 1e-10);
     }
@@ -214,7 +214,7 @@ mod tests {
         assert_eq!(event_set.len(), 2);
         assert!(!event_set.is_empty());
 
-        let y = Tensor::<CpuRuntime>::from_slice(&[0.5, 1.5], &[2], &device);
+        let y = Tensor::<CpuRuntime>::from_slice(&[0.5, 1.5], &[2], &device).unwrap();
         let vals = event_set.evaluate_all(&client, 0.0, &y).unwrap();
 
         assert!((vals[0] - 0.5).abs() < 1e-10);

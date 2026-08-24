@@ -126,8 +126,8 @@ where
     }
 
     // Create output tensors
-    let distances = Tensor::<R>::from_slice(&all_distances, &[n, n], &device);
-    let predecessors = Tensor::<R>::from_slice(&all_predecessors, &[n, n], &device);
+    let distances = Tensor::<R>::from_slice(&all_distances, &[n, n], &device)?;
+    let predecessors = Tensor::<R>::from_slice(&all_predecessors, &[n, n], &device)?;
 
     Ok(AllPairsResult {
         distances,

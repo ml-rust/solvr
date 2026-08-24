@@ -147,24 +147,24 @@ where
 
     Ok(Voronoi {
         points: tri.points.clone(),
-        vertices: Tensor::<R>::from_slice(&vertices, &[n_simplices, 2], device),
+        vertices: Tensor::<R>::from_slice(&vertices, &[n_simplices, 2], device)?,
         ridge_vertices: Tensor::<R>::from_slice(
             &ridge_vertices_final,
             &[n_ridges.max(1), 2],
             device,
-        ),
-        ridge_points: Tensor::<R>::from_slice(&ridge_points_final, &[n_ridges.max(1), 2], device),
+        )?,
+        ridge_points: Tensor::<R>::from_slice(&ridge_points_final, &[n_ridges.max(1), 2], device)?,
         regions_indices: Tensor::<R>::from_slice(
             &regions_indices_final,
             &[regions_indices_final.len()],
             device,
-        ),
-        regions_indptr: Tensor::<R>::from_slice(&regions_indptr, &[regions_indptr.len()], device),
+        )?,
+        regions_indptr: Tensor::<R>::from_slice(&regions_indptr, &[regions_indptr.len()], device)?,
         point_region: Tensor::<R>::from_slice(
             &point_region_final,
             &[point_region_final.len()],
             device,
-        ),
+        )?,
     })
 }
 

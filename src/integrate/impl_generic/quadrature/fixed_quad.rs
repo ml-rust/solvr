@@ -37,24 +37,24 @@ where
     let transformed_nodes: Vec<f64> = nodes.iter().map(|&x| center + half_width * x).collect();
 
     // Try F64 nodes first; fall back to F32 for backends like wgpu
-    let x_tensor_f64 = Tensor::<R>::from_slice(&transformed_nodes, &[n], client.device());
+    let x_tensor_f64 = Tensor::<R>::from_slice(&transformed_nodes, &[n], client.device())?;
     let (f_values, weight_tensor) = match f(&x_tensor_f64) {
         Ok(fv) => {
             let wt = if fv.dtype() == DType::F32 {
                 let w32: Vec<f32> = weights.iter().map(|&w| w as f32).collect();
-                Tensor::<R>::from_slice(&w32, &[n], client.device())
+                Tensor::<R>::from_slice(&w32, &[n], client.device())?
             } else {
-                Tensor::<R>::from_slice(&weights, &[n], client.device())
+                Tensor::<R>::from_slice(&weights, &[n], client.device())?
             };
             (fv, wt)
         }
         Err(_) => {
             // F64 unsupported — retry with F32 nodes
             let nodes_f32: Vec<f32> = transformed_nodes.iter().map(|&x| x as f32).collect();
-            let x_tensor_f32 = Tensor::<R>::from_slice(&nodes_f32, &[n], client.device());
+            let x_tensor_f32 = Tensor::<R>::from_slice(&nodes_f32, &[n], client.device())?;
             let fv = f(&x_tensor_f32)?;
             let w32: Vec<f32> = weights.iter().map(|&w| w as f32).collect();
-            let wt = Tensor::<R>::from_slice(&w32, &[n], client.device());
+            let wt = Tensor::<R>::from_slice(&w32, &[n], client.device())?;
             (fv, wt)
         }
     };
@@ -150,13 +150,7 @@ mod tests {
         // Exact: 1.0
         let result = fixed_quad_impl(
             &client,
-            |x| {
-                Ok(Tensor::from_slice(
-                    &vec![1.0; x.numel()],
-                    x.shape(),
-                    x.device(),
-                ))
-            },
+            |x| Tensor::from_slice(&vec![1.0; x.numel()], x.shape(), x.device()),
             0.0,
             1.0,
             5,

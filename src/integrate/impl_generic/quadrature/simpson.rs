@@ -75,7 +75,7 @@ where
     } else {
         vec![1, n]
     };
-    let weight_tensor = Tensor::<R>::from_slice(&weights, &weight_shape, client.device());
+    let weight_tensor = Tensor::<R>::from_slice(&weights, &weight_shape, client.device())?;
 
     // Multiply y by weights
     let weighted = client.mul(y, &weight_tensor)?;
@@ -184,9 +184,9 @@ where
     let mid_indices: Vec<i64> = (0..num_pairs).map(|j| (2 * j + 1) as i64).collect();
     let end_indices: Vec<i64> = (0..num_pairs).map(|j| (2 * j + 2) as i64).collect();
 
-    let start_idx = Tensor::<R>::from_slice(&start_indices, &[num_pairs], client.device());
-    let mid_idx = Tensor::<R>::from_slice(&mid_indices, &[num_pairs], client.device());
-    let end_idx = Tensor::<R>::from_slice(&end_indices, &[num_pairs], client.device());
+    let start_idx = Tensor::<R>::from_slice(&start_indices, &[num_pairs], client.device())?;
+    let mid_idx = Tensor::<R>::from_slice(&mid_indices, &[num_pairs], client.device())?;
+    let end_idx = Tensor::<R>::from_slice(&end_indices, &[num_pairs], client.device())?;
 
     // Extract y values at strided positions
     let y_start = client.index_select(y, last_dim, &start_idx)?;
@@ -240,9 +240,9 @@ where
     let mid_indices: Vec<i64> = (0..num_pairs).map(|j| (2 * j + 1) as i64).collect();
     let end_indices: Vec<i64> = (0..num_pairs).map(|j| (2 * j + 2) as i64).collect();
 
-    let start_idx = Tensor::<R>::from_slice(&start_indices, &[num_pairs], client.device());
-    let mid_idx = Tensor::<R>::from_slice(&mid_indices, &[num_pairs], client.device());
-    let end_idx = Tensor::<R>::from_slice(&end_indices, &[num_pairs], client.device());
+    let start_idx = Tensor::<R>::from_slice(&start_indices, &[num_pairs], client.device())?;
+    let mid_idx = Tensor::<R>::from_slice(&mid_indices, &[num_pairs], client.device())?;
+    let end_idx = Tensor::<R>::from_slice(&end_indices, &[num_pairs], client.device())?;
 
     // Extract y values for Simpson's part
     let y_start = client.index_select(y, last_dim, &start_idx)?;
@@ -301,7 +301,7 @@ mod tests {
         // Points: [0, 0.5, 1.0, 1.5, 2.0]
         // y values: [0, 0.25, 1.0, 2.25, 4.0]
         // Exact integral = 8/3 ≈ 2.6667
-        let y = Tensor::from_slice(&[0.0, 0.25, 1.0, 2.25, 4.0], &[5], client.device());
+        let y = Tensor::from_slice(&[0.0, 0.25, 1.0, 2.25, 4.0], &[5], client.device()).unwrap();
         let result = simpson_impl(&client, &y, None, 0.5).unwrap();
 
         let values: Vec<f64> = result.to_vec();
@@ -313,8 +313,8 @@ mod tests {
         let client = get_client();
 
         // Integrate y = x^2 from 0 to 2 with 5 points (4 intervals = even)
-        let x = Tensor::from_slice(&[0.0, 0.5, 1.0, 1.5, 2.0], &[5], client.device());
-        let y = Tensor::from_slice(&[0.0, 0.25, 1.0, 2.25, 4.0], &[5], client.device());
+        let x = Tensor::from_slice(&[0.0, 0.5, 1.0, 1.5, 2.0], &[5], client.device()).unwrap();
+        let y = Tensor::from_slice(&[0.0, 0.25, 1.0, 2.25, 4.0], &[5], client.device()).unwrap();
         let result = simpson_impl(&client, &y, Some(&x), 0.5).unwrap();
 
         let values: Vec<f64> = result.to_vec();
@@ -329,8 +329,8 @@ mod tests {
         // Points: [0, 1, 2, 3]
         // y values: [0, 1, 2, 3]
         // Exact integral = 4.5
-        let x = Tensor::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], client.device());
-        let y = Tensor::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], client.device());
+        let x = Tensor::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], client.device()).unwrap();
+        let y = Tensor::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], client.device()).unwrap();
         let result = simpson_impl(&client, &y, Some(&x), 1.0).unwrap();
 
         let values: Vec<f64> = result.to_vec();
@@ -344,7 +344,7 @@ mod tests {
         // Batch integration
         // Row 0: y = x, integral over [0,2] = 2
         // Row 1: y = x^2, integral over [0,2] = 8/3
-        let x = Tensor::from_slice(&[0.0, 0.5, 1.0, 1.5, 2.0], &[5], client.device());
+        let x = Tensor::from_slice(&[0.0, 0.5, 1.0, 1.5, 2.0], &[5], client.device()).unwrap();
         let y = Tensor::from_slice(
             &[
                 0.0, 0.5, 1.0, 1.5, 2.0, // Row 0: y = x
@@ -352,7 +352,8 @@ mod tests {
             ],
             &[2, 5],
             client.device(),
-        );
+        )
+        .unwrap();
         let result = simpson_impl(&client, &y, Some(&x), 0.5).unwrap();
 
         let values: Vec<f64> = result.to_vec();
@@ -365,8 +366,8 @@ mod tests {
         let client = get_client();
 
         // Two points should use trapezoidal
-        let x = Tensor::from_slice(&[0.0, 1.0], &[2], client.device());
-        let y = Tensor::from_slice(&[0.0, 1.0], &[2], client.device());
+        let x = Tensor::from_slice(&[0.0, 1.0], &[2], client.device()).unwrap();
+        let y = Tensor::from_slice(&[0.0, 1.0], &[2], client.device()).unwrap();
         let result = simpson_impl(&client, &y, Some(&x), 1.0).unwrap();
 
         let values: Vec<f64> = result.to_vec();

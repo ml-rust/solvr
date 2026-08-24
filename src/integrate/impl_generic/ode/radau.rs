@@ -109,7 +109,7 @@ where
 
     // Initialize
     let mut t_val = t_start;
-    let mut t = Tensor::<R>::from_slice(&[t_val], &[1], device);
+    let mut t = Tensor::<R>::from_slice(&[t_val], &[1], device)?;
     let mut y = y0.clone();
 
     // Compute initial f using primal evaluation
@@ -150,7 +150,7 @@ where
     let detected_pattern: Option<CsrData<R>> = if radau_options.sparse_jacobian.enabled
         && radau_options.sparse_jacobian.pattern.is_none()
     {
-        let t_init = Tensor::<R>::from_slice(&[t_start], &[1], device);
+        let t_init = Tensor::<R>::from_slice(&[t_start], &[1], device)?;
         match detect_jacobian_sparsity(client, &f, &t_init, y0) {
             Ok(pat) => Some(pat),
             Err(e) => {
@@ -258,7 +258,7 @@ where
         // Accept/reject
         if error_val <= 1.0 {
             t_val += h;
-            t = Tensor::<R>::from_slice(&[t_val], &[1], device);
+            t = Tensor::<R>::from_slice(&[t_val], &[1], device)?;
             y = y_new;
 
             t_values.push(t_val);
@@ -320,12 +320,12 @@ where
     let t2 = t + C2 * h;
     let t3 = t + C3 * h;
 
-    let t1_tensor = Tensor::<R>::from_slice(&[t1], &[1], device);
-    let t2_tensor = Tensor::<R>::from_slice(&[t2], &[1], device);
-    let t3_tensor = Tensor::<R>::from_slice(&[t3], &[1], device);
+    let t1_tensor = Tensor::<R>::from_slice(&[t1], &[1], device)?;
+    let t2_tensor = Tensor::<R>::from_slice(&[t2], &[1], device)?;
+    let t3_tensor = Tensor::<R>::from_slice(&[t3], &[1], device)?;
 
     // Initial guess for stages (explicit Euler) using primal evaluation
-    let t_tensor = Tensor::<R>::from_slice(&[t], &[1], device);
+    let t_tensor = Tensor::<R>::from_slice(&[t], &[1], device)?;
     let f_y = eval_primal(client, f, &t_tensor, y).map_err(to_integrate_err)?;
     let mut k1 = f_y.clone();
     let mut k2 = f_y.clone();
@@ -564,7 +564,7 @@ mod tests {
 
         // Radau is optimized for very stiff problems
         // Use same parameters that work in very_stiff test
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
 
         let mut opts = ODEOptions::with_tolerances(1e-2, 1e-4);
         opts.max_steps = 50000;
@@ -598,7 +598,7 @@ mod tests {
         let (device, client) = setup();
 
         // Very stiff: dy/dt = -10000*y
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
 
         let mut opts = ODEOptions::with_tolerances(1e-2, 1e-4);
         opts.max_steps = 50000;

@@ -34,14 +34,14 @@ mod tests {
         let device = CpuDevice::new();
         let client = CpuClient::new(device.clone());
 
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[2], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[2], &device).unwrap();
 
         let result = client
             .powell_hybrid(
                 |x| {
                     let data: Vec<f64> = x.to_vec();
                     let residuals = vec![data[0] + data[1] - 3.0, 2.0 * data[0] - data[1]];
-                    Ok(Tensor::from_slice(&residuals, &[2], x.device()))
+                    Tensor::from_slice(&residuals, &[2], x.device())
                 },
                 &x0,
                 &RootOptions::default(),

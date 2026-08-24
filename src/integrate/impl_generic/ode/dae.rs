@@ -238,7 +238,7 @@ where
 
         // Update Jacobian if needed
         if jacobian.is_none() || steps_since_jacobian >= jacobian_update_interval {
-            let t_new = Tensor::<R>::from_slice(&[t_val + h], &[1], device);
+            let t_new = Tensor::<R>::from_slice(&[t_val + h], &[1], device)?;
             let order_idx = (order - 1).min(4);
             let alpha0 = BDF_ALPHA[order_idx][0];
             let beta = BDF_BETA[order_idx];
@@ -492,7 +492,7 @@ where
 
         // Update Jacobian if needed
         if jacobian.is_none() || steps_since_jacobian >= jacobian_update_interval {
-            let t_new = Tensor::<R>::from_slice(&[t_val + h], &[1], device);
+            let t_new = Tensor::<R>::from_slice(&[t_val + h], &[1], device)?;
             let order_idx = (order - 1).min(4);
             let alpha0 = BDF_ALPHA[order_idx][0];
             let beta = BDF_BETA[order_idx];
@@ -632,7 +632,7 @@ where
     let iteration_matrix = jacobian;
 
     let mut y_iter = y_pred.clone();
-    let t_tensor = Tensor::<R>::from_slice(&[t_new], &[1], device);
+    let t_tensor = Tensor::<R>::from_slice(&[t_new], &[1], device)?;
     let mut nfev = 0;
     let mut prev_res_norm = f64::MAX;
 
@@ -714,7 +714,7 @@ where
     let n = y_pred.shape()[0];
     let iteration_matrix = jacobian;
     let mut y_iter = y_pred.clone();
-    let t_tensor = Tensor::<R>::from_slice(&[t_new], &[1], device);
+    let t_tensor = Tensor::<R>::from_slice(&[t_new], &[1], device)?;
     let mut nfev = 0;
     let mut prev_res_norm = f64::MAX;
 
@@ -824,8 +824,8 @@ mod tests {
 
         // dy/dt = -y as DAE: F(t, y, y') = y' + y = 0
         // y(0) = 1, exact: y(t) = exp(-t)
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
-        let yp0 = Tensor::<CpuRuntime>::from_slice(&[-1.0], &[1], &device);
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
+        let yp0 = Tensor::<CpuRuntime>::from_slice(&[-1.0], &[1], &device).unwrap();
 
         let f = |_t: &DualTensor<CpuRuntime>,
                  y: &DualTensor<CpuRuntime>,
@@ -860,8 +860,8 @@ mod tests {
         let (device, client) = setup();
 
         // Stiff: dy/dt = -1000*y as DAE
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
-        let yp0 = Tensor::<CpuRuntime>::from_slice(&[-1000.0], &[1], &device);
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
+        let yp0 = Tensor::<CpuRuntime>::from_slice(&[-1000.0], &[1], &device).unwrap();
 
         let f = |_t: &DualTensor<CpuRuntime>,
                  y: &DualTensor<CpuRuntime>,
@@ -893,8 +893,8 @@ mod tests {
     fn test_dae_with_return_yp() {
         let (device, client) = setup();
 
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
-        let yp0 = Tensor::<CpuRuntime>::from_slice(&[-1.0], &[1], &device);
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
+        let yp0 = Tensor::<CpuRuntime>::from_slice(&[-1.0], &[1], &device).unwrap();
 
         let f = |_t: &DualTensor<CpuRuntime>,
                  y: &DualTensor<CpuRuntime>,

@@ -173,23 +173,23 @@ where
     let n_poles = proto.poles_real.shape()[0];
 
     // Create constant tensor filled with wo for complex division
-    let wo_re = Tensor::full_scalar(&[n_zeros], dtype, wo, device);
-    let wo_im = Tensor::zeros(&[n_zeros], dtype, device);
+    let wo_re = Tensor::full_scalar(&[n_zeros], dtype, wo, device)?;
+    let wo_im = Tensor::zeros(&[n_zeros], dtype, device)?;
 
     // Transform existing zeros: z → ω₀/z (element-wise complex division)
     let (transformed_z_re, transformed_z_im) = if n_zeros > 0 {
         complex_div_tensor(client, &wo_re, &wo_im, &proto.zeros_real, &proto.zeros_imag)?
     } else {
         (
-            Tensor::zeros(&[0], dtype, device),
-            Tensor::zeros(&[0], dtype, device),
+            Tensor::zeros(&[0], dtype, device)?,
+            Tensor::zeros(&[0], dtype, device)?,
         )
     };
 
     // Add zeros at origin for degree matching (n_poles - n_zeros zeros at origin)
     let extra_zeros = n_poles.saturating_sub(n_zeros);
     let new_zeros_real = if extra_zeros > 0 {
-        let origin_re = Tensor::zeros(&[extra_zeros], dtype, device);
+        let origin_re = Tensor::zeros(&[extra_zeros], dtype, device)?;
         if n_zeros > 0 {
             client.cat(&[&transformed_z_re, &origin_re], 0)?
         } else {
@@ -200,7 +200,7 @@ where
     };
 
     let new_zeros_imag = if extra_zeros > 0 {
-        let origin_im = Tensor::zeros(&[extra_zeros], dtype, device);
+        let origin_im = Tensor::zeros(&[extra_zeros], dtype, device)?;
         if n_zeros > 0 {
             client.cat(&[&transformed_z_im, &origin_im], 0)?
         } else {
@@ -211,8 +211,8 @@ where
     };
 
     // Transform poles: p → ω₀/p
-    let wo_re_p = Tensor::full_scalar(&[n_poles], dtype, wo, device);
-    let wo_im_p = Tensor::zeros(&[n_poles], dtype, device);
+    let wo_re_p = Tensor::full_scalar(&[n_poles], dtype, wo, device)?;
+    let wo_im_p = Tensor::zeros(&[n_poles], dtype, device)?;
     let (new_poles_real, new_poles_imag) = complex_div_tensor(
         client,
         &wo_re_p,
@@ -283,10 +283,10 @@ where
         lp2bp_transform_tensor(client, &proto.zeros_real, &proto.zeros_imag, wo, bw)?
     } else {
         (
-            Tensor::zeros(&[0], dtype, device),
-            Tensor::zeros(&[0], dtype, device),
-            Tensor::zeros(&[0], dtype, device),
-            Tensor::zeros(&[0], dtype, device),
+            Tensor::zeros(&[0], dtype, device)?,
+            Tensor::zeros(&[0], dtype, device)?,
+            Tensor::zeros(&[0], dtype, device)?,
+            Tensor::zeros(&[0], dtype, device)?,
         )
     };
 
@@ -294,19 +294,19 @@ where
     let transformed_zeros_re = if n_zeros > 0 {
         interleave_tensors(client, &z1_re, &z2_re)?
     } else {
-        Tensor::zeros(&[0], dtype, device)
+        Tensor::zeros(&[0], dtype, device)?
     };
     let transformed_zeros_im = if n_zeros > 0 {
         interleave_tensors(client, &z1_im, &z2_im)?
     } else {
-        Tensor::zeros(&[0], dtype, device)
+        Tensor::zeros(&[0], dtype, device)?
     };
 
     // Add zeros at origin for degree matching
     // Each original zero becomes 2 zeros, so we need 2*(n_poles - n_zeros) zeros at origin
     let extra_zeros = 2 * n_poles.saturating_sub(n_zeros);
     let new_zeros_real = if extra_zeros > 0 {
-        let origin_re = Tensor::zeros(&[extra_zeros], dtype, device);
+        let origin_re = Tensor::zeros(&[extra_zeros], dtype, device)?;
         if n_zeros > 0 {
             client.cat(&[&transformed_zeros_re, &origin_re], 0)?
         } else {
@@ -316,7 +316,7 @@ where
         transformed_zeros_re
     };
     let new_zeros_imag = if extra_zeros > 0 {
-        let origin_im = Tensor::zeros(&[extra_zeros], dtype, device);
+        let origin_im = Tensor::zeros(&[extra_zeros], dtype, device)?;
         if n_zeros > 0 {
             client.cat(&[&transformed_zeros_im, &origin_im], 0)?
         } else {
@@ -372,28 +372,28 @@ where
         lp2bs_transform_tensor(client, &proto.zeros_real, &proto.zeros_imag, wo, bw)?
     } else {
         (
-            Tensor::zeros(&[0], dtype, device),
-            Tensor::zeros(&[0], dtype, device),
-            Tensor::zeros(&[0], dtype, device),
-            Tensor::zeros(&[0], dtype, device),
+            Tensor::zeros(&[0], dtype, device)?,
+            Tensor::zeros(&[0], dtype, device)?,
+            Tensor::zeros(&[0], dtype, device)?,
+            Tensor::zeros(&[0], dtype, device)?,
         )
     };
 
     let transformed_zeros_re = if n_zeros > 0 {
         interleave_tensors(client, &z1_re, &z2_re)?
     } else {
-        Tensor::zeros(&[0], dtype, device)
+        Tensor::zeros(&[0], dtype, device)?
     };
     let transformed_zeros_im = if n_zeros > 0 {
         interleave_tensors(client, &z1_im, &z2_im)?
     } else {
-        Tensor::zeros(&[0], dtype, device)
+        Tensor::zeros(&[0], dtype, device)?
     };
 
     // Add zeros at ±j*wo for degree matching
     let extra_zeros_per_side = n_poles.saturating_sub(n_zeros);
     let new_zeros_real = if extra_zeros_per_side > 0 {
-        let origin_re = Tensor::zeros(&[2 * extra_zeros_per_side], dtype, device);
+        let origin_re = Tensor::zeros(&[2 * extra_zeros_per_side], dtype, device)?;
         if n_zeros > 0 {
             client.cat(&[&transformed_zeros_re, &origin_re], 0)?
         } else {
@@ -410,7 +410,7 @@ where
             extra_im.push(wo);
             extra_im.push(-wo);
         }
-        let extra_tensor = Tensor::from_slice(&extra_im, &[2 * extra_zeros_per_side], device);
+        let extra_tensor = Tensor::from_slice(&extra_im, &[2 * extra_zeros_per_side], device)?;
         if n_zeros > 0 {
             client.cat(&[&transformed_zeros_im, &extra_tensor], 0)?
         } else {
@@ -526,8 +526,8 @@ where
     let n = s_re.shape()[0];
     let device = s_re.device();
     let dtype = s_re.dtype();
-    let bw_re = Tensor::full_scalar(&[n], dtype, bw, device);
-    let bw_im = Tensor::zeros(&[n], dtype, device);
+    let bw_re = Tensor::full_scalar(&[n], dtype, bw, device)?;
+    let bw_im = Tensor::zeros(&[n], dtype, device)?;
 
     // bw / s
     let (bws_re, bws_im) = complex_div_tensor(client, &bw_re, &bw_im, s_re, s_im)?;

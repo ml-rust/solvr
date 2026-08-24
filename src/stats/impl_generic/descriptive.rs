@@ -39,7 +39,7 @@ where
     let mean_val = extract_scalar(&mean_tensor)?;
 
     let mean_broadcast =
-        Tensor::<R>::full_scalar(x_contig.shape(), x.dtype(), mean_val, client.device());
+        Tensor::<R>::full_scalar(x_contig.shape(), x.dtype(), mean_val, client.device())?;
     let centered = client.sub(&x_contig, &mean_broadcast)?;
 
     let centered_sq = client.mul(&centered, &centered)?;
@@ -64,8 +64,8 @@ where
         0.0
     };
 
-    let skewness_tensor = Tensor::<R>::full_scalar(&[], x.dtype(), skewness_val, client.device());
-    let kurtosis_tensor = Tensor::<R>::full_scalar(&[], x.dtype(), kurtosis_val, client.device());
+    let skewness_tensor = Tensor::<R>::full_scalar(&[], x.dtype(), skewness_val, client.device())?;
+    let kurtosis_tensor = Tensor::<R>::full_scalar(&[], x.dtype(), kurtosis_val, client.device())?;
 
     Ok(TensorDescriptiveStats {
         nobs: n,
@@ -131,7 +131,7 @@ where
     let mean_val = extract_scalar(&mean_tensor)?;
 
     let mean_broadcast =
-        Tensor::<R>::full_scalar(x_contig.shape(), x.dtype(), mean_val, client.device());
+        Tensor::<R>::full_scalar(x_contig.shape(), x.dtype(), mean_val, client.device())?;
     let centered = client.sub(&x_contig, &mean_broadcast)?;
 
     let centered_sq = client.mul(&centered, &centered)?;
@@ -148,12 +148,7 @@ where
         0.0
     };
 
-    Ok(Tensor::<R>::full_scalar(
-        &[],
-        x.dtype(),
-        skew,
-        client.device(),
-    ))
+    Tensor::<R>::full_scalar(&[], x.dtype(), skew, client.device())
 }
 
 /// Generic implementation of `kurtosis` for any Runtime.
@@ -179,7 +174,7 @@ where
     let mean_val = extract_scalar(&mean_tensor)?;
 
     let mean_broadcast =
-        Tensor::<R>::full_scalar(x_contig.shape(), x.dtype(), mean_val, client.device());
+        Tensor::<R>::full_scalar(x_contig.shape(), x.dtype(), mean_val, client.device())?;
     let centered = client.sub(&x_contig, &mean_broadcast)?;
 
     let centered_sq = client.mul(&centered, &centered)?;
@@ -196,12 +191,7 @@ where
         0.0
     };
 
-    Ok(Tensor::<R>::full_scalar(
-        &[],
-        x.dtype(),
-        kurt,
-        client.device(),
-    ))
+    Tensor::<R>::full_scalar(&[], x.dtype(), kurt, client.device())
 }
 
 /// Generic implementation of `zscore` for any Runtime.
@@ -219,19 +209,15 @@ where
     let std_val = extract_scalar(&client.std(&x_contig, &all_dims, false, 1)?)?;
 
     if std_val == 0.0 {
-        return Ok(Tensor::<R>::zeros(
-            x_contig.shape(),
-            x.dtype(),
-            client.device(),
-        ));
+        return Tensor::<R>::zeros(x_contig.shape(), x.dtype(), client.device());
     }
 
     let mean_broadcast =
-        Tensor::<R>::full_scalar(x_contig.shape(), x.dtype(), mean_val, client.device());
+        Tensor::<R>::full_scalar(x_contig.shape(), x.dtype(), mean_val, client.device())?;
     let centered = client.sub(&x_contig, &mean_broadcast)?;
 
     let std_broadcast =
-        Tensor::<R>::full_scalar(x_contig.shape(), x.dtype(), std_val, client.device());
+        Tensor::<R>::full_scalar(x_contig.shape(), x.dtype(), std_val, client.device())?;
     client.div(&centered, &std_broadcast)
 }
 
@@ -250,10 +236,5 @@ where
     let std_val = extract_scalar(&client.std(&x_contig, &all_dims, false, 1)?)?;
     let sem_val = std_val / n.sqrt();
 
-    Ok(Tensor::<R>::full_scalar(
-        &[],
-        x.dtype(),
-        sem_val,
-        client.device(),
-    ))
+    Tensor::<R>::full_scalar(&[], x.dtype(), sem_val, client.device())
 }

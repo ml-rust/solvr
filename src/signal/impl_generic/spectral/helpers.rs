@@ -4,6 +4,7 @@
 use crate::DType;
 
 use crate::signal::traits::spectral::SpectralWindow;
+use numr::error::Result;
 use numr::runtime::Runtime;
 use numr::tensor::Tensor;
 use std::f64::consts::PI;
@@ -17,7 +18,7 @@ pub fn generate_window<R: Runtime<DType = DType>>(
     window: &SpectralWindow<R>,
     length: usize,
     device: &R::Device,
-) -> Tensor<R> {
+) -> Result<Tensor<R>> {
     match window {
         SpectralWindow::Rectangular => Tensor::from_slice(&vec![1.0f64; length], &[length], device),
         SpectralWindow::Hann => {
@@ -52,7 +53,7 @@ pub fn generate_window<R: Runtime<DType = DType>>(
                 .collect();
             Tensor::from_slice(&w, &[length], device)
         }
-        SpectralWindow::Custom(w) => w.clone(),
+        SpectralWindow::Custom(w) => Ok(w.clone()),
     }
 }
 

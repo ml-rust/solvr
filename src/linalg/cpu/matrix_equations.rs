@@ -115,9 +115,9 @@ mod tests {
 
         // A = diag(-1, -2), B = diag(-3, -4), C = [[1,2],[3,4]]
         // AX + XB = C => x_ij = c_ij / (a_ii + b_jj)
-        let a = Tensor::from_slice(&[-1.0, 0.0, 0.0, -2.0], &[2, 2], &device);
-        let b = Tensor::from_slice(&[-3.0, 0.0, 0.0, -4.0], &[2, 2], &device);
-        let c = Tensor::from_slice(&[1.0, 2.0, 3.0, 4.0], &[2, 2], &device);
+        let a = Tensor::from_slice(&[-1.0, 0.0, 0.0, -2.0], &[2, 2], &device).unwrap();
+        let b = Tensor::from_slice(&[-3.0, 0.0, 0.0, -4.0], &[2, 2], &device).unwrap();
+        let c = Tensor::from_slice(&[1.0, 2.0, 3.0, 4.0], &[2, 2], &device).unwrap();
 
         let x = client.solve_sylvester(&a, &b, &c).unwrap();
         let x_data = x.to_vec::<f64>();
@@ -139,9 +139,10 @@ mod tests {
             &[-2.0, 1.0, 0.0, 0.5, -3.0, 0.5, 0.0, 1.0, -1.0],
             &[3, 3],
             &device,
-        );
-        let b = Tensor::from_slice(&[-1.0, 0.5, 0.5, -2.0], &[2, 2], &device);
-        let c = Tensor::from_slice(&[1.0, 2.0, 3.0, 4.0, 5.0, 6.0], &[3, 2], &device);
+        )
+        .unwrap();
+        let b = Tensor::from_slice(&[-1.0, 0.5, 0.5, -2.0], &[2, 2], &device).unwrap();
+        let c = Tensor::from_slice(&[1.0, 2.0, 3.0, 4.0, 5.0, 6.0], &[3, 2], &device).unwrap();
 
         let x = client.solve_sylvester(&a, &b, &c).unwrap();
 
@@ -163,8 +164,8 @@ mod tests {
         let (client, device) = setup();
 
         // Stable A, identity Q
-        let a = Tensor::from_slice(&[-1.0, 0.5, 0.0, -2.0], &[2, 2], &device);
-        let q = Tensor::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device);
+        let a = Tensor::from_slice(&[-1.0, 0.5, 0.0, -2.0], &[2, 2], &device).unwrap();
+        let q = Tensor::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device).unwrap();
 
         let x = client.solve_continuous_lyapunov(&a, &q).unwrap();
 
@@ -187,8 +188,8 @@ mod tests {
         let (client, device) = setup();
 
         // Stable A (eigenvalues inside unit circle)
-        let a = Tensor::from_slice(&[0.5, 0.1, 0.0, 0.3], &[2, 2], &device);
-        let q = Tensor::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device);
+        let a = Tensor::from_slice(&[0.5, 0.1, 0.0, 0.3], &[2, 2], &device).unwrap();
+        let q = Tensor::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device).unwrap();
 
         let x = client.solve_discrete_lyapunov(&a, &q).unwrap();
 
@@ -211,10 +212,10 @@ mod tests {
         use numr::ops::{MatmulOps, ShapeOps, UnaryOps};
         let (client, device) = setup();
 
-        let a = Tensor::from_slice(&[0.0, 1.0, 0.0, 0.0], &[2, 2], &device);
-        let b = Tensor::from_slice(&[0.0, 1.0], &[2, 1], &device);
-        let q = Tensor::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device);
-        let r = Tensor::from_slice(&[1.0], &[1, 1], &device);
+        let a = Tensor::from_slice(&[0.0, 1.0, 0.0, 0.0], &[2, 2], &device).unwrap();
+        let b = Tensor::from_slice(&[0.0, 1.0], &[2, 1], &device).unwrap();
+        let q = Tensor::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device).unwrap();
+        let r = Tensor::from_slice(&[1.0], &[1, 1], &device).unwrap();
 
         let r_inv = LinearAlgebraAlgorithms::inverse(&client, &r).unwrap();
         let bt = b.transpose(0, 1).unwrap().contiguous().unwrap();
@@ -313,7 +314,7 @@ mod tests {
         eprintln!("X = -U2 inv(U1): {:?}", x_neg.to_vec::<f64>());
 
         // Check residual for each
-        let s_mat = Tensor::from_slice(&[0.0, 0.0, 0.0, 1.0], &[2, 2], &device);
+        let s_mat = Tensor::from_slice(&[0.0, 0.0, 0.0, 1.0], &[2, 2], &device).unwrap();
         for (name, x_candidate) in [
             ("stable", &x_stable),
             ("unstable", &x_unstable),
@@ -335,7 +336,8 @@ mod tests {
         }
 
         // Check with known solution
-        let x_true = Tensor::from_slice(&[1.732050808, 1.0, 1.0, 1.732050808], &[2, 2], &device);
+        let x_true =
+            Tensor::from_slice(&[1.732050808, 1.0, 1.0, 1.732050808], &[2, 2], &device).unwrap();
         {
             let at_loc = a.transpose(0, 1).unwrap().contiguous().unwrap();
             let atx = client.matmul(&at_loc, &x_true).unwrap();
@@ -359,10 +361,10 @@ mod tests {
 
         // Scalar CARE: A=-1, B=1, Q=2, R=1
         // Solution: X = sqrt(3) - 1
-        let a = Tensor::from_slice(&[-1.0], &[1, 1], &device);
-        let b = Tensor::from_slice(&[1.0], &[1, 1], &device);
-        let q_mat = Tensor::from_slice(&[2.0], &[1, 1], &device);
-        let r = Tensor::from_slice(&[1.0], &[1, 1], &device);
+        let a = Tensor::from_slice(&[-1.0], &[1, 1], &device).unwrap();
+        let b = Tensor::from_slice(&[1.0], &[1, 1], &device).unwrap();
+        let q_mat = Tensor::from_slice(&[2.0], &[1, 1], &device).unwrap();
+        let r = Tensor::from_slice(&[1.0], &[1, 1], &device).unwrap();
 
         let x = client.solve_care(&a, &b, &q_mat, &r).unwrap();
         let x_val = x.to_vec::<f64>()[0];
@@ -382,10 +384,10 @@ mod tests {
 
         // Double integrator: A = [[0,1],[0,0]], B = [[0],[1]]
         // Q = I, R = I
-        let a = Tensor::from_slice(&[0.0, 1.0, 0.0, 0.0], &[2, 2], &device);
-        let b = Tensor::from_slice(&[0.0, 1.0], &[2, 1], &device);
-        let q = Tensor::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device);
-        let r = Tensor::from_slice(&[1.0], &[1, 1], &device);
+        let a = Tensor::from_slice(&[0.0, 1.0, 0.0, 0.0], &[2, 2], &device).unwrap();
+        let b = Tensor::from_slice(&[0.0, 1.0], &[2, 1], &device).unwrap();
+        let q = Tensor::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device).unwrap();
+        let r = Tensor::from_slice(&[1.0], &[1, 1], &device).unwrap();
 
         let x = client.solve_care(&a, &b, &q, &r).unwrap();
         eprintln!("CARE X = {:?}", x.to_vec::<f64>());
@@ -393,7 +395,7 @@ mod tests {
         // Verify CARE residual: A^T X + X A - X B R^{-1} B^T X + Q ≈ 0
         let at = a.transpose(0, 1).unwrap().contiguous().unwrap();
         let bt = b.transpose(0, 1).unwrap().contiguous().unwrap();
-        let r_inv = Tensor::from_slice(&[1.0], &[1, 1], &device);
+        let r_inv = Tensor::from_slice(&[1.0], &[1, 1], &device).unwrap();
 
         let atx = client.matmul(&at, &x).unwrap();
         let xa = client.matmul(&x, &a).unwrap();
@@ -443,10 +445,10 @@ mod tests {
     fn test_care_iterative_double_integrator() {
         let (client, device) = setup();
 
-        let a = Tensor::from_slice(&[0.0, 1.0, 0.0, 0.0], &[2, 2], &device);
-        let b = Tensor::from_slice(&[0.0, 1.0], &[2, 1], &device);
-        let q = Tensor::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device);
-        let r = Tensor::from_slice(&[1.0], &[1, 1], &device);
+        let a = Tensor::from_slice(&[0.0, 1.0, 0.0, 0.0], &[2, 2], &device).unwrap();
+        let b = Tensor::from_slice(&[0.0, 1.0], &[2, 1], &device).unwrap();
+        let q = Tensor::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device).unwrap();
+        let r = Tensor::from_slice(&[1.0], &[1, 1], &device).unwrap();
 
         let x_iter = client.solve_care_iterative(&a, &b, &q, &r).unwrap();
         let x_schur = client.solve_care(&a, &b, &q, &r).unwrap();
@@ -467,10 +469,10 @@ mod tests {
     fn test_care_iterative_scalar() {
         let (client, device) = setup();
 
-        let a = Tensor::from_slice(&[-1.0], &[1, 1], &device);
-        let b = Tensor::from_slice(&[1.0], &[1, 1], &device);
-        let q = Tensor::from_slice(&[2.0], &[1, 1], &device);
-        let r = Tensor::from_slice(&[1.0], &[1, 1], &device);
+        let a = Tensor::from_slice(&[-1.0], &[1, 1], &device).unwrap();
+        let b = Tensor::from_slice(&[1.0], &[1, 1], &device).unwrap();
+        let q = Tensor::from_slice(&[2.0], &[1, 1], &device).unwrap();
+        let r = Tensor::from_slice(&[1.0], &[1, 1], &device).unwrap();
 
         let x = client.solve_care_iterative(&a, &b, &q, &r).unwrap();
         let x_val = x.to_vec::<f64>()[0];
@@ -487,10 +489,10 @@ mod tests {
     fn test_dare_iterative_discrete_lqr() {
         let (client, device) = setup();
 
-        let a = Tensor::from_slice(&[1.0, 1.0, 0.0, 1.0], &[2, 2], &device);
-        let b = Tensor::from_slice(&[0.5, 1.0], &[2, 1], &device);
-        let q = Tensor::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device);
-        let r = Tensor::from_slice(&[1.0], &[1, 1], &device);
+        let a = Tensor::from_slice(&[1.0, 1.0, 0.0, 1.0], &[2, 2], &device).unwrap();
+        let b = Tensor::from_slice(&[0.5, 1.0], &[2, 1], &device).unwrap();
+        let q = Tensor::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device).unwrap();
+        let r = Tensor::from_slice(&[1.0], &[1, 1], &device).unwrap();
 
         let x_iter = client.solve_dare_iterative(&a, &b, &q, &r).unwrap();
         let x_schur = client.solve_dare(&a, &b, &q, &r).unwrap();
@@ -511,8 +513,8 @@ mod tests {
     fn test_discrete_lyapunov_iterative() {
         let (client, device) = setup();
 
-        let a = Tensor::from_slice(&[0.5, 0.1, 0.0, 0.3], &[2, 2], &device);
-        let q = Tensor::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device);
+        let a = Tensor::from_slice(&[0.5, 0.1, 0.0, 0.3], &[2, 2], &device).unwrap();
+        let q = Tensor::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device).unwrap();
 
         let x_iter = client.solve_discrete_lyapunov_iterative(&a, &q).unwrap();
         let x_bilinear = client.solve_discrete_lyapunov(&a, &q).unwrap();
@@ -548,10 +550,10 @@ mod tests {
         use numr::ops::{MatmulOps, ShapeOps, UnaryOps, UtilityOps};
         let (client, device) = setup();
 
-        let a = Tensor::from_slice(&[1.0, 1.0, 0.0, 1.0], &[2, 2], &device);
-        let b = Tensor::from_slice(&[0.5, 1.0], &[2, 1], &device);
-        let q = Tensor::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device);
-        let r = Tensor::from_slice(&[1.0], &[1, 1], &device);
+        let a = Tensor::from_slice(&[1.0, 1.0, 0.0, 1.0], &[2, 2], &device).unwrap();
+        let b = Tensor::from_slice(&[0.5, 1.0], &[2, 1], &device).unwrap();
+        let q = Tensor::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device).unwrap();
+        let r = Tensor::from_slice(&[1.0], &[1, 1], &device).unwrap();
 
         let r_inv = LinearAlgebraAlgorithms::inverse(&client, &r).unwrap();
         let bt = b.transpose(0, 1).unwrap().contiguous().unwrap();
@@ -563,7 +565,7 @@ mod tests {
         let eye = client.eye(2, None, numr::dtype::DType::F64).unwrap();
         let at = a.transpose(0, 1).unwrap().contiguous().unwrap();
         let neg_q = client.neg(&q).unwrap();
-        let zeros = Tensor::zeros(&[2, 2], numr::dtype::DType::F64, &device);
+        let zeros = Tensor::zeros(&[2, 2], numr::dtype::DType::F64, &device).unwrap();
 
         let l_top = client.cat(&[&a, &zeros], 1).unwrap();
         let l_bottom = client.cat(&[&neg_q, &eye], 1).unwrap();
@@ -637,10 +639,10 @@ mod tests {
 
         // Discrete double integrator: A = [[1,1],[0,1]], B = [[0.5],[1]]
         // Q = I, R = I
-        let a = Tensor::from_slice(&[1.0, 1.0, 0.0, 1.0], &[2, 2], &device);
-        let b = Tensor::from_slice(&[0.5, 1.0], &[2, 1], &device);
-        let q = Tensor::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device);
-        let r = Tensor::from_slice(&[1.0], &[1, 1], &device);
+        let a = Tensor::from_slice(&[1.0, 1.0, 0.0, 1.0], &[2, 2], &device).unwrap();
+        let b = Tensor::from_slice(&[0.5, 1.0], &[2, 1], &device).unwrap();
+        let q = Tensor::from_slice(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device).unwrap();
+        let r = Tensor::from_slice(&[1.0], &[1, 1], &device).unwrap();
 
         let x = client.solve_dare(&a, &b, &q, &r).unwrap();
 

@@ -286,7 +286,7 @@ mod tests {
         });
 
         let events: Vec<&dyn EventFunction<CpuRuntime, CpuClient>> = vec![&event1, &event2];
-        let y = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
+        let y = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
 
         let values = evaluate_events(&client, &events, 0.0, &y).unwrap();
         assert_eq!(values.len(), 2);
@@ -306,10 +306,10 @@ mod tests {
 
         // Create step for y(t) = 1 - 2t from t=0 to t=1
         // y(0) = 1, y(1) = -1, f(t) = -2
-        let y_old = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
-        let y_new = Tensor::<CpuRuntime>::from_slice(&[-1.0], &[1], &device);
-        let f_old = Tensor::<CpuRuntime>::from_slice(&[-2.0], &[1], &device);
-        let f_new = Tensor::<CpuRuntime>::from_slice(&[-2.0], &[1], &device);
+        let y_old = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
+        let y_new = Tensor::<CpuRuntime>::from_slice(&[-1.0], &[1], &device).unwrap();
+        let f_old = Tensor::<CpuRuntime>::from_slice(&[-2.0], &[1], &device).unwrap();
+        let f_new = Tensor::<CpuRuntime>::from_slice(&[-2.0], &[1], &device).unwrap();
 
         let step = DenseOutputStep::new(0.0, 1.0, y_old, y_new, f_old, f_new);
 
@@ -347,10 +347,10 @@ mod tests {
             Ok(y_data[0])
         });
 
-        let y_old = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
-        let y_new = Tensor::<CpuRuntime>::from_slice(&[-1.0], &[1], &device);
-        let f_old = Tensor::<CpuRuntime>::from_slice(&[-2.0], &[1], &device);
-        let f_new = Tensor::<CpuRuntime>::from_slice(&[-2.0], &[1], &device);
+        let y_old = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
+        let y_new = Tensor::<CpuRuntime>::from_slice(&[-1.0], &[1], &device).unwrap();
+        let f_old = Tensor::<CpuRuntime>::from_slice(&[-2.0], &[1], &device).unwrap();
+        let f_new = Tensor::<CpuRuntime>::from_slice(&[-2.0], &[1], &device).unwrap();
 
         let step = DenseOutputStep::new(0.0, 1.0, y_old, y_new, f_old, f_new);
         let events: Vec<&dyn EventFunction<CpuRuntime, CpuClient>> = vec![&event];
@@ -392,10 +392,10 @@ mod tests {
             Ok(y_data[0])
         });
 
-        let y_old = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
-        let y_new = Tensor::<CpuRuntime>::from_slice(&[-1.0], &[1], &device);
-        let f_old = Tensor::<CpuRuntime>::from_slice(&[-2.0], &[1], &device);
-        let f_new = Tensor::<CpuRuntime>::from_slice(&[-2.0], &[1], &device);
+        let y_old = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
+        let y_new = Tensor::<CpuRuntime>::from_slice(&[-1.0], &[1], &device).unwrap();
+        let f_old = Tensor::<CpuRuntime>::from_slice(&[-2.0], &[1], &device).unwrap();
+        let f_new = Tensor::<CpuRuntime>::from_slice(&[-2.0], &[1], &device).unwrap();
 
         let step = DenseOutputStep::new(0.0, 1.0, y_old, y_new, f_old, f_new);
         let events: Vec<&dyn EventFunction<CpuRuntime, CpuClient>> = vec![&event];

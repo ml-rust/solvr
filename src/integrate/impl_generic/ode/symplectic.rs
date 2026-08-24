@@ -179,7 +179,7 @@ where
     C: TensorOps<R> + RuntimeClient<R>,
 {
     let n_steps = t_values.len();
-    let t_tensor = Tensor::<R>::from_slice(t_values, &[n_steps], client.device());
+    let t_tensor = Tensor::<R>::from_slice(t_values, &[n_steps], client.device())?;
 
     let q_refs: Vec<&Tensor<R>> = q_values.iter().collect();
     let q_tensor = client
@@ -229,8 +229,8 @@ mod tests {
         // Harmonic oscillator: F = -k*q with k=1, m=1
         // H = p²/2 + q²/2
         // Period T = 2π
-        let q0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
-        let p0 = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device);
+        let q0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
+        let p0 = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device).unwrap();
 
         // Force: F(q) = -q (spring constant k=1)
         let result = verlet_impl(
@@ -266,8 +266,8 @@ mod tests {
     fn test_leapfrog_harmonic_oscillator() {
         let (device, client) = setup();
 
-        let q0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
-        let p0 = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device);
+        let q0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
+        let p0 = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device).unwrap();
 
         let result = leapfrog_impl(
             &client,
@@ -302,8 +302,8 @@ mod tests {
         let (device, client) = setup();
 
         // Check that energy is approximately conserved over many periods
-        let q0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
-        let p0 = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device);
+        let q0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
+        let p0 = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device).unwrap();
 
         let result = verlet_impl(
             &client,
@@ -346,8 +346,8 @@ mod tests {
 
         // 2D Kepler problem: F = -r/|r|³ (gravitational force with GM=1)
         // Circular orbit at r=1 has v=1, period T=2π
-        let q0 = Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0], &[2], &device);
-        let p0 = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0], &[2], &device);
+        let q0 = Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0], &[2], &device).unwrap();
+        let p0 = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0], &[2], &device).unwrap();
 
         let result = verlet_impl(
             &client,
@@ -358,7 +358,7 @@ mod tests {
                 let r3 = r * r * r;
                 let fx = -q_data[0] / r3;
                 let fy = -q_data[1] / r3;
-                Ok(Tensor::<CpuRuntime>::from_slice(&[fx, fy], &[2], &device))
+                Tensor::<CpuRuntime>::from_slice(&[fx, fy], &[2], &device)
             },
             [0.0, 2.0 * PI],
             &q0,

@@ -70,7 +70,7 @@ mod tests {
             0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0,
             1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
         ];
-        let input = Tensor::from_slice(&data, &[5, 5], &device);
+        let input = Tensor::from_slice(&data, &[5, 5], &device).unwrap();
         let result = client
             .binary_erosion(&input, StructuringElement::Cross, 1)
             .unwrap();
@@ -86,7 +86,7 @@ mod tests {
         // Single pixel
         let mut data = vec![0.0; 25];
         data[12] = 1.0; // center
-        let input = Tensor::from_slice(&data, &[5, 5], &device);
+        let input = Tensor::from_slice(&data, &[5, 5], &device).unwrap();
         let result = client
             .binary_dilation(&input, StructuringElement::Cross, 1)
             .unwrap();
@@ -107,7 +107,7 @@ mod tests {
             0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0,
             1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,
         ];
-        let input = Tensor::from_slice(&data, &[5, 5], &device);
+        let input = Tensor::from_slice(&data, &[5, 5], &device).unwrap();
         let result = client
             .binary_opening(&input, StructuringElement::Cross, 1)
             .unwrap();

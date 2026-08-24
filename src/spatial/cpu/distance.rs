@@ -46,8 +46,9 @@ mod tests {
     fn test_cdist_euclidean() {
         let (client, device) = setup();
 
-        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 0.0, 0.0, 1.0], &[3, 2], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0, 2.0, 2.0], &[2, 2], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 0.0, 0.0, 1.0], &[3, 2], &device)
+            .unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0, 2.0, 2.0], &[2, 2], &device).unwrap();
 
         let result = client.cdist(&x, &y, DistanceMetric::Euclidean).unwrap();
 
@@ -63,7 +64,8 @@ mod tests {
         let (client, device) = setup();
 
         // Triangle at (0,0), (1,0), (0,1)
-        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 0.0, 0.0, 1.0], &[3, 2], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 0.0, 0.0, 1.0], &[3, 2], &device)
+            .unwrap();
 
         let result = client.pdist(&x, DistanceMetric::Euclidean).unwrap();
 
@@ -80,7 +82,7 @@ mod tests {
     fn test_squareform_roundtrip() {
         let (client, device) = setup();
 
-        let condensed = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0, 3.0], &[3], &device);
+        let condensed = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0, 3.0], &[3], &device).unwrap();
 
         let square = client.squareform(&condensed, 3).unwrap();
         assert_eq!(square.shape(), &[3, 3]);
@@ -98,8 +100,8 @@ mod tests {
     fn test_cdist_manhattan() {
         let (client, device) = setup();
 
-        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[1, 2], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0], &[1, 2], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[1, 2], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0], &[1, 2], &device).unwrap();
 
         let result = client.cdist(&x, &y, DistanceMetric::Manhattan).unwrap();
 

@@ -41,7 +41,7 @@ mod tests {
     #[test]
     fn test_slsqp_unconstrained() {
         let (device, client) = setup();
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[2.0, 3.0], &[2], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[2.0, 3.0], &[2], &device).unwrap();
 
         let result = client
             .slsqp(
@@ -63,9 +63,9 @@ mod tests {
     #[test]
     fn test_slsqp_with_bounds() {
         let (device, client) = setup();
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[2.0, 3.0], &[2], &device);
-        let lower = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device);
-        let upper = Tensor::<CpuRuntime>::from_slice(&[10.0, 10.0], &[2], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[2.0, 3.0], &[2], &device).unwrap();
+        let lower = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device).unwrap();
+        let upper = Tensor::<CpuRuntime>::from_slice(&[10.0, 10.0], &[2], &device).unwrap();
 
         let bounds = Bounds {
             lower: Some(lower),
@@ -97,14 +97,14 @@ mod tests {
     fn test_slsqp_equality_constraint() {
         let (device, client) = setup();
         // Minimize x^2 + y^2 subject to x + y = 1
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.5, 0.5], &[2], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.5, 0.5], &[2], &device).unwrap();
 
         let constraint = Constraint {
             kind: ConstraintType::Equality,
             fun: &|x: &Tensor<CpuRuntime>| {
                 let d: Vec<f64> = x.to_vec();
                 let val = d[0] + d[1] - 1.0;
-                Ok(Tensor::<CpuRuntime>::from_slice(&[val], &[1], x.device()))
+                Tensor::<CpuRuntime>::from_slice(&[val], &[1], x.device())
             },
             jac: None,
         };

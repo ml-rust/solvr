@@ -32,7 +32,7 @@ where
     };
 
     if n == 0 {
-        return Ok(Tensor::<R>::from_slice(&[] as &[f64], &[0], &device));
+        return Tensor::<R>::from_slice(&[] as &[f64], &[0], &device);
     }
 
     let mut betweenness = vec![0.0f64; n];
@@ -105,5 +105,5 @@ where
         }
     }
 
-    Ok(Tensor::<R>::from_slice(&betweenness, &[n], &device))
+    Tensor::<R>::from_slice(&betweenness, &[n], &device)
 }

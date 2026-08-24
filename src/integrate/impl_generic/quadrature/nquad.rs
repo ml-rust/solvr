@@ -65,7 +65,7 @@ where
                 }
 
                 // Inner integral over y at fixed x
-                let x_scalar = Tensor::<R>::from_slice(&[x], &[1], device);
+                let x_scalar = Tensor::<R>::from_slice(&[x], &[1], device)?;
 
                 let inner_result = quad_impl(
                     client,
@@ -80,7 +80,7 @@ where
                 results.push(inner_val[0]);
             }
 
-            Ok(Tensor::<R>::from_slice(&results, &[n], device))
+            Tensor::<R>::from_slice(&results, &[n], device)
         },
         a,
         b,
@@ -173,7 +173,7 @@ where
                                 coords.push(x);
                                 coords.push(y);
                             }
-                            f(&Tensor::<R>::from_slice(&coords, &[m, 2], device))
+                            f(&Tensor::<R>::from_slice(&coords, &[m, 2], device)?)
                         },
                         y_lo,
                         y_hi,
@@ -184,7 +184,7 @@ where
                     results.push(inner_val[0]);
                 }
 
-                Ok(Tensor::<R>::from_slice(&results, &[n], device))
+                Tensor::<R>::from_slice(&results, &[n], device)
             },
             x_lo,
             x_hi,
@@ -257,7 +257,7 @@ where
                 }
 
                 // Middle integral over y
-                let x_scalar = Tensor::<R>::from_slice(&[x], &[1], device);
+                let x_scalar = Tensor::<R>::from_slice(&[x], &[1], device)?;
 
                 let middle_result = quad_impl(
                     client,
@@ -275,7 +275,7 @@ where
                                 continue;
                             }
 
-                            let y_scalar = Tensor::<R>::from_slice(&[y], &[1], device);
+                            let y_scalar = Tensor::<R>::from_slice(&[y], &[1], device)?;
 
                             // Innermost integral over z
                             let inner_result = quad_impl(
@@ -296,7 +296,7 @@ where
                             y_results.push(inner_val[0]);
                         }
 
-                        Ok(Tensor::<R>::from_slice(&y_results, &[m], device))
+                        Tensor::<R>::from_slice(&y_results, &[m], device)
                     },
                     y_lower,
                     y_upper,
@@ -307,7 +307,7 @@ where
                 results.push(middle_val[0]);
             }
 
-            Ok(Tensor::<R>::from_slice(&results, &[n], device))
+            Tensor::<R>::from_slice(&results, &[n], device)
         },
         a,
         b,
@@ -338,7 +338,7 @@ mod tests {
                 let shape = _y.shape();
                 let n = shape[0];
                 let ones = vec![1.0; n];
-                Ok(Tensor::<CpuRuntime>::from_slice(&ones, &[n], &device))
+                Tensor::<CpuRuntime>::from_slice(&ones, &[n], &device)
             },
             0.0,
             1.0,
@@ -392,7 +392,7 @@ mod tests {
                 let shape = _y.shape();
                 let n = shape[0];
                 let ones = vec![1.0; n];
-                Ok(Tensor::<CpuRuntime>::from_slice(&ones, &[n], &device))
+                Tensor::<CpuRuntime>::from_slice(&ones, &[n], &device)
             },
             0.0,
             1.0,
@@ -421,7 +421,7 @@ mod tests {
                 let data: Vec<f64> = x.to_vec();
                 let n = data.len();
                 let sq: Vec<f64> = data.iter().map(|&xi| xi * xi).collect();
-                Ok(Tensor::<CpuRuntime>::from_slice(&sq, &[n], &device))
+                Tensor::<CpuRuntime>::from_slice(&sq, &[n], &device)
             },
             &[(0.0, 1.0)],
             &NQuadOptions::default(),
@@ -447,7 +447,7 @@ mod tests {
                 let shape = x.shape();
                 let n = shape[0];
                 let ones = vec![1.0; n];
-                Ok(Tensor::<CpuRuntime>::from_slice(&ones, &[n], &device))
+                Tensor::<CpuRuntime>::from_slice(&ones, &[n], &device)
             },
             &[(0.0, 1.0), (0.0, 1.0)],
             &NQuadOptions::default(),

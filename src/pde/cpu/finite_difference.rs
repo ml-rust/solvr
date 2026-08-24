@@ -103,7 +103,7 @@ mod tests {
                 f_data[i * ny + j] = 2.0 * pi * pi * (pi * x).sin() * (pi * y).sin();
             }
         }
-        let f_tensor = Tensor::<CpuRuntime>::from_slice(&f_data, &[nx, ny], &device);
+        let f_tensor = Tensor::<CpuRuntime>::from_slice(&f_data, &[nx, ny], &device).unwrap();
 
         let result = client
             .fdm_poisson(&f_tensor, &grid, &[], &FdmOptions::default())
@@ -147,7 +147,7 @@ mod tests {
         // Initial condition: hot spot in center
         let mut u0_data = vec![0.0; nx * ny];
         u0_data[(nx / 2) * ny + ny / 2] = 1.0;
-        let u0 = Tensor::<CpuRuntime>::from_slice(&u0_data, &[nx, ny], &device);
+        let u0 = Tensor::<CpuRuntime>::from_slice(&u0_data, &[nx, ny], &device).unwrap();
 
         let time_opts = TimeDependentOptions {
             t_span: [0.0, 0.01],
@@ -202,8 +202,8 @@ mod tests {
                 u0_data[i * ny + j] = (pi * x).sin() * (pi * y).sin();
             }
         }
-        let u0 = Tensor::<CpuRuntime>::from_slice(&u0_data, &[nx, ny], &device);
-        let v0 = Tensor::<CpuRuntime>::from_slice(&vec![0.0; nx * ny], &[nx, ny], &device);
+        let u0 = Tensor::<CpuRuntime>::from_slice(&u0_data, &[nx, ny], &device).unwrap();
+        let v0 = Tensor::<CpuRuntime>::from_slice(&vec![0.0; nx * ny], &[nx, ny], &device).unwrap();
 
         let time_opts = TimeDependentOptions {
             t_span: [0.0, 0.1],
@@ -264,11 +264,11 @@ mod tests {
 
         // f = 0 everywhere
         let f_data = vec![0.0f64; nx * ny];
-        let f_tensor = Tensor::<CpuRuntime>::from_slice(&f_data, &[nx, ny], &device);
+        let f_tensor = Tensor::<CpuRuntime>::from_slice(&f_data, &[nx, ny], &device).unwrap();
 
         // Homogeneous Neumann (zero flux) on all sides via BoundarySide::All
         use crate::pde::types::{BoundaryCondition, BoundarySide, BoundarySpec};
-        let bc_val = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1], &device);
+        let bc_val = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1], &device).unwrap();
         let boundary = vec![BoundarySpec {
             side: BoundarySide::All,
             condition: BoundaryCondition::Neumann(bc_val),
@@ -330,17 +330,17 @@ mod tests {
         };
 
         let f_data = vec![0.0f64; nx * ny];
-        let f_tensor = Tensor::<CpuRuntime>::from_slice(&f_data, &[nx, ny], &device);
+        let f_tensor = Tensor::<CpuRuntime>::from_slice(&f_data, &[nx, ny], &device).unwrap();
 
         use crate::pde::types::{BoundaryCondition, BoundarySide, BoundarySpec};
 
         // Left side outward flux = -1 (du/dn = -du/dx = -1 means du/dx = +1)
-        let bc_left_val = Tensor::<CpuRuntime>::from_slice(&[-1.0f64], &[1], &device);
+        let bc_left_val = Tensor::<CpuRuntime>::from_slice(&[-1.0f64], &[1], &device).unwrap();
         // Right side outward flux = +1 (du/dn = +du/dx = +1)
-        let bc_right_val = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
+        let bc_right_val = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
         // Top/bottom: zero flux
-        let bc_tb_val = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1], &device);
-        let bc_tb_val2 = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1], &device);
+        let bc_tb_val = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1], &device).unwrap();
+        let bc_tb_val2 = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1], &device).unwrap();
 
         let boundary = vec![
             BoundarySpec {
@@ -421,17 +421,20 @@ mod tests {
             y_range: [0.0, 1.0],
         };
 
-        let f_tensor = Tensor::<CpuRuntime>::from_slice(&vec![0.0f64; nx * ny], &[nx, ny], &device);
+        let f_tensor =
+            Tensor::<CpuRuntime>::from_slice(&vec![0.0f64; nx * ny], &[nx, ny], &device).unwrap();
 
         use crate::pde::types::{BoundaryCondition, BoundarySide, BoundarySpec};
 
         // Left Dirichlet u = 0 (one value per boundary node along the side).
-        let left_vals = Tensor::<CpuRuntime>::from_slice(&vec![0.0f64; ny], &[ny], &device);
+        let left_vals =
+            Tensor::<CpuRuntime>::from_slice(&vec![0.0f64; ny], &[ny], &device).unwrap();
         // Right Dirichlet u = 1.
-        let right_vals = Tensor::<CpuRuntime>::from_slice(&vec![1.0f64; ny], &[ny], &device);
+        let right_vals =
+            Tensor::<CpuRuntime>::from_slice(&vec![1.0f64; ny], &[ny], &device).unwrap();
         // Top/bottom: zero-flux Neumann.
-        let zero_flux_b = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1], &device);
-        let zero_flux_t = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1], &device);
+        let zero_flux_b = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1], &device).unwrap();
+        let zero_flux_t = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1], &device).unwrap();
 
         let boundary = vec![
             BoundarySpec {
@@ -504,13 +507,15 @@ mod tests {
             y_range: [0.0, 1.0],
         };
 
-        let f_tensor = Tensor::<CpuRuntime>::from_slice(&vec![0.0f64; nx * ny], &[nx, ny], &device);
+        let f_tensor =
+            Tensor::<CpuRuntime>::from_slice(&vec![0.0f64; nx * ny], &[nx, ny], &device).unwrap();
 
         use crate::pde::types::{BoundaryCondition, BoundarySide, BoundarySpec};
 
         // Bottom Dirichlet u = 0, Top Dirichlet u = 1 (per node along x).
-        let bottom_vals = Tensor::<CpuRuntime>::from_slice(&vec![0.0f64; nx], &[nx], &device);
-        let top_vals = Tensor::<CpuRuntime>::from_slice(&vec![1.0f64; nx], &[nx], &device);
+        let bottom_vals =
+            Tensor::<CpuRuntime>::from_slice(&vec![0.0f64; nx], &[nx], &device).unwrap();
+        let top_vals = Tensor::<CpuRuntime>::from_slice(&vec![1.0f64; nx], &[nx], &device).unwrap();
 
         let boundary = vec![
             BoundarySpec {
@@ -586,7 +591,7 @@ mod tests {
         };
 
         let f_data = vec![0.0f64; nx * ny];
-        let f_tensor = Tensor::<CpuRuntime>::from_slice(&f_data, &[nx, ny], &device);
+        let f_tensor = Tensor::<CpuRuntime>::from_slice(&f_data, &[nx, ny], &device).unwrap();
 
         use crate::pde::types::{BoundaryCondition, BoundarySide, BoundarySpec};
         let boundary = vec![BoundarySpec {
@@ -657,7 +662,7 @@ mod tests {
                     2.0 * (2.0 * pi).powi(2) * (2.0 * pi * x).sin() * (2.0 * pi * y).sin();
             }
         }
-        let f_tensor = Tensor::<CpuRuntime>::from_slice(&f_data, &[nx, ny], &device);
+        let f_tensor = Tensor::<CpuRuntime>::from_slice(&f_data, &[nx, ny], &device).unwrap();
 
         use crate::pde::types::{BoundaryCondition, BoundarySide, BoundarySpec};
         let boundary = vec![BoundarySpec {
@@ -720,13 +725,13 @@ mod tests {
         };
 
         let f_data = vec![0.0f64; nx * ny];
-        let f_n = Tensor::<CpuRuntime>::from_slice(&f_data, &[nx, ny], &device);
-        let f_p = Tensor::<CpuRuntime>::from_slice(&f_data, &[nx, ny], &device);
+        let f_n = Tensor::<CpuRuntime>::from_slice(&f_data, &[nx, ny], &device).unwrap();
+        let f_p = Tensor::<CpuRuntime>::from_slice(&f_data, &[nx, ny], &device).unwrap();
 
         use crate::pde::types::{BoundaryCondition, BoundarySide, BoundarySpec};
 
         // Neumann
-        let bc_n_val = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1], &device);
+        let bc_n_val = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1], &device).unwrap();
         let bcs_neumann = vec![BoundarySpec {
             side: BoundarySide::All,
             condition: BoundaryCondition::Neumann(bc_n_val),

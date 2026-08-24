@@ -107,5 +107,5 @@ where
         2 * n,
         &[nx, ny],
         device,
-    ))
+    )?)
 }

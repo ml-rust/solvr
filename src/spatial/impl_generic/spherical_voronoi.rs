@@ -61,7 +61,7 @@ where
 
     let center_tensor = match center {
         Some(c) => c.clone(),
-        None => Tensor::<R>::zeros(&[3], dtype, device),
+        None => Tensor::<R>::zeros(&[3], dtype, device)?,
     };
 
     // Compute convex hull of the points (they lie on a sphere, hull = all points)
@@ -125,13 +125,13 @@ where
         points: points.clone(),
         center: center_tensor,
         radius,
-        vertices: Tensor::<R>::from_slice(&vertices, &[n_faces, 3], device),
+        vertices: Tensor::<R>::from_slice(&vertices, &[n_faces, 3], device)?,
         regions_indices: Tensor::<R>::from_slice(
             &regions_indices_final,
             &[regions_indices_final.len()],
             device,
-        ),
-        regions_indptr: Tensor::<R>::from_slice(&regions_indptr, &[regions_indptr.len()], device),
+        )?,
+        regions_indptr: Tensor::<R>::from_slice(&regions_indptr, &[regions_indptr.len()], device)?,
     })
 }
 
@@ -237,8 +237,8 @@ where
             &new_indices_final,
             &[new_indices_final.len()],
             device,
-        ),
-        regions_indptr: Tensor::<R>::from_slice(&new_indptr, &[new_indptr.len()], device),
+        )?,
+        regions_indptr: Tensor::<R>::from_slice(&new_indptr, &[new_indptr.len()], device)?,
     })
 }
 
@@ -309,7 +309,7 @@ where
         areas.push(total_excess * r * r);
     }
 
-    Ok(Tensor::<R>::from_slice(&areas, &[n], device))
+    Tensor::<R>::from_slice(&areas, &[n], device)
 }
 
 /// Compute circumcenter of a triangle in 3D, projected onto sphere.

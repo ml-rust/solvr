@@ -59,7 +59,7 @@ mod tests {
                 data[i * 5 + j] = 1.0;
             }
         }
-        let input = Tensor::from_slice(&data, &[6, 5], &device);
+        let input = Tensor::from_slice(&data, &[6, 5], &device).unwrap();
 
         // Sobel along axis 0 should detect horizontal edge
         let result = client.sobel(&input, 0).unwrap();
@@ -81,7 +81,7 @@ mod tests {
                 data.push((i as f64 - 2.0).powi(2) + (j as f64 - 2.0).powi(2));
             }
         }
-        let input = Tensor::from_slice(&data, &[5, 5], &device);
+        let input = Tensor::from_slice(&data, &[5, 5], &device).unwrap();
         let result = client.laplace(&input).unwrap();
         let out: Vec<f64> = result.to_vec();
 
@@ -94,7 +94,7 @@ mod tests {
         let (client, device) = setup();
         // Constant image: gradient magnitude should be ~0
         let data = vec![5.0; 25];
-        let input = Tensor::from_slice(&data, &[5, 5], &device);
+        let input = Tensor::from_slice(&data, &[5, 5], &device).unwrap();
         let result = client.gaussian_gradient_magnitude(&input, 1.0).unwrap();
         let out: Vec<f64> = result.to_vec();
         for v in &out {

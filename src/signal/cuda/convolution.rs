@@ -66,8 +66,9 @@ mod tests {
         };
 
         let signal =
-            Tensor::<CudaRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device);
-        let kernel = Tensor::<CudaRuntime>::from_slice(&[1.0f64, 1.0, 1.0], &[3], &device);
+            Tensor::<CudaRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device)
+                .unwrap();
+        let kernel = Tensor::<CudaRuntime>::from_slice(&[1.0f64, 1.0, 1.0], &[3], &device).unwrap();
 
         let result = client.convolve(&signal, &kernel, ConvMode::Full).unwrap();
 

@@ -36,7 +36,7 @@ where
         return Ok(min_t.reshape(&[1])?.contiguous()?);
     }
     let steps = client.arange(0.0, n as f64, 1.0, DType::F64)?; // [n]
-    let denom = Tensor::full_scalar(&[1], DType::F64, (n - 1) as f64, device);
+    let denom = Tensor::full_scalar(&[1], DType::F64, (n - 1) as f64, device)?;
     let t = client.div(&steps, &denom)?; // [0, ..., 1]
     let range = client.sub(max_t, min_t)?; // scalar tensor
     let range_broad = range.broadcast_to(&[n])?.contiguous()?;
@@ -157,10 +157,10 @@ where
         // Using identity as roughness penalty (Tikhonov regularization)
         let sqrt_lambda = smoothing.sqrt();
         // √λ * I as roughness penalty
-        let eye_vals = Tensor::full_scalar(&[n_coeffs], DType::F64, sqrt_lambda, device);
+        let eye_vals = Tensor::full_scalar(&[n_coeffs], DType::F64, sqrt_lambda, device)?;
         let penalty = LinearAlgebraAlgorithms::diagflat(client, &eye_vals)?;
 
-        let zero_rhs = Tensor::zeros(&[n_coeffs, 1], DType::F64, device);
+        let zero_rhs = Tensor::zeros(&[n_coeffs, 1], DType::F64, device)?;
 
         let a_aug = client.cat(&[&a_weighted, &penalty], 0)?; // [m + n_coeffs, n_coeffs]
         let z_aug = client.cat(&[&z_weighted, &zero_rhs], 0)?; // [m + n_coeffs, 1]
@@ -234,16 +234,16 @@ mod tests {
             }
         }
 
-        let x = Tensor::<CpuRuntime>::from_slice(&xv, &[n], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&yv, &[n], &device);
-        let z = Tensor::<CpuRuntime>::from_slice(&zv, &[n], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&xv, &[n], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&yv, &[n], &device).unwrap();
+        let z = Tensor::<CpuRuntime>::from_slice(&zv, &[n], &device).unwrap();
 
         let spline =
             smooth_bivariate_spline_fit_impl(&client, &x, &y, &z, None, 0.0, 3, 3).unwrap();
 
         // Evaluate at some of the original points
-        let xi = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0, 3.0], &[3], &device);
-        let yi = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0, 3.0], &[3], &device);
+        let xi = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0, 3.0], &[3], &device).unwrap();
+        let yi = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0, 3.0], &[3], &device).unwrap();
         let result = smooth_bivariate_spline_evaluate_impl(&client, &spline, &xi, &yi).unwrap();
         let vals: Vec<f64> = result.to_vec();
 
@@ -286,16 +286,16 @@ mod tests {
             }
         }
 
-        let x = Tensor::<CpuRuntime>::from_slice(&xv, &[n], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&yv, &[n], &device);
-        let z_noisy = Tensor::<CpuRuntime>::from_slice(&zv_noisy, &[n], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&xv, &[n], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&yv, &[n], &device).unwrap();
+        let z_noisy = Tensor::<CpuRuntime>::from_slice(&zv_noisy, &[n], &device).unwrap();
 
         let spline_smooth =
             smooth_bivariate_spline_fit_impl(&client, &x, &y, &z_noisy, None, 0.01, 3, 3).unwrap();
 
         // Evaluate at test points
-        let xi = Tensor::<CpuRuntime>::from_slice(&[2.0, 3.0], &[2], &device);
-        let yi = Tensor::<CpuRuntime>::from_slice(&[2.0, 3.0], &[2], &device);
+        let xi = Tensor::<CpuRuntime>::from_slice(&[2.0, 3.0], &[2], &device).unwrap();
+        let yi = Tensor::<CpuRuntime>::from_slice(&[2.0, 3.0], &[2], &device).unwrap();
         let result =
             smooth_bivariate_spline_evaluate_impl(&client, &spline_smooth, &xi, &yi).unwrap();
         let vals: Vec<f64> = result.to_vec();

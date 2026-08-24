@@ -97,7 +97,7 @@ where
     let tol = 0.5_f64.min(grad_norm.sqrt()) * grad_norm;
 
     // Initialize: p = 0, r = -g, d = -g
-    let mut p = Tensor::<R>::zeros(grad.shape(), dtype, device);
+    let mut p = Tensor::<R>::zeros(grad.shape(), dtype, device)?;
     let neg_g = client
         .mul_scalar(grad, -1.0)
         .map_err(|e| OptimizeError::NumericalError {
@@ -289,7 +289,7 @@ mod tests {
         let (device, client) = setup();
 
         // f(x) = sum(x^2), minimum at origin
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device).unwrap();
 
         let result = trust_ncg_impl(
             &client,
@@ -311,13 +311,13 @@ mod tests {
         let (device, client) = setup();
 
         // f(x) = sum((x - 1)^2), minimum at x = [1, 1]
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.0f64, 0.0], &[2], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.0f64, 0.0], &[2], &device).unwrap();
 
         let result = trust_ncg_impl(
             &client,
             |x_var, c| {
                 let one = Var::new(
-                    Tensor::<CpuRuntime>::from_slice(&[1.0f64, 1.0], &[2], &device),
+                    Tensor::<CpuRuntime>::from_slice(&[1.0f64, 1.0], &[2], &device).unwrap(),
                     false,
                 );
                 let diff = numr::autograd::var_sub(x_var, &one, c)?;
@@ -342,7 +342,7 @@ mod tests {
 
         // Sphere function in 10D: f(x) = sum(x^2)
         let initial: Vec<f64> = (0..10).map(|i| (i as f64) - 5.0).collect();
-        let x0 = Tensor::<CpuRuntime>::from_slice(&initial, &[10], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&initial, &[10], &device).unwrap();
 
         let result = trust_ncg_impl(
             &client,

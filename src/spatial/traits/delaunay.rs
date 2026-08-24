@@ -72,7 +72,7 @@ pub trait DelaunayAlgorithms<R: Runtime<DType = DType>> {
     /// #     1.0, 0.0,
     /// #     0.5, 1.0,
     /// #     0.5, 0.3,
-    /// # ], &[4, 2], &device);
+    /// # ], &[4, 2], &device)?;
     /// let tri = client.delaunay(&points)?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```

@@ -163,8 +163,8 @@ where
     let device = client.device();
 
     // Initialize output and window sum tensors (on device)
-    let mut output = Tensor::<R>::zeros(&[full_len], real_dtype, device);
-    let mut window_sum = Tensor::<R>::zeros(&[full_len], real_dtype, device);
+    let mut output = Tensor::<R>::zeros(&[full_len], real_dtype, device)?;
+    let mut window_sum = Tensor::<R>::zeros(&[full_len], real_dtype, device)?;
 
     // Process each frame - all operations stay on device
     for f in 0..n_frames {
@@ -198,7 +198,7 @@ where
     }
 
     // Avoid division by zero: clamp window_sum to minimum value
-    let eps = Tensor::<R>::full_scalar(&[full_len], real_dtype, 1e-8, device);
+    let eps = Tensor::<R>::full_scalar(&[full_len], real_dtype, 1e-8, device)?;
     let safe_window_sum = client.maximum(&window_sum, &eps)?;
 
     // Normalize by window sum (stays on device)
@@ -242,8 +242,8 @@ where
 
     // Initialize output and window sum tensors (on device)
     // Shape: [batch_size, full_len]
-    let mut output = Tensor::<R>::zeros(&[batch_size, full_len], real_dtype, device);
-    let mut window_sum = Tensor::<R>::zeros(&[batch_size, full_len], real_dtype, device);
+    let mut output = Tensor::<R>::zeros(&[batch_size, full_len], real_dtype, device)?;
+    let mut window_sum = Tensor::<R>::zeros(&[batch_size, full_len], real_dtype, device)?;
 
     // Reshape stft to [batch_size, n_frames, freq_bins]
     let stft_batched = stft_matrix.reshape(&[batch_size, n_frames, freq_bins])?;
@@ -284,7 +284,7 @@ where
     }
 
     // Avoid division by zero: clamp window_sum to minimum value
-    let eps = Tensor::<R>::full_scalar(&[1, full_len], real_dtype, 1e-8, device);
+    let eps = Tensor::<R>::full_scalar(&[1, full_len], real_dtype, 1e-8, device)?;
     let safe_window_sum = client.maximum(&window_sum, &eps)?;
 
     // Normalize by window sum (stays on device)

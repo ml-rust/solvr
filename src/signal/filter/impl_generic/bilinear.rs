@@ -59,8 +59,8 @@ where
         bilinear_transform_tensor(client, &analog.zeros_real, &analog.zeros_imag, fs2)?
     } else {
         (
-            Tensor::zeros(&[0], dtype, device),
-            Tensor::zeros(&[0], dtype, device),
+            Tensor::zeros(&[0], dtype, device)?,
+            Tensor::zeros(&[0], dtype, device)?,
         )
     };
 
@@ -68,7 +68,7 @@ where
     // (The bilinear transform maps s = infinity to z = -1)
     let extra_zeros = n_poles.saturating_sub(n_zeros);
     let digital_zeros_re = if extra_zeros > 0 {
-        let minus_one = Tensor::full_scalar(&[extra_zeros], dtype, -1.0, device);
+        let minus_one = Tensor::full_scalar(&[extra_zeros], dtype, -1.0, device)?;
         if n_zeros > 0 {
             client.cat(&[&transformed_z_re, &minus_one], 0)?
         } else {
@@ -79,7 +79,7 @@ where
     };
 
     let digital_zeros_im = if extra_zeros > 0 {
-        let zeros = Tensor::zeros(&[extra_zeros], dtype, device);
+        let zeros = Tensor::zeros(&[extra_zeros], dtype, device)?;
         if n_zeros > 0 {
             client.cat(&[&transformed_z_im, &zeros], 0)?
         } else {
@@ -174,7 +174,7 @@ where
     let num_im = b.clone();
 
     // Denominator: 1 - a - bi = (1 - a) - bi
-    let one = Tensor::ones(&[s_re.shape()[0]], s_re.dtype(), s_re.device());
+    let one = Tensor::ones(&[s_re.shape()[0]], s_re.dtype(), s_re.device())?;
     let denom_re = client.sub(&one, &a)?;
     let denom_im = client.mul_scalar(&b, -1.0)?;
 

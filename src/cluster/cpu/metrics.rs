@@ -98,9 +98,11 @@ mod tests {
             ],
             &[6, 2],
             &device,
-        );
+        )
+        .unwrap();
 
-        let labels = Tensor::<CpuRuntime>::from_slice(&[0i64, 0, 0, 1, 1, 1], &[6], &device);
+        let labels =
+            Tensor::<CpuRuntime>::from_slice(&[0i64, 0, 0, 1, 1, 1], &[6], &device).unwrap();
 
         let score = client
             .silhouette_score(&data, &labels, DistanceMetric::Euclidean)
@@ -114,8 +116,10 @@ mod tests {
     fn test_adjusted_rand_score_perfect() {
         let (client, device) = setup();
 
-        let labels_true = Tensor::<CpuRuntime>::from_slice(&[0i64, 0, 0, 1, 1, 1], &[6], &device);
-        let labels_pred = Tensor::<CpuRuntime>::from_slice(&[1i64, 1, 1, 0, 0, 0], &[6], &device);
+        let labels_true =
+            Tensor::<CpuRuntime>::from_slice(&[0i64, 0, 0, 1, 1, 1], &[6], &device).unwrap();
+        let labels_pred =
+            Tensor::<CpuRuntime>::from_slice(&[1i64, 1, 1, 0, 0, 0], &[6], &device).unwrap();
 
         let ari = client
             .adjusted_rand_score(&labels_true, &labels_pred)
@@ -141,9 +145,11 @@ mod tests {
             ],
             &[6, 2],
             &device,
-        );
+        )
+        .unwrap();
 
-        let labels = Tensor::<CpuRuntime>::from_slice(&[0i64, 0, 0, 1, 1, 1], &[6], &device);
+        let labels =
+            Tensor::<CpuRuntime>::from_slice(&[0i64, 0, 0, 1, 1, 1], &[6], &device).unwrap();
 
         let ch = client.calinski_harabasz_score(&data, &labels).unwrap();
         let val: f64 = ch.item().unwrap();
@@ -167,9 +173,11 @@ mod tests {
             ],
             &[6, 2],
             &device,
-        );
+        )
+        .unwrap();
 
-        let labels = Tensor::<CpuRuntime>::from_slice(&[0i64, 0, 0, 1, 1, 1], &[6], &device);
+        let labels =
+            Tensor::<CpuRuntime>::from_slice(&[0i64, 0, 0, 1, 1, 1], &[6], &device).unwrap();
 
         let db = client.davies_bouldin_score(&data, &labels).unwrap();
         let val: f64 = db.item().unwrap();
@@ -181,8 +189,10 @@ mod tests {
     fn test_nmi_and_hcv() {
         let (client, device) = setup();
 
-        let labels_true = Tensor::<CpuRuntime>::from_slice(&[0i64, 0, 0, 1, 1, 1], &[6], &device);
-        let labels_pred = Tensor::<CpuRuntime>::from_slice(&[0i64, 0, 0, 1, 1, 1], &[6], &device);
+        let labels_true =
+            Tensor::<CpuRuntime>::from_slice(&[0i64, 0, 0, 1, 1, 1], &[6], &device).unwrap();
+        let labels_pred =
+            Tensor::<CpuRuntime>::from_slice(&[0i64, 0, 0, 1, 1, 1], &[6], &device).unwrap();
 
         let nmi = client
             .normalized_mutual_info_score(&labels_true, &labels_pred)

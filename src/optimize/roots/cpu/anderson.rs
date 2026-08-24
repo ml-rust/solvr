@@ -35,14 +35,14 @@ mod tests {
         let client = CpuClient::new(device.clone());
 
         // Fixed point of cos(x) at ~0.7391
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
 
         let result = client
             .anderson(
                 |x| {
                     let data: Vec<f64> = x.to_vec();
                     let r: Vec<f64> = data.iter().map(|xi| xi.cos()).collect();
-                    Ok(Tensor::from_slice(&r, x.shape(), x.device()))
+                    Tensor::from_slice(&r, x.shape(), x.device())
                 },
                 &x0,
                 &AndersonOptions::default(),

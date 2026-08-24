@@ -56,7 +56,7 @@ where
 
     // Scatter ranks into original positions:
     // output[indices[i]] = ranks_seq[i] → ranks_seq[i] = i+1
-    let zeros = Tensor::<R>::full_scalar(&[n], x.dtype(), 0.0, device);
+    let zeros = Tensor::<R>::full_scalar(&[n], x.dtype(), 0.0, device)?;
     client.scatter(&zeros, 0, &indices, &ranks_seq)
 }
 

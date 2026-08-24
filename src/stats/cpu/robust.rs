@@ -71,7 +71,8 @@ mod tests {
             &[1.0f64, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0],
             &[10],
             &device,
-        );
+        )
+        .unwrap();
 
         // 0% trim = regular mean
         let result = client.trim_mean(&data, 0.0).unwrap();
@@ -96,7 +97,8 @@ mod tests {
             &[1.0f64, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 100.0],
             &[10],
             &device,
-        );
+        )
+        .unwrap();
 
         // Without winsorizing
         let regular_mean = 145.0 / 10.0; // 14.5
@@ -111,7 +113,8 @@ mod tests {
     #[test]
     fn test_median_abs_deviation() {
         let (client, device) = setup();
-        let data = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device);
+        let data =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device).unwrap();
 
         // Median = 3, |x - 3| = [2, 1, 0, 1, 2], median(|x-3|) = 1
         let result = client.median_abs_deviation(&data, false).unwrap();
@@ -127,8 +130,10 @@ mod tests {
     #[test]
     fn test_theilslopes() {
         let (client, device) = setup();
-        let x = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[2.0f64, 4.0, 6.0, 8.0, 10.0], &[5], &device);
+        let x =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&[2.0f64, 4.0, 6.0, 8.0, 10.0], &[5], &device)
+            .unwrap();
 
         let result = client.theilslopes(&x, &y).unwrap();
         let slope = extract_scalar(&result.slope).unwrap();
@@ -142,8 +147,10 @@ mod tests {
     #[test]
     fn test_siegelslopes() {
         let (client, device) = setup();
-        let x = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[2.0f64, 4.0, 6.0, 8.0, 10.0], &[5], &device);
+        let x =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&[2.0f64, 4.0, 6.0, 8.0, 10.0], &[5], &device)
+            .unwrap();
 
         let result = client.siegelslopes(&x, &y).unwrap();
         let slope = extract_scalar(&result.slope).unwrap();

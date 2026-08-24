@@ -169,14 +169,14 @@ where
 
     // Build CSR and solve
     let nnz = final_rows.len();
-    let row_t = Tensor::<R>::from_slice(&final_rows, &[nnz], device);
-    let col_t = Tensor::<R>::from_slice(&final_cols, &[nnz], device);
-    let val_t = Tensor::<R>::from_slice(&final_vals, &[nnz], device);
+    let row_t = Tensor::<R>::from_slice(&final_rows, &[nnz], device)?;
+    let col_t = Tensor::<R>::from_slice(&final_cols, &[nnz], device)?;
+    let val_t = Tensor::<R>::from_slice(&final_vals, &[nnz], device)?;
 
     // Sort and build CSR
     let csr = coo_to_csr_with_dup::<R>(&row_t, &col_t, &val_t, [n_nodes, n_nodes], device)?;
 
-    let rhs_tensor = Tensor::<R>::from_slice(&load, &[n_nodes], device);
+    let rhs_tensor = Tensor::<R>::from_slice(&load, &[n_nodes], device)?;
 
     let result = solve_sparse_system(client, &csr, &rhs_tensor, options, "FEM triangular solver")?;
 
@@ -242,9 +242,9 @@ fn coo_to_csr_with_dup<R: Runtime<DType = DType>>(
     }
 
     let final_nnz = merged_cols.len();
-    let rp = Tensor::<R>::from_slice(&row_ptrs, &[nrows + 1], device);
-    let ci = Tensor::<R>::from_slice(&merged_cols, &[final_nnz], device);
-    let vv = Tensor::<R>::from_slice(&merged_vals, &[final_nnz], device);
+    let rp = Tensor::<R>::from_slice(&row_ptrs, &[nrows + 1], device)?;
+    let ci = Tensor::<R>::from_slice(&merged_cols, &[final_nnz], device)?;
+    let vv = Tensor::<R>::from_slice(&merged_vals, &[final_nnz], device)?;
 
     CsrData::new(rp, ci, vv, shape)
 }

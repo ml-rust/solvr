@@ -39,7 +39,7 @@ mod tests {
     fn test_edt_1d() {
         let (client, device) = setup();
         let data = vec![0.0, 0.0, 1.0, 0.0, 0.0];
-        let input = Tensor::from_slice(&data, &[5], &device);
+        let input = Tensor::from_slice(&data, &[5], &device).unwrap();
         let result = client.distance_transform_edt(&input).unwrap();
         let out: Vec<f64> = result.to_vec();
         // Distances from the single foreground pixel at index 2
@@ -55,7 +55,7 @@ mod tests {
         let (client, device) = setup();
         // Single foreground pixel in center
         let data = vec![0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0];
-        let input = Tensor::from_slice(&data, &[3, 3], &device);
+        let input = Tensor::from_slice(&data, &[3, 3], &device).unwrap();
         let result = client.distance_transform_edt(&input).unwrap();
         let out: Vec<f64> = result.to_vec();
         assert!((out[4] - 0.0).abs() < 1e-10); // center
@@ -69,7 +69,7 @@ mod tests {
     fn test_cityblock_distance() {
         let (client, device) = setup();
         let data = vec![0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0];
-        let input = Tensor::from_slice(&data, &[3, 3], &device);
+        let input = Tensor::from_slice(&data, &[3, 3], &device).unwrap();
         let result = client
             .distance_transform(&input, DistanceTransformMetric::CityBlock)
             .unwrap();

@@ -69,7 +69,7 @@ mod tests {
             1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
             0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0,
         ];
-        let input = Tensor::from_slice(&data, &[5, 5], &device);
+        let input = Tensor::from_slice(&data, &[5, 5], &device).unwrap();
         let (labels, num_labels) = client.label(&input, StructuringElement::Cross).unwrap();
         assert_eq!(num_labels, 2);
         let label_data: Vec<f64> = labels.to_vec();
@@ -84,8 +84,8 @@ mod tests {
         let (client, device) = setup();
         let values = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let labels_data = vec![1.0, 1.0, 2.0, 2.0, 2.0];
-        let input = Tensor::from_slice(&values, &[5], &device);
-        let labels = Tensor::from_slice(&labels_data, &[5], &device);
+        let input = Tensor::from_slice(&values, &[5], &device).unwrap();
+        let labels = Tensor::from_slice(&labels_data, &[5], &device).unwrap();
         let result = client.sum_labels(&input, &labels, 2).unwrap();
         let out: Vec<f64> = result.to_vec();
         assert!((out[0] - 3.0).abs() < 1e-10); // 1+2

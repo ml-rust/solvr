@@ -140,7 +140,7 @@ where
     }
 
     let quat_shape = if is_batch { vec![n, 4] } else { vec![4] };
-    let quaternions = Tensor::<R>::from_slice(&quats, &quat_shape, device);
+    let quaternions = Tensor::<R>::from_slice(&quats, &quat_shape, device)?;
 
     Ok(Rotation {
         quaternions,
@@ -233,7 +233,7 @@ where
     }
 
     let quat_shape = if is_batch { vec![n, 4] } else { vec![4] };
-    let quaternions = Tensor::<R>::from_slice(&quats, &quat_shape, device);
+    let quaternions = Tensor::<R>::from_slice(&quats, &quat_shape, device)?;
 
     Ok(Rotation {
         quaternions,
@@ -286,7 +286,7 @@ where
     }
 
     let quat_shape = if is_batch { vec![n, 4] } else { vec![4] };
-    let quaternions = Tensor::<R>::from_slice(&quats, &quat_shape, device);
+    let quaternions = Tensor::<R>::from_slice(&quats, &quat_shape, device)?;
 
     Ok(Rotation {
         quaternions,
@@ -335,7 +335,7 @@ where
     }
 
     let quat_shape = if is_batch { vec![n, 4] } else { vec![4] };
-    let quaternions = Tensor::<R>::from_slice(&quats, &quat_shape, device);
+    let quaternions = Tensor::<R>::from_slice(&quats, &quat_shape, device)?;
 
     Ok(Rotation {
         quaternions,
@@ -406,7 +406,7 @@ where
         vec![3, 3]
     };
 
-    Ok(Tensor::<R>::from_slice(&matrices, &shape, device))
+    Tensor::<R>::from_slice(&matrices, &shape, device)
 }
 
 /// Convert rotation to Euler angles.
@@ -476,7 +476,7 @@ where
 
     let shape = if rot.is_batch { vec![n, 3] } else { vec![3] };
 
-    Ok(Tensor::<R>::from_slice(&angles, &shape, device))
+    Tensor::<R>::from_slice(&angles, &shape, device)
 }
 
 /// Convert rotation to rotation vector.
@@ -520,7 +520,7 @@ where
 
     let shape = if rot.is_batch { vec![n, 3] } else { vec![3] };
 
-    Ok(Tensor::<R>::from_slice(&rotvecs, &shape, device))
+    Tensor::<R>::from_slice(&rotvecs, &shape, device)
 }
 
 /// Apply rotation to vectors.
@@ -625,7 +625,7 @@ where
     }
 
     let quat_shape = if is_batch { vec![n, 4] } else { vec![4] };
-    let quaternions = Tensor::<R>::from_slice(&quats, &quat_shape, device);
+    let quaternions = Tensor::<R>::from_slice(&quats, &quat_shape, device)?;
 
     Ok(Rotation {
         quaternions,
@@ -660,7 +660,7 @@ where
     }
 
     let quat_shape = if rot.is_batch { vec![n, 4] } else { vec![4] };
-    let quaternions = Tensor::<R>::from_slice(&quats, &quat_shape, device);
+    let quaternions = Tensor::<R>::from_slice(&quats, &quat_shape, device)?;
 
     Ok(Rotation {
         quaternions,
@@ -743,7 +743,7 @@ where
     }
 
     let quat_shape = if is_batch { vec![n, 4] } else { vec![4] };
-    let quaternions = Tensor::<R>::from_slice(&quats, &quat_shape, device);
+    let quaternions = Tensor::<R>::from_slice(&quats, &quat_shape, device)?;
 
     Ok(Rotation {
         quaternions,
@@ -761,7 +761,7 @@ where
 
     match n {
         None => {
-            let quaternions = Tensor::<R>::from_slice(&[1.0, 0.0, 0.0, 0.0], &[4], device);
+            let quaternions = Tensor::<R>::from_slice(&[1.0, 0.0, 0.0, 0.0], &[4], device)?;
             Ok(Rotation {
                 quaternions,
                 is_batch: false,
@@ -775,7 +775,7 @@ where
                 quats.push(0.0);
                 quats.push(0.0);
             }
-            let quaternions = Tensor::<R>::from_slice(&quats, &[count, 4], device);
+            let quaternions = Tensor::<R>::from_slice(&quats, &[count, 4], device)?;
             Ok(Rotation {
                 quaternions,
                 is_batch: true,
@@ -833,7 +833,7 @@ where
 
     let shape = if rot.is_batch { vec![n] } else { vec![] };
 
-    Ok(Tensor::<R>::from_slice(&angles, &shape, device))
+    Tensor::<R>::from_slice(&angles, &shape, device)
 }
 
 #[cfg(test)]
@@ -881,7 +881,8 @@ mod tests {
             &[1.0, 0.0, 0.0, 0.0, s, 0.0, 0.0, s],
             &[2, 4],
             client.device(),
-        );
+        )
+        .unwrap();
         let rot = rotation_from_quat_impl(&client, &quats).expect("quat");
         assert!(rot.is_batch);
 
@@ -890,7 +891,8 @@ mod tests {
             &[1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
             &[3, 3],
             client.device(),
-        );
+        )
+        .unwrap();
 
         let result = rotation_apply_impl(&client, &rot, &vecs).expect("apply");
         let shape = result.shape();
@@ -941,7 +943,8 @@ mod tests {
             &[1.0, 0.0, 0.0, 0.0, s, 0.0, 0.0, s],
             &[2, 4],
             client.device(),
-        );
+        )
+        .unwrap();
         let rot_batch = rotation_from_quat_impl(&client, &quats).expect("quat batch");
 
         // Two vectors
@@ -949,7 +952,8 @@ mod tests {
             &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
             &[2, 3],
             client.device(),
-        );
+        )
+        .unwrap();
 
         let batch_result =
             rotation_apply_impl(&client, &rot_batch, &vectors_batch).expect("batch apply");
@@ -969,7 +973,7 @@ mod tests {
                 quats_vec[q_offset + 3],
             ];
             let single_quat =
-                Tensor::<CpuRuntime>::from_slice(single_quat_data, &[4], client.device());
+                Tensor::<CpuRuntime>::from_slice(single_quat_data, &[4], client.device()).unwrap();
             let rot_single = rotation_from_quat_impl(&client, &single_quat).expect("single quat");
 
             for vec_idx in 0..2usize {
@@ -979,7 +983,8 @@ mod tests {
                     &[vd[v_offset], vd[v_offset + 1], vd[v_offset + 2]],
                     &[3],
                     client.device(),
-                );
+                )
+                .unwrap();
                 let single_result =
                     rotation_apply_impl(&client, &rot_single, &single_vec).expect("single apply");
                 let sr: Vec<f64> = single_result.to_vec();

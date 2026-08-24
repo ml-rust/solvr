@@ -118,7 +118,7 @@ where
         options.tol,
     );
 
-    let mut tableau = Tensor::<R>::from_slice(&tableau_data, &[n_rows, n_cols], client.device());
+    let mut tableau = Tensor::<R>::from_slice(&tableau_data, &[n_rows, n_cols], client.device())?;
 
     // Simplex iterations
     let mut nit = 0;
@@ -775,11 +775,11 @@ where
         f64::INFINITY
     };
 
-    let x_tensor = Tensor::<R>::from_slice(&x, &[n_orig], client.device());
+    let x_tensor = Tensor::<R>::from_slice(&x, &[n_orig], client.device())?;
     let slack_tensor = if slack.is_empty() {
-        Tensor::<R>::from_slice::<f64>(&[], &[0], client.device())
+        Tensor::<R>::from_slice::<f64>(&[], &[0], client.device())?
     } else {
-        Tensor::<R>::from_slice(&slack, &[slack.len()], client.device())
+        Tensor::<R>::from_slice(&slack, &[slack.len()], client.device())?
     };
 
     Ok(TensorLinProgResult {
@@ -821,8 +821,8 @@ where
         fun += c[i] * x[i];
     }
 
-    let x_tensor = Tensor::<R>::from_slice(&x, &[n_orig], client.device());
-    let slack_tensor = Tensor::<R>::from_slice::<f64>(&[], &[0], client.device());
+    let x_tensor = Tensor::<R>::from_slice(&x, &[n_orig], client.device())?;
+    let slack_tensor = Tensor::<R>::from_slice::<f64>(&[], &[0], client.device())?;
 
     Ok(TensorLinProgResult {
         x: x_tensor,

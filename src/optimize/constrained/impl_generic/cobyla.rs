@@ -386,7 +386,7 @@ where
 
     // Check linearized constraint satisfaction and adjust if needed
     // Note: from_slice is acceptable at the algorithm boundary where we work with Vec<f64>
-    let d_tensor = Tensor::<R>::from_slice(&d, &[n], x0.device());
+    let d_tensor = Tensor::<R>::from_slice(&d, &[n], x0.device())?;
     let trial = client
         .add(x0, &d_tensor)
         .map_err(|e| OptimizeError::NumericalError {

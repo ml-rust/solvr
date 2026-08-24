@@ -33,7 +33,7 @@ where
     };
 
     if n == 0 {
-        return Ok(Tensor::<R>::from_slice(&[] as &[f64], &[0], &device));
+        return Tensor::<R>::from_slice(&[] as &[f64], &[0], &device);
     }
 
     let d = options.damping;
@@ -91,5 +91,5 @@ where
         }
     }
 
-    Ok(Tensor::<R>::from_slice(&rank, &[n], &device))
+    Tensor::<R>::from_slice(&rank, &[n], &device)
 }

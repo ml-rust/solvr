@@ -175,7 +175,8 @@ mod tests {
 
     fn make_checkpoint(t: f64) -> Checkpoint<CpuRuntime> {
         let device = CpuDevice::new();
-        let y = Tensor::<CpuRuntime>::from_slice(&[t], &[1], &device);
+        let y = Tensor::<CpuRuntime>::from_slice(&[t], &[1], &device)
+            .expect("from_slice should succeed for test checkpoint tensor");
         Checkpoint::new(t, y)
     }
 

@@ -45,7 +45,7 @@ mod tests {
         };
 
         // f(x) = sum(x²), minimum at x = 0
-        let x0 = Tensor::<WgpuRuntime>::from_slice(&[1.0f32, 2.0, 3.0], &[3], &device);
+        let x0 = Tensor::<WgpuRuntime>::from_slice(&[1.0f32, 2.0, 3.0], &[3], &device).unwrap();
 
         // Newton-CG may trigger wgpu validation errors (F64/complex unsupported).
         // wgpu-core panics instead of returning Err, so use catch_unwind.

@@ -116,7 +116,7 @@ where
 
     // Integral = volume * mean
     let integral = volume * mean_scalar;
-    let integral_tensor = Tensor::<R>::from_slice(&[integral], &[1], device);
+    let integral_tensor = Tensor::<R>::from_slice(&[integral], &[1], device)?;
 
     Ok(MonteCarloResult {
         integral: integral_tensor,
@@ -201,7 +201,7 @@ where
     }
 
     let offset_tensor =
-        Tensor::<R>::from_slice(&offsets_correct, &[actual_samples, n_dims], device);
+        Tensor::<R>::from_slice(&offsets_correct, &[actual_samples, n_dims], device)?;
 
     // Stratified samples in [0,1]^d: offset + rand * stratum_size
     let scaled_rand = client.mul_scalar(&rand_samples, stratum_size)?;
@@ -218,7 +218,7 @@ where
 
     let std_error = (variance_scalar / actual_samples as f64).sqrt() * volume;
     let integral = volume * mean_scalar;
-    let integral_tensor = Tensor::<R>::from_slice(&[integral], &[1], device);
+    let integral_tensor = Tensor::<R>::from_slice(&[integral], &[1], device)?;
 
     Ok(MonteCarloResult {
         integral: integral_tensor,
@@ -287,7 +287,7 @@ where
     let std_error = (variance_scalar / n_base as f64).sqrt() * volume;
 
     let integral = volume * mean_scalar;
-    let integral_tensor = Tensor::<R>::from_slice(&[integral], &[1], device);
+    let integral_tensor = Tensor::<R>::from_slice(&[integral], &[1], device)?;
 
     Ok(MonteCarloResult {
         integral: integral_tensor,
@@ -316,8 +316,8 @@ where
     let scales: Vec<f64> = bounds.iter().map(|(a, b)| b - a).collect();
     let offsets: Vec<f64> = bounds.iter().map(|(a, _)| *a).collect();
 
-    let scale_tensor = Tensor::<R>::from_slice(&scales, &[1, n_dims], device);
-    let offset_tensor = Tensor::<R>::from_slice(&offsets, &[1, n_dims], device);
+    let scale_tensor = Tensor::<R>::from_slice(&scales, &[1, n_dims], device)?;
+    let offset_tensor = Tensor::<R>::from_slice(&offsets, &[1, n_dims], device)?;
 
     // x = offset + scale * samples (broadcasting handles [1, n_dims] with [n_samples, n_dims])
     let scaled = client.mul(samples, &scale_tensor)?;
@@ -342,7 +342,7 @@ where
 
     // Create (a + b) tensor [1, n_dims] for broadcasting
     let sums: Vec<f64> = bounds.iter().map(|(a, b)| a + b).collect();
-    let sum_tensor = Tensor::<R>::from_slice(&sums, &[1, n_dims], device);
+    let sum_tensor = Tensor::<R>::from_slice(&sums, &[1, n_dims], device)?;
 
     // x' = (a + b) - x
     client.sub(&sum_tensor, x)
@@ -374,7 +374,7 @@ where
 
     // Compute variance: sum((values - mean)^2) / (n - 1)
     let mean_broadcast = client.add_scalar(
-        &Tensor::<R>::from_slice(&[0.0], &[1], client.device()),
+        &Tensor::<R>::from_slice(&[0.0], &[1], client.device())?,
         mean_scalar,
     )?;
     let centered = client.sub(values, &mean_broadcast)?;
@@ -411,7 +411,7 @@ mod tests {
                 let shape = _x.shape();
                 let n = shape[0];
                 let ones = vec![1.0; n];
-                Ok(Tensor::<CpuRuntime>::from_slice(&ones, &[n], &device))
+                Tensor::<CpuRuntime>::from_slice(&ones, &[n], &device)
             },
             &[(0.0, 1.0), (0.0, 1.0)],
             &MonteCarloOptions::with_samples(10000),
@@ -443,7 +443,7 @@ mod tests {
                     let yi = data[i * 2 + 1];
                     vals.push(if xi * xi + yi * yi <= 1.0 { 1.0 } else { 0.0 });
                 }
-                Ok(Tensor::<CpuRuntime>::from_slice(&vals, &[n], &device))
+                Tensor::<CpuRuntime>::from_slice(&vals, &[n], &device)
             },
             &[(-1.0, 1.0), (-1.0, 1.0)],
             &MonteCarloOptions::with_samples(50000),
@@ -470,7 +470,7 @@ mod tests {
                 let shape = _x.shape();
                 let n = shape[0];
                 let ones = vec![1.0; n];
-                Ok(Tensor::<CpuRuntime>::from_slice(&ones, &[n], &device))
+                Tensor::<CpuRuntime>::from_slice(&ones, &[n], &device)
             },
             &[(0.0, 1.0), (0.0, 1.0)],
             &MonteCarloOptions::with_samples(10000)
@@ -497,7 +497,7 @@ mod tests {
             |x| {
                 let data: Vec<f64> = x.to_vec();
                 let n = data.len();
-                Ok(Tensor::<CpuRuntime>::from_slice(&data, &[n], &device))
+                Tensor::<CpuRuntime>::from_slice(&data, &[n], &device)
             },
             &[(0.0, 1.0)],
             &MonteCarloOptions::with_samples(10000).method(MonteCarloMethod::Antithetic),
@@ -528,7 +528,7 @@ mod tests {
                 let yi = data[i * 2 + 1];
                 vals.push(xi * xi + yi * yi);
             }
-            Ok(Tensor::<CpuRuntime>::from_slice(&vals, &[n], &device))
+            Tensor::<CpuRuntime>::from_slice(&vals, &[n], &device)
         };
 
         let result1 = monte_carlo_impl(
@@ -571,7 +571,7 @@ mod tests {
                 let yi = data[i * 2 + 1];
                 vals.push(xi + yi);
             }
-            Ok(Tensor::<CpuRuntime>::from_slice(&vals, &[n], &device))
+            Tensor::<CpuRuntime>::from_slice(&vals, &[n], &device)
         };
 
         let options = MonteCarloOptions::with_samples(1000)
@@ -600,7 +600,7 @@ mod tests {
             let data: Vec<f64> = x.to_vec();
             let n = data.len();
             let vals: Vec<f64> = data.iter().map(|&xi| xi.exp()).collect();
-            Ok(Tensor::<CpuRuntime>::from_slice(&vals, &[n], &device))
+            Tensor::<CpuRuntime>::from_slice(&vals, &[n], &device)
         };
 
         let options = MonteCarloOptions::with_samples(1000)

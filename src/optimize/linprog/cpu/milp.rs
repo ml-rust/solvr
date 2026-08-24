@@ -67,14 +67,16 @@ mod tests {
 
         // Maximize x + 2y (minimize -x - 2y)
         // Subject to: x + y <= 4, x <= 2.5, x, y >= 0, x and y integer
-        let c = Tensor::<CpuRuntime>::from_slice(&[-1.0, -2.0], &[2], &device);
+        let c = Tensor::<CpuRuntime>::from_slice(&[-1.0, -2.0], &[2], &device).unwrap();
 
-        let a_ub = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0, 1.0, 0.0], &[2, 2], &device);
-        let b_ub = Tensor::<CpuRuntime>::from_slice(&[4.0, 2.5], &[2], &device);
-        let lower = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[2], &device);
+        let a_ub =
+            Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0, 1.0, 0.0], &[2, 2], &device).unwrap();
+        let b_ub = Tensor::<CpuRuntime>::from_slice(&[4.0, 2.5], &[2], &device).unwrap();
+        let lower = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[2], &device).unwrap();
         let upper =
-            Tensor::<CpuRuntime>::from_slice(&[f64::INFINITY, f64::INFINITY], &[2], &device);
-        let integrality = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device);
+            Tensor::<CpuRuntime>::from_slice(&[f64::INFINITY, f64::INFINITY], &[2], &device)
+                .unwrap();
+        let integrality = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device).unwrap();
 
         let constraints = LinProgTensorConstraints {
             a_ub: Some(a_ub),
@@ -106,13 +108,13 @@ mod tests {
         let client = CpuClient::new(device.clone());
 
         // Binary knapsack: Maximize 3x + 4y, subject to 2x + 3y <= 5, 0 <= x,y <= 1
-        let c = Tensor::<CpuRuntime>::from_slice(&[-3.0, -4.0], &[2], &device);
+        let c = Tensor::<CpuRuntime>::from_slice(&[-3.0, -4.0], &[2], &device).unwrap();
 
-        let a_ub = Tensor::<CpuRuntime>::from_slice(&[2.0, 3.0], &[1, 2], &device);
-        let b_ub = Tensor::<CpuRuntime>::from_slice(&[5.0], &[1], &device);
-        let lower = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[2], &device);
-        let upper = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device);
-        let integrality = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device);
+        let a_ub = Tensor::<CpuRuntime>::from_slice(&[2.0, 3.0], &[1, 2], &device).unwrap();
+        let b_ub = Tensor::<CpuRuntime>::from_slice(&[5.0], &[1], &device).unwrap();
+        let lower = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[2], &device).unwrap();
+        let upper = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device).unwrap();
+        let integrality = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device).unwrap();
 
         let constraints = LinProgTensorConstraints {
             a_ub: Some(a_ub),
@@ -137,14 +139,15 @@ mod tests {
         let client = CpuClient::new(device.clone());
 
         // Mixed: Minimize -x - y, x + y <= 2.5, x integer, y continuous
-        let c = Tensor::<CpuRuntime>::from_slice(&[-1.0, -1.0], &[2], &device);
+        let c = Tensor::<CpuRuntime>::from_slice(&[-1.0, -1.0], &[2], &device).unwrap();
 
-        let a_ub = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[1, 2], &device);
-        let b_ub = Tensor::<CpuRuntime>::from_slice(&[2.5], &[1], &device);
-        let lower = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[2], &device);
+        let a_ub = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[1, 2], &device).unwrap();
+        let b_ub = Tensor::<CpuRuntime>::from_slice(&[2.5], &[1], &device).unwrap();
+        let lower = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[2], &device).unwrap();
         let upper =
-            Tensor::<CpuRuntime>::from_slice(&[f64::INFINITY, f64::INFINITY], &[2], &device);
-        let integrality = Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0], &[2], &device);
+            Tensor::<CpuRuntime>::from_slice(&[f64::INFINITY, f64::INFINITY], &[2], &device)
+                .unwrap();
+        let integrality = Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0], &[2], &device).unwrap();
 
         let constraints = LinProgTensorConstraints {
             a_ub: Some(a_ub),

@@ -60,8 +60,8 @@ mod tests {
         let device = CpuDevice::new();
         let client = CpuClient::new(device.clone());
 
-        let lower = Tensor::<CpuRuntime>::from_slice(&[-5.0, -5.0], &[2], &device);
-        let upper = Tensor::<CpuRuntime>::from_slice(&[5.0, 5.0], &[2], &device);
+        let lower = Tensor::<CpuRuntime>::from_slice(&[-5.0, -5.0], &[2], &device).unwrap();
+        let upper = Tensor::<CpuRuntime>::from_slice(&[5.0, 5.0], &[2], &device).unwrap();
 
         let opts = GlobalOptions {
             max_iter: 100,
@@ -85,8 +85,8 @@ mod tests {
 
         // Rastrigin is challenging: global minimum at x=0 with f=0,
         // but many local minima. We use a smaller domain for tractability.
-        let lower = Tensor::<CpuRuntime>::from_slice(&[-2.0, -2.0], &[2], &device);
-        let upper = Tensor::<CpuRuntime>::from_slice(&[2.0, 2.0], &[2], &device);
+        let lower = Tensor::<CpuRuntime>::from_slice(&[-2.0, -2.0], &[2], &device).unwrap();
+        let upper = Tensor::<CpuRuntime>::from_slice(&[2.0, 2.0], &[2], &device).unwrap();
 
         let opts = GlobalOptions {
             max_iter: 100,

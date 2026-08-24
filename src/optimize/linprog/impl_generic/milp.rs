@@ -105,8 +105,8 @@ where
         }
 
         // Create constraints for this node
-        let node_lower = Tensor::<R>::from_slice(&node.lower, &[n], device);
-        let node_upper = Tensor::<R>::from_slice(&node.upper, &[n], device);
+        let node_lower = Tensor::<R>::from_slice(&node.lower, &[n], device)?;
+        let node_upper = Tensor::<R>::from_slice(&node.upper, &[n], device)?;
 
         let node_constraints = TensorLinearConstraints {
             a_ub: constraints.a_ub.clone(),
@@ -214,7 +214,7 @@ where
                 0.0
             };
 
-            let x_tensor = Tensor::<R>::from_slice(&x_rounded, &[n], device);
+            let x_tensor = Tensor::<R>::from_slice(&x_rounded, &[n], device)?;
 
             Ok(TensorMilpResult {
                 x: x_tensor,
@@ -227,7 +227,7 @@ where
         }
         None => {
             let zeros = vec![0.0; n];
-            let x_tensor = Tensor::<R>::from_slice(&zeros, &[n], device);
+            let x_tensor = Tensor::<R>::from_slice(&zeros, &[n], device)?;
 
             Ok(TensorMilpResult {
                 x: x_tensor,

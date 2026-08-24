@@ -137,7 +137,7 @@ impl<R: Runtime<DType = DType>> FreqzResult<R> {
             .collect();
 
         let device = self.h_real.device();
-        Ok(Tensor::from_slice(&mag, &[n], device))
+        Tensor::from_slice(&mag, &[n], device)
     }
 
     /// Get phase response angle(H(ω)) in radians.
@@ -153,7 +153,7 @@ impl<R: Runtime<DType = DType>> FreqzResult<R> {
             .collect();
 
         let device = self.h_real.device();
-        Ok(Tensor::from_slice(&phase, &[n], device))
+        Tensor::from_slice(&phase, &[n], device)
     }
 
     /// Get magnitude response in decibels: 20*log10(|H(ω)|).
@@ -172,6 +172,6 @@ impl<R: Runtime<DType = DType>> FreqzResult<R> {
             .collect();
 
         let device = self.h_real.device();
-        Ok(Tensor::from_slice(&mag_db, &[n], device))
+        Tensor::from_slice(&mag_db, &[n], device)
     }
 }

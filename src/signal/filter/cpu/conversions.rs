@@ -72,8 +72,8 @@ fn sos2tf_cpu(
 
     if n_sections == 0 {
         return Ok(TransferFunction::new(
-            Tensor::from_slice(&[1.0], &[1], device),
-            Tensor::from_slice(&[1.0], &[1], device),
+            Tensor::from_slice(&[1.0], &[1], device)?,
+            Tensor::from_slice(&[1.0], &[1], device)?,
         ));
     }
 
@@ -81,14 +81,14 @@ fn sos2tf_cpu(
     let sections_data: Vec<f64> = sos.sections.to_vec();
 
     // Start with first section [b0, b1, b2, a0, a1, a2]
-    let mut b = Tensor::from_slice(&sections_data[0..3], &[3], device);
-    let mut a = Tensor::from_slice(&sections_data[3..6], &[3], device);
+    let mut b = Tensor::from_slice(&sections_data[0..3], &[3], device)?;
+    let mut a = Tensor::from_slice(&sections_data[3..6], &[3], device)?;
 
     // Multiply by remaining sections
     for i in 1..n_sections {
         let offset = i * 6;
-        let bi = Tensor::from_slice(&sections_data[offset..offset + 3], &[3], device);
-        let ai = Tensor::from_slice(&sections_data[offset + 3..offset + 6], &[3], device);
+        let bi = Tensor::from_slice(&sections_data[offset..offset + 3], &[3], device)?;
+        let ai = Tensor::from_slice(&sections_data[offset + 3..offset + 6], &[3], device)?;
 
         // Flip to ascending order for polymul, then flip back
         let b_asc = b.flip(0)?.contiguous()?;
@@ -124,7 +124,7 @@ fn zpk2sos_cpu(
 
     if n_sections == 0 {
         // Just a gain
-        let sections = Tensor::from_slice(&[zpk.gain, 0.0, 0.0, 1.0, 0.0, 0.0], &[1, 6], device);
+        let sections = Tensor::from_slice(&[zpk.gain, 0.0, 0.0, 1.0, 0.0, 0.0], &[1, 6], device)?;
         return Ok(SosFilter::new(sections));
     }
 
@@ -162,7 +162,7 @@ fn zpk2sos_cpu(
         sections_data.extend_from_slice(&[b0 * scale, b1 * scale, b2 * scale, a0, a1, a2]);
     }
 
-    let sections = Tensor::from_slice(&sections_data, &[n_sections, 6], device);
+    let sections = Tensor::from_slice(&sections_data, &[n_sections, 6], device)?;
     Ok(SosFilter::new(sections))
 }
 
@@ -176,10 +176,10 @@ fn sos2zpk_cpu(sos: &SosFilter<CpuRuntime>) -> Result<ZpkFilter<CpuRuntime>> {
 
     if n_sections == 0 {
         return Ok(ZpkFilter::new(
-            Tensor::zeros(&[0], dtype, device),
-            Tensor::zeros(&[0], dtype, device),
-            Tensor::zeros(&[0], dtype, device),
-            Tensor::zeros(&[0], dtype, device),
+            Tensor::zeros(&[0], dtype, device)?,
+            Tensor::zeros(&[0], dtype, device)?,
+            Tensor::zeros(&[0], dtype, device)?,
+            Tensor::zeros(&[0], dtype, device)?,
             1.0,
         ));
     }
@@ -236,10 +236,10 @@ fn sos2zpk_cpu(sos: &SosFilter<CpuRuntime>) -> Result<ZpkFilter<CpuRuntime>> {
     let n_poles = all_poles_re.len();
 
     Ok(ZpkFilter::new(
-        Tensor::from_slice(&all_zeros_re, &[n_zeros], device),
-        Tensor::from_slice(&all_zeros_im, &[n_zeros], device),
-        Tensor::from_slice(&all_poles_re, &[n_poles], device),
-        Tensor::from_slice(&all_poles_im, &[n_poles], device),
+        Tensor::from_slice(&all_zeros_re, &[n_zeros], device)?,
+        Tensor::from_slice(&all_zeros_im, &[n_zeros], device)?,
+        Tensor::from_slice(&all_poles_re, &[n_poles], device)?,
+        Tensor::from_slice(&all_poles_im, &[n_poles], device)?,
         gain,
     ))
 }
@@ -393,8 +393,8 @@ mod tests {
         // Pole at z = 0.5
         use numr::tensor::Tensor;
 
-        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -0.5], &[2], &device);
+        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
+        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -0.5], &[2], &device).unwrap();
         let tf = TransferFunction::new(b, a);
 
         let zpk = client.tf2zpk(&tf).unwrap();
@@ -412,8 +412,8 @@ mod tests {
         use numr::tensor::Tensor;
 
         // Create a simple filter
-        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -1.0], &[2], &device);
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -0.9], &[2], &device);
+        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -1.0], &[2], &device).unwrap();
+        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, -0.9], &[2], &device).unwrap();
         let tf_orig = TransferFunction::new(b, a);
 
         // Convert to ZPK and back
@@ -436,8 +436,10 @@ mod tests {
         use numr::tensor::Tensor;
 
         // 4th order filter (2 biquad sections)
-        let b = Tensor::<CpuRuntime>::from_slice(&[0.1, 0.4, 0.6, 0.4, 0.1], &[5], &device);
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0, -0.8, 0.64, -0.256, 0.0625], &[5], &device);
+        let b =
+            Tensor::<CpuRuntime>::from_slice(&[0.1, 0.4, 0.6, 0.4, 0.1], &[5], &device).unwrap();
+        let a = Tensor::<CpuRuntime>::from_slice(&[1.0, -0.8, 0.64, -0.256, 0.0625], &[5], &device)
+            .unwrap();
         let tf = TransferFunction::new(b, a);
 
         let sos = client.tf2sos(&tf, None).unwrap();

@@ -43,9 +43,9 @@ mod tests {
             -1.0,  0.0,  0.0,
              0.0, -1.0,  0.0,
              1.0,  1.0, -1.0,
-        ], &[3, 3], &device);
+        ], &[3, 3], &device).unwrap();
 
-        let interior = Tensor::<CpuRuntime>::from_slice(&[0.25, 0.25], &[2], &device);
+        let interior = Tensor::<CpuRuntime>::from_slice(&[0.25, 0.25], &[2], &device).unwrap();
 
         let result = client
             .halfspace_intersection(&halfspaces, &interior)
@@ -89,9 +89,9 @@ mod tests {
              1.0,  0.0, -1.0,
              0.0, -1.0,  0.0,
              0.0,  1.0, -1.0,
-        ], &[4, 3], &device);
+        ], &[4, 3], &device).unwrap();
 
-        let interior = Tensor::<CpuRuntime>::from_slice(&[0.5, 0.5], &[2], &device);
+        let interior = Tensor::<CpuRuntime>::from_slice(&[0.5, 0.5], &[2], &device).unwrap();
 
         let result = client
             .halfspace_intersection(&halfspaces, &interior)
@@ -122,9 +122,9 @@ mod tests {
              0.0,  1.0,  0.0, -1.0,  // y - 1 ≤ 0
              0.0,  0.0, -1.0,  0.0,  // -z ≤ 0
              0.0,  0.0,  1.0, -1.0,  // z - 1 ≤ 0
-        ], &[6, 4], &device);
+        ], &[6, 4], &device).unwrap();
 
-        let interior = Tensor::<CpuRuntime>::from_slice(&[0.5, 0.5, 0.5], &[3], &device);
+        let interior = Tensor::<CpuRuntime>::from_slice(&[0.5, 0.5, 0.5], &[3], &device).unwrap();
 
         let result = client
             .halfspace_intersection(&halfspaces, &interior)
@@ -144,10 +144,10 @@ mod tests {
             -1.0, 0.0, 0.0,
              0.0,-1.0, 0.0,
              1.0, 1.0,-1.0,
-        ], &[3, 3], &device);
+        ], &[3, 3], &device).unwrap();
 
         // Point outside the halfspaces
-        let interior = Tensor::<CpuRuntime>::from_slice(&[2.0, 2.0], &[2], &device);
+        let interior = Tensor::<CpuRuntime>::from_slice(&[2.0, 2.0], &[2], &device).unwrap();
 
         assert!(
             client

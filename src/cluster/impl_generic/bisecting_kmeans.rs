@@ -46,7 +46,7 @@ where
     let k = options.n_clusters;
 
     // Start: all points in cluster 0
-    let mut labels = Tensor::<R>::zeros(&[n], DType::I64, device);
+    let mut labels = Tensor::<R>::zeros(&[n], DType::I64, device)?;
     let mut current_k = 1usize;
 
     while current_k < k {
@@ -60,7 +60,7 @@ where
             }
             BisectingStrategy::HighestSSE => {
                 let labels_exp = labels.unsqueeze(1)?.broadcast_to(&[n, d])?;
-                let dst = Tensor::<R>::zeros(&[current_k, d], dtype, device);
+                let dst = Tensor::<R>::zeros(&[current_k, d], dtype, device)?;
                 let sums = client.scatter_reduce(
                     &dst,
                     0,
@@ -70,14 +70,14 @@ where
                     false,
                 )?;
                 let c_safe =
-                    client.maximum(&counts_f, &Tensor::<R>::ones(&[current_k], dtype, device))?;
+                    client.maximum(&counts_f, &Tensor::<R>::ones(&[current_k], dtype, device)?)?;
                 let c_exp = c_safe.unsqueeze(1)?.broadcast_to(&[current_k, d])?;
                 let centroids = client.div(&sums, &c_exp)?;
                 let pt_c = client.index_select(&centroids, 0, &labels)?;
                 let diff = client.sub(data, &pt_c)?;
                 let sq = client.mul(&diff, &diff)?;
                 let pt_sq = client.sum(&sq, &[1], false)?;
-                let sse_dst = Tensor::<R>::zeros(&[current_k], dtype, device);
+                let sse_dst = Tensor::<R>::zeros(&[current_k], dtype, device)?;
                 let sse = client.scatter_reduce(
                     &sse_dst,
                     0,
@@ -91,7 +91,7 @@ where
         };
 
         // Extract indices of points in the split cluster
-        let split_val = Tensor::<R>::full_scalar(&[1], dtype, split_cluster as f64, device);
+        let split_val = Tensor::<R>::full_scalar(&[1], dtype, split_cluster as f64, device)?;
         let mask = client.eq(&labels_f, &split_val)?;
         let all_indices = client.arange(0.0, n as f64, 1.0, DType::I64)?;
         let mask_u8 = client.cast(&mask, DType::U8)?;
@@ -118,12 +118,12 @@ where
         // Update labels: sub_label==1 → new cluster id (current_k)
         let is_one = client.eq(
             &sub_result.labels,
-            &Tensor::<R>::ones(&[1], DType::I64, device),
+            &Tensor::<R>::ones(&[1], DType::I64, device)?,
         )?;
         let new_labels = client.where_cond(
             &is_one,
-            &Tensor::<R>::full_scalar(&[n_in], DType::I64, current_k as f64, device),
-            &Tensor::<R>::full_scalar(&[n_in], DType::I64, split_cluster as f64, device),
+            &Tensor::<R>::full_scalar(&[n_in], DType::I64, current_k as f64, device)?,
+            &Tensor::<R>::full_scalar(&[n_in], DType::I64, split_cluster as f64, device)?,
         )?;
 
         // Scatter back into global labels
@@ -141,7 +141,7 @@ where
 
     // Compute final centroids and inertia
     let labels_exp = labels.unsqueeze(1)?.broadcast_to(&[n, d])?;
-    let dst = Tensor::<R>::zeros(&[k, d], dtype, device);
+    let dst = Tensor::<R>::zeros(&[k, d], dtype, device)?;
     let sums = client.scatter_reduce(
         &dst,
         0,
@@ -152,7 +152,7 @@ where
     )?;
     let counts = client.bincount(&labels, None, k)?;
     let counts_f = client.cast(&counts, dtype)?;
-    let counts_safe = client.maximum(&counts_f, &Tensor::<R>::ones(&[k], dtype, device))?;
+    let counts_safe = client.maximum(&counts_f, &Tensor::<R>::ones(&[k], dtype, device)?)?;
     let counts_exp = counts_safe.unsqueeze(1)?.broadcast_to(&[k, d])?;
     let centroids = client.div(&sums, &counts_exp)?;
 

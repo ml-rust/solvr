@@ -267,8 +267,8 @@ impl ContinuousDistribution for FDistribution {
         let d1_x_plus_d2 = client.add_scalar(&d1_x, self.d2)?;
         let t = client.div(&d1_x, &d1_x_plus_d2)?;
 
-        let a = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.d1 / 2.0, client.device());
-        let b = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.d2 / 2.0, client.device());
+        let a = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.d1 / 2.0, client.device())?;
+        let b = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.d2 / 2.0, client.device())?;
         client.betainc(&a, &b, &t)
     }
 
@@ -283,11 +283,11 @@ impl ContinuousDistribution for FDistribution {
         // SF = I_{d2/(d1*x+d2)}(d2/2, d1/2)
         let d1_x = client.mul_scalar(x, self.d1)?;
         let d1_x_plus_d2 = client.add_scalar(&d1_x, self.d2)?;
-        let d2_tensor = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.d2, client.device());
+        let d2_tensor = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.d2, client.device())?;
         let t = client.div(&d2_tensor, &d1_x_plus_d2)?;
 
-        let a = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.d2 / 2.0, client.device());
-        let b = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.d1 / 2.0, client.device());
+        let a = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.d2 / 2.0, client.device())?;
+        let b = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.d1 / 2.0, client.device())?;
         client.betainc(&a, &b, &t)
     }
 
@@ -313,8 +313,8 @@ impl ContinuousDistribution for FDistribution {
         C: TensorOps<R> + ScalarOps<R> + SpecialFunctions<R> + RuntimeClient<R>,
     {
         // x = d2*t / (d1*(1-t)) where t = betaincinv(d1/2, d2/2, p)
-        let a = Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.d1 / 2.0, client.device());
-        let b = Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.d2 / 2.0, client.device());
+        let a = Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.d1 / 2.0, client.device())?;
+        let b = Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.d2 / 2.0, client.device())?;
         let t = client.betaincinv(&a, &b, p)?;
 
         // 1 - t

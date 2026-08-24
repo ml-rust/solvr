@@ -54,7 +54,7 @@ mod tests {
             }
         }
 
-        let similarities = Tensor::<CpuRuntime>::from_slice(&sim, &[n, n], &device);
+        let similarities = Tensor::<CpuRuntime>::from_slice(&sim, &[n, n], &device).unwrap();
 
         let options = AffinityPropagationOptions {
             damping: 0.5,

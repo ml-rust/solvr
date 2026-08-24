@@ -94,7 +94,7 @@ where
     let max_step = options.max_step.unwrap_or(t_end - t_start);
 
     // Initialize - all tensors stay on device
-    let mut t = Tensor::<R>::from_slice(&[t_start], &[1], device);
+    let mut t = Tensor::<R>::from_slice(&[t_start], &[1], device)?;
     let mut y = y0.clone();
     let mut k1 = f(&t, &y).map_err(|e| IntegrateError::InvalidInput {
         context: format!("RHS function error: {}", e),
@@ -102,7 +102,7 @@ where
 
     // Compute initial step size (device-resident)
     let mut h = match options.h0 {
-        Some(h0) => Tensor::<R>::from_slice(&[h0], &[1], device),
+        Some(h0) => Tensor::<R>::from_slice(&[h0], &[1], device)?,
         None => compute_initial_step(client, &f, &t, &y, &k1, 2, options.rtol, options.atol)
             .map_err(|e| IntegrateError::InvalidInput {
                 context: format!("Initial step computation error: {}", e),
@@ -110,12 +110,12 @@ where
     };
 
     // Clamp h to [min_step, max_step] on device
-    let min_h = Tensor::<R>::from_slice(&[min_step], &[1], device);
-    let max_h = Tensor::<R>::from_slice(&[max_step], &[1], device);
+    let min_h = Tensor::<R>::from_slice(&[min_step], &[1], device)?;
+    let max_h = Tensor::<R>::from_slice(&[max_step], &[1], device)?;
     h = client.minimum(&client.maximum(&h, &min_h)?, &max_h)?;
 
     // t_end tensor for comparison
-    let t_end_tensor = Tensor::<R>::from_slice(&[t_end], &[1], device);
+    let t_end_tensor = Tensor::<R>::from_slice(&[t_end], &[1], device)?;
 
     // Storage
     let mut t_values = vec![t_start];
@@ -265,7 +265,7 @@ where
 {
     let n_steps = t_values.len();
 
-    let t_tensor = Tensor::<R>::from_slice(t_values, &[n_steps], client.device());
+    let t_tensor = Tensor::<R>::from_slice(t_values, &[n_steps], client.device())?;
 
     let y_refs: Vec<&Tensor<R>> = y_values.iter().collect();
     let y_tensor = client
@@ -298,7 +298,7 @@ mod tests {
     fn test_rk23_exponential() {
         let (device, client) = setup();
 
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
 
         let result = rk23_impl(
             &client,
@@ -323,11 +323,11 @@ mod tests {
         let (device, client) = setup();
 
         // dy/dt = 2, y(0) = 0, solution: y(t) = 2t
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device);
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device).unwrap();
 
         let result = rk23_impl(
             &client,
-            |_t, _y| Ok(Tensor::<CpuRuntime>::from_slice(&[2.0], &[1], &device)),
+            |_t, _y| Tensor::<CpuRuntime>::from_slice(&[2.0], &[1], &device),
             [0.0, 5.0],
             &y0,
             &ODEOptions::with_method(ODEMethod::RK23),

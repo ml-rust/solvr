@@ -56,7 +56,7 @@ where
             .contiguous()?
             .reshape(&[n])?
     } else {
-        Tensor::<R>::full_scalar(&[n], dtype, f64::INFINITY, device)
+        Tensor::<R>::full_scalar(&[n], dtype, f64::INFINITY, device)?
     };
 
     // 3. Mutual reachability distance: max(core[i], core[j], dist[i,j])
@@ -68,12 +68,12 @@ where
     // 4. MST via Prim's algorithm on mutual reachability matrix
     // Sequential: n-1 iterations, 1 scalar extraction per iter
     let inf = f64::INFINITY;
-    let mut in_mst = Tensor::<R>::zeros(&[n], dtype, device); // 0 = not in MST
-    let mut min_cost = Tensor::<R>::full_scalar(&[n], dtype, inf, device);
+    let mut in_mst = Tensor::<R>::zeros(&[n], dtype, device)?; // 0 = not in MST
+    let mut min_cost = Tensor::<R>::full_scalar(&[n], dtype, inf, device)?;
 
     // Start from node 0
-    let zero_idx = Tensor::<R>::from_slice(&[0i64], &[1], device);
-    let one_val = Tensor::<R>::ones(&[1], dtype, device);
+    let zero_idx = Tensor::<R>::from_slice(&[0i64], &[1], device)?;
+    let one_val = Tensor::<R>::ones(&[1], dtype, device)?;
     let in_mst_2d = in_mst.unsqueeze(0)?;
     let zero_idx_2d = zero_idx.unsqueeze(0)?;
     let one_2d = one_val.unsqueeze(0)?;
@@ -92,12 +92,12 @@ where
 
     // Track which node connected each point (for MST edge recording)
     // parent[j] = the MST node that gave j its current min_cost
-    let mut parent = Tensor::<R>::zeros(&[n], DType::I64, device);
+    let mut parent = Tensor::<R>::zeros(&[n], DType::I64, device)?;
 
     for _ in 0..(n - 1) {
         // Mask out nodes already in MST
-        let in_mst_bool = client.gt(&in_mst, &Tensor::<R>::zeros(&[n], dtype, device))?;
-        let large = Tensor::<R>::full_scalar(&[n], dtype, inf + 1.0, device);
+        let in_mst_bool = client.gt(&in_mst, &Tensor::<R>::zeros(&[n], dtype, device)?)?;
+        let large = Tensor::<R>::full_scalar(&[n], dtype, inf + 1.0, device)?;
         let masked_cost = client.where_cond(&in_mst_bool, &large, &min_cost)?;
 
         // Find cheapest edge to add
@@ -113,10 +113,10 @@ where
         mst_weight.push(next_weight);
 
         // Add to MST
-        let next_t = Tensor::<R>::from_slice(&[next_idx], &[1], device);
+        let next_t = Tensor::<R>::from_slice(&[next_idx], &[1], device)?;
         let in_mst_2d = in_mst.unsqueeze(0)?;
         let next_2d = next_t.unsqueeze(0)?;
-        let one_2d = Tensor::<R>::ones(&[1], dtype, device).unsqueeze(0)?;
+        let one_2d = Tensor::<R>::ones(&[1], dtype, device)?.unsqueeze(0)?;
         in_mst = client
             .scatter(&in_mst_2d, 1, &next_2d, &one_2d)?
             .squeeze(Some(0));
@@ -127,7 +127,7 @@ where
         min_cost = client.where_cond(&improved, &new_row, &min_cost)?;
 
         // Update parent for improved nodes
-        let next_i64 = Tensor::<R>::full_scalar(&[n], DType::I64, next_idx as f64, device);
+        let next_i64 = Tensor::<R>::full_scalar(&[n], DType::I64, next_idx as f64, device)?;
         parent = client.where_cond(&improved, &next_i64, &parent)?;
     }
 
@@ -143,15 +143,15 @@ where
         options.allow_single_cluster,
     );
 
-    let labels = Tensor::<R>::from_slice(&labels_vec, &[n], device);
+    let labels = Tensor::<R>::from_slice(&labels_vec, &[n], device)?;
     let probabilities_f: Vec<f64> = probabilities_vec.iter().map(|&x| x as f64).collect();
-    let probabilities = Tensor::<R>::from_slice(&probabilities_f, &[n], device);
+    let probabilities = Tensor::<R>::from_slice(&probabilities_f, &[n], device)?;
     let n_clusters = persistence_vec.len();
     let persistence_f: Vec<f64> = persistence_vec.iter().map(|&x| x as f64).collect();
     let cluster_persistence = if n_clusters > 0 {
-        Tensor::<R>::from_slice(&persistence_f, &[n_clusters], device)
+        Tensor::<R>::from_slice(&persistence_f, &[n_clusters], device)?
     } else {
-        Tensor::<R>::zeros(&[0], dtype, device)
+        Tensor::<R>::zeros(&[0], dtype, device)?
     };
 
     Ok(HdbscanResult {

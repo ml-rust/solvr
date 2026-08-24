@@ -60,7 +60,7 @@ mod tests {
         };
 
         let signal: Vec<f32> = (0..256).map(|i| (i as f32 * 0.1).sin()).collect();
-        let signal_tensor = Tensor::<WgpuRuntime>::from_slice(&signal, &[256], &device);
+        let signal_tensor = Tensor::<WgpuRuntime>::from_slice(&signal, &[256], &device).unwrap();
 
         // STFT uses FFT → Complex64, which wgpu doesn't support.
         let result = match client.stft(&signal_tensor, 64, Some(16), None, true, false) {

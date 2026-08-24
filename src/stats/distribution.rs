@@ -81,7 +81,7 @@ pub trait Distribution {
 /// let p = n.pdf(0.0);
 ///
 /// // Batch (tensor)
-/// let x = Tensor::from_slice(&[0.0, 1.0, 2.0], &[3], &device);
+/// let x = Tensor::from_slice(&[0.0, 1.0, 2.0], &[3], &device)?;
 /// let p_batch = n.pdf_tensor(&x, &client)?;
 /// # Ok(())
 /// # }

@@ -107,8 +107,8 @@ where
     let mean_x = extract_scalar(&client.mean(&x_contig, &all_dims, false)?)?;
     let mean_y = extract_scalar(&client.mean(&y_contig, &all_dims, false)?)?;
 
-    let mean_x_b = Tensor::<R>::full_scalar(x_contig.shape(), x.dtype(), mean_x, client.device());
-    let mean_y_b = Tensor::<R>::full_scalar(y_contig.shape(), y.dtype(), mean_y, client.device());
+    let mean_x_b = Tensor::<R>::full_scalar(x_contig.shape(), x.dtype(), mean_x, client.device())?;
+    let mean_y_b = Tensor::<R>::full_scalar(y_contig.shape(), y.dtype(), mean_y, client.device())?;
 
     let dx = client.sub(&x_contig, &mean_x_b)?;
     let dy = client.sub(&y_contig, &mean_y_b)?;
@@ -142,10 +142,10 @@ where
 
     // Residual sum of squares
     let slope_tensor =
-        Tensor::<R>::full_scalar(x_contig.shape(), x.dtype(), slope, client.device());
+        Tensor::<R>::full_scalar(x_contig.shape(), x.dtype(), slope, client.device())?;
     let y_pred_offset = client.mul(&x_contig, &slope_tensor)?;
     let intercept_tensor =
-        Tensor::<R>::full_scalar(y_contig.shape(), y.dtype(), intercept, client.device());
+        Tensor::<R>::full_scalar(y_contig.shape(), y.dtype(), intercept, client.device())?;
     let y_pred = client.add(&y_pred_offset, &intercept_tensor)?;
     let residuals = client.sub(&y_contig, &y_pred)?;
     let residuals_sq = client.mul(&residuals, &residuals)?;

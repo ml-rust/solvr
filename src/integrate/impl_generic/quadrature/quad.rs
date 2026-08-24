@@ -57,7 +57,7 @@ where
         let tolerance = options.atol + options.rtol * total_integral.abs();
         if total_error <= tolerance {
             return Ok(QuadResult {
-                integral: Tensor::<R>::from_slice(&[total_integral], &[], client.device()),
+                integral: Tensor::<R>::from_slice(&[total_integral], &[], client.device())?,
                 error: total_error,
                 neval,
                 converged: true,
@@ -107,7 +107,7 @@ where
 
     // Didn't converge within limit
     Ok(QuadResult {
-        integral: Tensor::<R>::from_slice(&[total_integral], &[], client.device()),
+        integral: Tensor::<R>::from_slice(&[total_integral], &[], client.device())?,
         error: total_error,
         neval,
         converged: false,
@@ -178,7 +178,7 @@ where
 
     // Create tensor of evaluation points - single batch
     let eval_points: Vec<f64> = XGK.iter().map(|&x| mid + half_width * x).collect();
-    let x_tensor = Tensor::<R>::from_slice(&eval_points, &[15], client.device());
+    let x_tensor = Tensor::<R>::from_slice(&eval_points, &[15], client.device())?;
 
     // Evaluate function at all 15 points in one call
     let f_values = f(&x_tensor)?;

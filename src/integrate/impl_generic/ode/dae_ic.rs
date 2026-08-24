@@ -60,7 +60,7 @@ where
 {
     let device = client.device();
     let n = y0.shape()[0];
-    let t = Tensor::<R>::from_slice(&[t0], &[1], device);
+    let t = Tensor::<R>::from_slice(&[t0], &[1], device)?;
 
     // Check initial residual
     let residual = eval_dae_primal(client, f, &t, y0, yp0).map_err(to_integrate_err)?;
@@ -92,7 +92,7 @@ where
                         }
                     })
                     .collect();
-                (Some(Tensor::<R>::from_slice(&mask, &[n], device)), false)
+                (Some(Tensor::<R>::from_slice(&mask, &[n], device)?), false)
             }
         }
         None => (None, true),
@@ -166,7 +166,7 @@ where
             // All yp: update
             if let Some(ref mask) = fix_y_mask {
                 // delta_y_alg = (1 - mask) * delta (algebraic vars)
-                let ones = Tensor::<R>::ones(&[n], DType::F64, client.device());
+                let ones = Tensor::<R>::ones(&[n], DType::F64, client.device())?;
                 let inv_mask = client.sub(&ones, mask).map_err(to_integrate_err)?;
                 let delta_y = client.mul(&inv_mask, &delta).map_err(to_integrate_err)?;
                 y = client.add(&y, &delta_y).map_err(to_integrate_err)?;
@@ -260,8 +260,8 @@ mod tests {
         let (device, client) = setup();
 
         // F = y' - 2*y = 0, with y=1, y'=2 (consistent)
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
-        let yp0 = Tensor::<CpuRuntime>::from_slice(&[2.0], &[1], &device);
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
+        let yp0 = Tensor::<CpuRuntime>::from_slice(&[2.0], &[1], &device).unwrap();
 
         let f = |_t: &DualTensor<CpuRuntime>,
                  y: &DualTensor<CpuRuntime>,
@@ -285,8 +285,8 @@ mod tests {
         let (device, client) = setup();
 
         // F = y' - y = 0, with y=1, y'=0 (inconsistent, should become y'=1)
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
-        let yp0 = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device);
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
+        let yp0 = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device).unwrap();
 
         let f = |_t: &DualTensor<CpuRuntime>,
                  y: &DualTensor<CpuRuntime>,
@@ -312,8 +312,8 @@ mod tests {
         // With y[0] as differential, we test that variable types are respected.
         // IC: y=1, y'=0 (inconsistent), should converge to y'=1.
 
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
-        let yp0 = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device);
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
+        let yp0 = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device).unwrap();
 
         let f = |_t: &DualTensor<CpuRuntime>,
                  y: &DualTensor<CpuRuntime>,

@@ -35,7 +35,7 @@ mod tests {
         let (client, device) = setup();
 
         let signal: Vec<f64> = (0..512).map(|i| (i as f64 * 0.05).sin()).collect();
-        let signal_tensor = Tensor::<CpuRuntime>::from_slice(&signal, &[512], &device);
+        let signal_tensor = Tensor::<CpuRuntime>::from_slice(&signal, &[512], &device).unwrap();
 
         let result = client
             .spectrogram(&signal_tensor, 64, Some(32), None, 2.0)

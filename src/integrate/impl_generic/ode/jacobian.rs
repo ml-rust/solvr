@@ -173,8 +173,8 @@ mod tests {
 
         // f(t, y) = 2*y (linear system)
         // Jacobian should be 2*I
-        let t = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0, 3.0], &[3], &device);
+        let t = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0, 3.0], &[3], &device).unwrap();
 
         let f = |_t: &DualTensor<CpuRuntime>,
                  y: &DualTensor<CpuRuntime>,
@@ -199,8 +199,8 @@ mod tests {
 
         // f(t, y) = y² (element-wise)
         // Jacobian = diag(2*y) at y = [1, 2, 3] -> diag([2, 4, 6])
-        let t = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0, 3.0], &[3], &device);
+        let t = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0, 3.0], &[3], &device).unwrap();
 
         let f = |_t: &DualTensor<CpuRuntime>,
                  y: &DualTensor<CpuRuntime>,
@@ -223,8 +223,8 @@ mod tests {
 
         // f(t, y) = [y[1], -y[0]] (harmonic oscillator)
         // Jacobian = [[0, 1], [-1, 0]]
-        let t = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0], &[2], &device);
+        let t = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0], &[2], &device).unwrap();
 
         // For coupled systems, we need to work with the full vector
         // This is a simplified test - real usage would index into components
@@ -251,7 +251,7 @@ mod tests {
         let (device, client) = setup();
 
         // J = [[1, 0], [0, 2]]
-        let j = Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0, 0.0, 2.0], &[2, 2], &device);
+        let j = Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0, 0.0, 2.0], &[2, 2], &device).unwrap();
 
         // M = I - h*beta*J with h=0.1, beta=1.0
         // M = [[1, 0], [0, 1]] - 0.1*[[1, 0], [0, 2]]

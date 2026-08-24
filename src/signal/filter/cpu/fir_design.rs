@@ -142,7 +142,7 @@ fn firwin_cpu(
     }
 
     // Apply window
-    let h_tensor = Tensor::from_slice(&h, &[numtaps], device);
+    let h_tensor = Tensor::from_slice(&h, &[numtaps], device)?;
     let win = generate_window(client, numtaps, &window, dtype, device)?;
     let h_windowed = client.mul(&h_tensor, &win)?;
 
@@ -313,7 +313,7 @@ fn minimum_phase_cpu(client: &CpuClient, h: &Tensor<CpuRuntime>) -> Result<Tenso
     let h_min: Vec<f64> = h_data[..m].to_vec();
 
     let device = h.device();
-    Ok(Tensor::from_slice(&h_min, &[m], device))
+    Tensor::from_slice(&h_min, &[m], device)
 }
 
 // ============================================================================
@@ -366,7 +366,7 @@ fn generate_window(
     device: &CpuDevice,
 ) -> Result<Tensor<CpuRuntime>> {
     match window {
-        FirWindow::Rectangular => Ok(Tensor::ones(&[size], dtype, device)),
+        FirWindow::Rectangular => Ok(Tensor::ones(&[size], dtype, device)?),
         FirWindow::Hann => client.hann_window(size, dtype, device),
         FirWindow::Hamming => client.hamming_window(size, dtype, device),
         FirWindow::Blackman => client.blackman_window(size, dtype, device),
@@ -382,7 +382,7 @@ fn generate_window(
                     ),
                 });
             }
-            Ok(Tensor::from_slice(coeffs, &[size], device))
+            Ok(Tensor::from_slice(coeffs, &[size], device)?)
         }
     }
 }
@@ -420,7 +420,7 @@ fn create_complex_tensor(re: &[f64], im: &[f64], device: &CpuDevice) -> Result<T
     for i in 0..n {
         data.push(Complex64::new(re[i] as f32, im[i] as f32));
     }
-    Ok(Tensor::from_slice(&data, &[n], device))
+    Tensor::from_slice(&data, &[n], device)
 }
 
 #[cfg(test)]

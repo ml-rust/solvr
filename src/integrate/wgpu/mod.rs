@@ -313,8 +313,8 @@ mod tests {
         let x_data: Vec<f32> = (0..n).map(|i| i as f32 / (n - 1) as f32).collect();
         let y_data: Vec<f32> = x_data.iter().map(|&xi| xi * xi).collect();
 
-        let x = Tensor::<WgpuRuntime>::from_slice(&x_data, &[n], &device);
-        let y = Tensor::<WgpuRuntime>::from_slice(&y_data, &[n], &device);
+        let x = Tensor::<WgpuRuntime>::from_slice(&x_data, &[n], &device).unwrap();
+        let y = Tensor::<WgpuRuntime>::from_slice(&y_data, &[n], &device).unwrap();
 
         let result = client.trapezoid(&y, &x).unwrap();
         let result_val: Vec<f32> = result.to_vec();
@@ -335,11 +335,7 @@ mod tests {
                     // Nodes may be F64; read as f64, compute, then create F32 tensor
                     let data: Vec<f64> = x.to_vec();
                     let sin_data: Vec<f32> = data.iter().map(|&xi| (xi as f32).sin()).collect();
-                    Ok(Tensor::<WgpuRuntime>::from_slice(
-                        &sin_data,
-                        x.shape(),
-                        &device,
-                    ))
+                    Ok(Tensor::<WgpuRuntime>::from_slice(&sin_data, x.shape(), &device).unwrap())
                 },
                 0.0,
                 std::f64::consts::PI,
@@ -363,11 +359,7 @@ mod tests {
                 |x| {
                     let data: Vec<f64> = x.to_vec();
                     let sin_data: Vec<f64> = data.iter().map(|&xi| xi.sin()).collect();
-                    Ok(Tensor::<WgpuRuntime>::from_slice(
-                        &sin_data,
-                        x.shape(),
-                        &device,
-                    ))
+                    Ok(Tensor::<WgpuRuntime>::from_slice(&sin_data, x.shape(), &device).unwrap())
                 },
                 0.0,
                 std::f64::consts::PI,
@@ -392,11 +384,7 @@ mod tests {
                 |x| {
                     let data: Vec<f64> = x.to_vec();
                     let exp_data: Vec<f64> = data.iter().map(|&xi| xi.exp()).collect();
-                    Ok(Tensor::<WgpuRuntime>::from_slice(
-                        &exp_data,
-                        x.shape(),
-                        &device,
-                    ))
+                    Ok(Tensor::<WgpuRuntime>::from_slice(&exp_data, x.shape(), &device).unwrap())
                 },
                 0.0,
                 1.0,

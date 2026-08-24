@@ -85,7 +85,7 @@ where
 
     if grad_norm < 1e-30 {
         // Zero gradient: return zero step
-        let step = Tensor::<R>::zeros(grad.shape(), grad.dtype(), grad.device());
+        let step = Tensor::<R>::zeros(grad.shape(), grad.dtype(), grad.device())?;
         return Ok(SubproblemResult {
             step,
             hits_boundary: false,
@@ -108,7 +108,7 @@ where
 
     lanczos_vecs.push(q1);
     let mut beta_prev = 0.0;
-    let mut q_prev = Tensor::<R>::zeros(grad.shape(), grad.dtype(), grad.device());
+    let mut q_prev = Tensor::<R>::zeros(grad.shape(), grad.dtype(), grad.device())?;
 
     for k in 0..max_lanczos {
         let q_k = &lanczos_vecs[k];
@@ -199,7 +199,7 @@ where
     let y = solve_tridiagonal_trust_region(&alphas, &betas, grad_norm, trust_radius, k)?;
 
     // Map back to full space: p = Q @ y = sum_i y_i * q_i
-    let mut step = Tensor::<R>::zeros(grad.shape(), grad.dtype(), grad.device());
+    let mut step = Tensor::<R>::zeros(grad.shape(), grad.dtype(), grad.device())?;
     for i in 0..y.len() {
         let yi_qi = client.mul_scalar(&lanczos_vecs[i], y[i]).map_err(|e| {
             OptimizeError::NumericalError {
@@ -361,7 +361,7 @@ mod tests {
     fn test_trust_krylov_quadratic() {
         let (device, client) = setup();
 
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device).unwrap();
 
         let result = trust_krylov_impl(
             &client,
@@ -383,7 +383,7 @@ mod tests {
         let (device, client) = setup();
 
         let initial: Vec<f64> = (0..10).map(|i| (i as f64) - 5.0).collect();
-        let x0 = Tensor::<CpuRuntime>::from_slice(&initial, &[10], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&initial, &[10], &device).unwrap();
 
         let result = trust_krylov_impl(
             &client,

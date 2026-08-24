@@ -389,7 +389,7 @@ mod tests {
     fn test_trust_exact_quadratic() {
         let (device, client) = setup();
 
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device).unwrap();
 
         let result = trust_exact_impl(
             &client,
@@ -411,13 +411,13 @@ mod tests {
         let (device, client) = setup();
 
         // f(x) = sum((x - [1,2,3])^2), minimum at [1, 2, 3]
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.0f64, 0.0, 0.0], &[3], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.0f64, 0.0, 0.0], &[3], &device).unwrap();
 
         let result = trust_exact_impl(
             &client,
             |x_var, c| {
                 let target = Var::new(
-                    Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device),
+                    Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device).unwrap(),
                     false,
                 );
                 let diff = numr::autograd::var_sub(x_var, &target, c)?;

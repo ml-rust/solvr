@@ -59,7 +59,8 @@ mod tests {
             return;
         };
 
-        let data = Tensor::<CudaRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device);
+        let data = Tensor::<CudaRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device)
+            .unwrap();
         let stats = client.describe(&data).unwrap();
 
         assert_eq!(stats.nobs, 5);

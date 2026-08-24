@@ -35,7 +35,8 @@ mod tests {
             &[0.0, 0.0, 0.1, 0.0, 0.0, 0.1, 5.0, 5.0, 5.1, 5.0, 5.0, 5.1],
             &[6, 2],
             &device,
-        );
+        )
+        .unwrap();
         let opts = DbscanOptions {
             eps: 1.0,
             min_samples: 2,
@@ -60,7 +61,8 @@ mod tests {
             &[0.0, 0.0, 0.1, 0.0, 0.0, 0.1, 100.0, 100.0],
             &[4, 2],
             &device,
-        );
+        )
+        .unwrap();
         let opts = DbscanOptions {
             eps: 0.5,
             min_samples: 2,

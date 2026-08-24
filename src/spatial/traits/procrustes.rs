@@ -71,8 +71,8 @@ pub trait ProcrustesAlgorithms<R: Runtime<DType = DType>> {
     /// # let device = CpuDevice::new();
     /// # let client = CpuClient::new(device.clone());
     /// // Align two corresponding point sets
-    /// # let source = Tensor::from_slice(&[0.0, 0.0, 1.0, 0.0, 0.5, 1.0], &[3, 2], &device);
-    /// # let target = Tensor::from_slice(&[1.0, 1.0, 2.0, 1.0, 1.5, 2.0], &[3, 2], &device);
+    /// # let source = Tensor::from_slice(&[0.0, 0.0, 1.0, 0.0, 0.5, 1.0], &[3, 2], &device)?;
+    /// # let target = Tensor::from_slice(&[1.0, 1.0, 2.0, 1.0, 1.5, 2.0], &[3, 2], &device)?;
     /// let result = client.procrustes(&source, &target, true, false)?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```

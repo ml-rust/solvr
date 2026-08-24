@@ -88,7 +88,7 @@ where
     // Maximum iterations is n (safeguard against infinite loops)
     for _ in 0..n {
         // Get current point coordinates using tensor index_select
-        let curr_idx_tensor = Tensor::<R>::from_slice(&[current_idx], &[1], device);
+        let curr_idx_tensor = Tensor::<R>::from_slice(&[current_idx], &[1], device)?;
         let curr_point = client.index_select(points, 0, &curr_idx_tensor)?; // [1, 2]
 
         // Broadcast current point to [n, 2] for vectorized subtraction
@@ -133,7 +133,7 @@ where
 
         // For point q to be valid next hull vertex, cross[q, p] >= 0 for all p
         // Count how many points are to the left (cross >= 0) for each candidate q
-        let zero = Tensor::<R>::zeros(&[], dtype, device);
+        let zero = Tensor::<R>::zeros(&[], dtype, device)?;
         let left_of_raw = client.ge(&cross, &zero)?;
         let left_of = client.cast(&left_of_raw, dtype)?;
         let left_count = client.sum(&left_of, &[1], false)?; // [n] - count of points to left of each candidate
@@ -141,13 +141,13 @@ where
         // The next hull vertex is the one with ALL other points to its left (count = n)
         // But we also need to exclude the current point (distance = 0)
         // Set score to -inf for current point
-        let large_neg = Tensor::<R>::full_scalar(&[n], dtype, -1e10, device);
-        let eps = Tensor::<R>::full_scalar(&[n], dtype, 1e-10, device);
+        let large_neg = Tensor::<R>::full_scalar(&[n], dtype, -1e10, device)?;
+        let eps = Tensor::<R>::full_scalar(&[n], dtype, 1e-10, device)?;
         let is_current_raw = client.lt(&dist_sq, &eps)?;
         let is_current = client.cast(&is_current_raw, dtype)?;
 
         // score = left_count * (1 - is_current) + large_neg * is_current
-        let one = Tensor::<R>::ones(&[n], dtype, device);
+        let one = Tensor::<R>::ones(&[n], dtype, device)?;
         let not_current = client.sub(&one, &is_current)?;
         let score = client.add(
             &client.mul(&left_count, &not_current)?,
@@ -172,7 +172,7 @@ where
     let n_vertices = hull_indices.len();
 
     // Build hull tensors on device
-    let hull_tensor = Tensor::<R>::from_slice(&hull_indices, &[n_vertices], device);
+    let hull_tensor = Tensor::<R>::from_slice(&hull_indices, &[n_vertices], device)?;
 
     // Create simplices (edges) as pairs of consecutive vertices
     let mut simplices_data: Vec<i64> = Vec::with_capacity(n_vertices * 2);
@@ -188,7 +188,7 @@ where
     let shift_indices: Vec<i64> = (0..n_vertices)
         .map(|i| ((i + 1) % n_vertices) as i64)
         .collect();
-    let shift_tensor = Tensor::<R>::from_slice(&shift_indices, &[n_vertices], device);
+    let shift_tensor = Tensor::<R>::from_slice(&shift_indices, &[n_vertices], device)?;
     let hull_coords_shifted = client.index_select(&hull_coords, 0, &shift_tensor)?;
 
     // Extract x, y coordinates
@@ -227,7 +227,7 @@ where
     Ok(ConvexHull {
         points: points.clone(),
         vertices: hull_tensor,
-        simplices: Tensor::<R>::from_slice(&simplices_data, &[n_vertices, 2], device),
+        simplices: Tensor::<R>::from_slice(&simplices_data, &[n_vertices, 2], device)?,
         neighbors: None,
         equations: None,
         volume: area,
@@ -270,8 +270,8 @@ where
     let p1: i64 = max_x_idx.item::<i64>()?;
 
     // Find point furthest from line p0-p1 using tensor ops
-    let p0_tensor = Tensor::<R>::from_slice(&[p0], &[1], device);
-    let p1_tensor = Tensor::<R>::from_slice(&[p1], &[1], device);
+    let p0_tensor = Tensor::<R>::from_slice(&[p0], &[1], device)?;
+    let p1_tensor = Tensor::<R>::from_slice(&[p1], &[1], device)?;
 
     let pt0 = client.index_select(points, 0, &p0_tensor)?; // [1, 3]
     let pt1 = client.index_select(points, 0, &p1_tensor)?;
@@ -304,17 +304,17 @@ where
     )?;
 
     // Exclude p0 and p1 by setting their distances to -inf
-    let neg_inf = Tensor::<R>::full_scalar(&[n], dtype, -1e30, device);
-    let idx_f = Tensor::<R>::from_slice(&(0..n as i64).collect::<Vec<_>>(), &[n], device);
+    let neg_inf = Tensor::<R>::full_scalar(&[n], dtype, -1e30, device)?;
+    let idx_f = Tensor::<R>::from_slice(&(0..n as i64).collect::<Vec<_>>(), &[n], device)?;
     let idx_f = client.cast(&idx_f, dtype)?;
-    let p0_f = Tensor::<R>::full_scalar(&[n], dtype, p0 as f64, device);
-    let p1_f = Tensor::<R>::full_scalar(&[n], dtype, p1 as f64, device);
+    let p0_f = Tensor::<R>::full_scalar(&[n], dtype, p0 as f64, device)?;
+    let p1_f = Tensor::<R>::full_scalar(&[n], dtype, p1 as f64, device)?;
     let is_p0_raw = client.eq(&idx_f, &p0_f)?;
     let is_p1_raw = client.eq(&idx_f, &p1_f)?;
     let is_p0 = client.cast(&is_p0_raw, dtype)?;
     let is_p1 = client.cast(&is_p1_raw, dtype)?;
     let is_excluded = client.add(&is_p0, &is_p1)?;
-    let one = Tensor::<R>::ones(&[n], dtype, device);
+    let one = Tensor::<R>::ones(&[n], dtype, device)?;
     let not_excluded = client.sub(&one, &is_excluded)?;
 
     let dist_masked = client.add(
@@ -326,7 +326,7 @@ where
     let p2: i64 = p2_idx.item::<i64>()?;
 
     // Find point furthest from plane p0-p1-p2
-    let p2_tensor = Tensor::<R>::from_slice(&[p2], &[1], device);
+    let p2_tensor = Tensor::<R>::from_slice(&[p2], &[1], device)?;
     let pt2 = client.index_select(points, 0, &p2_tensor)?;
 
     // Compute plane normal: (pt1-pt0) × (pt2-pt0)
@@ -356,7 +356,7 @@ where
     let dist_plane_abs = client.abs(&dist_plane)?;
 
     // Exclude p0, p1, p2
-    let p2_f = Tensor::<R>::full_scalar(&[n], dtype, p2 as f64, device);
+    let p2_f = Tensor::<R>::full_scalar(&[n], dtype, p2 as f64, device)?;
     let is_p2_raw = client.eq(&idx_f, &p2_f)?;
     let is_p2 = client.cast(&is_p2_raw, dtype)?;
     let is_excluded3 = client.add(&is_excluded, &is_p2)?;
@@ -384,7 +384,7 @@ where
     let mut faces: Vec<[i64; 3]> = vec![[p0, p1, p2], [p0, p1, p3], [p0, p2, p3], [p1, p2, p3]];
 
     // Ensure faces are oriented outward (normal points away from centroid)
-    let p3_tensor = Tensor::<R>::from_slice(&[p3], &[1], device);
+    let p3_tensor = Tensor::<R>::from_slice(&[p3], &[1], device)?;
     let pt3 = client.index_select(points, 0, &p3_tensor)?;
     let centroid = client.mul_scalar(
         &client.add(&client.add(&client.add(&pt0, &pt1)?, &pt2)?, &pt3)?,
@@ -456,8 +456,8 @@ where
 
     Ok(ConvexHull {
         points: points.clone(),
-        vertices: Tensor::<R>::from_slice(&vertices, &[vertices.len()], device),
-        simplices: Tensor::<R>::from_slice(&simplices_data, &[faces.len(), 3], device),
+        vertices: Tensor::<R>::from_slice(&vertices, &[vertices.len()], device)?,
+        simplices: Tensor::<R>::from_slice(&simplices_data, &[faces.len(), 3], device)?,
         neighbors: None,
         equations: None,
         volume,
@@ -480,7 +480,7 @@ where
 
     for face in faces.iter_mut() {
         // Get face vertices
-        let indices = Tensor::<R>::from_slice(&[face[0], face[1], face[2]], &[3], device);
+        let indices = Tensor::<R>::from_slice(&[face[0], face[1], face[2]], &[3], device)?;
         let verts = client.index_select(points, 0, &indices)?; // [3, 3]
 
         let v0 = verts.narrow(0, 0, 1)?.contiguous()?; // [1, 3]
@@ -559,7 +559,7 @@ where
         face_indices.push(face[1]);
         face_indices.push(face[2]);
     }
-    let face_idx_tensor = Tensor::<R>::from_slice(&face_indices, &[n_faces * 3], device);
+    let face_idx_tensor = Tensor::<R>::from_slice(&face_indices, &[n_faces * 3], device)?;
 
     // Get all face vertices at once
     let all_verts = client.index_select(points, 0, &face_idx_tensor)?; // [n_faces*3, 3]
@@ -618,7 +618,7 @@ where
     )?; // [n_faces]
 
     // Face is visible if dot > epsilon
-    let eps = Tensor::<R>::full_scalar(&[n_faces], dtype, 1e-10, device);
+    let eps = Tensor::<R>::full_scalar(&[n_faces], dtype, 1e-10, device)?;
     let visible_raw = client.gt(&dot, &eps)?;
     let visible = client.cast(&visible_raw, DType::U8)?;
 
@@ -682,7 +682,7 @@ where
         face_indices.push(face[1]);
         face_indices.push(face[2]);
     }
-    let face_idx_tensor = Tensor::<R>::from_slice(&face_indices, &[n_faces * 3], device);
+    let face_idx_tensor = Tensor::<R>::from_slice(&face_indices, &[n_faces * 3], device)?;
 
     // Get all face vertices
     let all_verts = client.index_select(points, 0, &face_idx_tensor)?;
@@ -813,7 +813,7 @@ where
 
     // Create shifted indices for edge endpoints
     let shift_indices: Vec<i64> = (0..n_hull).map(|i| ((i + 1) % n_hull) as i64).collect();
-    let shift_idx_tensor = Tensor::<R>::from_slice(&shift_indices, &[n_hull], device);
+    let shift_idx_tensor = Tensor::<R>::from_slice(&shift_indices, &[n_hull], device)?;
     let hull_coords_shifted = client.index_select(&hull_coords, 0, &shift_idx_tensor)?;
 
     // Extract coordinates
@@ -872,7 +872,7 @@ where
     let cross = client.sub(&client.mul(&dx, &dpy)?, &client.mul(&dy, &dpx)?)?;
 
     // Point is inside if all cross products >= -epsilon
-    let epsilon = Tensor::<R>::full_scalar(&[], dtype, -1e-10, device);
+    let epsilon = Tensor::<R>::full_scalar(&[], dtype, -1e-10, device)?;
     let inside_edge_raw = client.ge(&cross, &epsilon)?;
     let inside_edge = client.cast(&inside_edge_raw, DType::U8)?;
 
@@ -1001,7 +1001,7 @@ where
     )?;
 
     // Point is inside if dot <= epsilon for all faces
-    let epsilon = Tensor::<R>::full_scalar(&[], dtype, 1e-10, device);
+    let epsilon = Tensor::<R>::full_scalar(&[], dtype, 1e-10, device)?;
     let below_face_raw = client.le(&dot, &epsilon)?;
     let below_face = client.cast(&below_face_raw, DType::U8)?;
 

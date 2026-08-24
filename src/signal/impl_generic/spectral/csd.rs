@@ -79,7 +79,7 @@ where
     }
 
     // Generate window tensor
-    let window = generate_window(&params.window, nperseg, &params.device);
+    let window = generate_window(&params.window, nperseg, &params.device)?;
 
     // Compute window sum of squares for normalization
     let win_sq = client.mul(&window, &window)?;
@@ -154,7 +154,7 @@ where
         if n_freqs > 1 {
             scale_factors[n_freqs - 1] = 1.0; // Nyquist
         }
-        let scale_tensor = Tensor::from_slice(&scale_factors, &[n_freqs], &params.device);
+        let scale_tensor = Tensor::from_slice(&scale_factors, &[n_freqs], &params.device)?;
         (
             client.mul(&pxy_real_base, &scale_tensor)?,
             client.mul(&pxy_imag_base, &scale_tensor)?,

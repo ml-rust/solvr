@@ -90,7 +90,8 @@ mod tests {
         let factors = c.sparse_qr(&a, &options).unwrap();
         assert_eq!(factors.rank, 4);
 
-        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0], &[4], &cpu_device());
+        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0], &[4], &cpu_device())
+            .unwrap();
         let x = c.sparse_qr_solve(&factors, &b).unwrap();
         let x_vals: Vec<f64> = x.to_vec();
 
@@ -125,7 +126,8 @@ mod tests {
         let factors = c.sparse_qr(&a, &options).unwrap();
 
         let b =
-            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &cpu_device());
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &cpu_device())
+                .unwrap();
         let x = c.sparse_least_squares(&factors, &b).unwrap();
         let x_vals: Vec<f64> = x.to_vec();
 

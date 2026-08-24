@@ -114,7 +114,7 @@ where
     // Add a small epsilon to the denominator to prevent NaN.
     // When denom is very small, the weighted and simple slopes converge anyway.
     let epsilon_data = vec![1e-14; n];
-    let epsilon = Tensor::<R>::from_slice(&epsilon_data, &[n], device);
+    let epsilon = Tensor::<R>::from_slice(&epsilon_data, &[n], device)?;
 
     // Make tensors contiguous to avoid issues with non-contiguous views
     let denom_contig = denom.contiguous()?;
@@ -141,7 +141,7 @@ where
 
     // one_minus_weight = 1 - weight
     let ones_data = vec![1.0; n];
-    let ones = Tensor::<R>::from_slice(&ones_data, &[n], device);
+    let ones = Tensor::<R>::from_slice(&ones_data, &[n], device)?;
     let one_minus_weight = client.sub(&ones, &weight)?;
 
     // slopes = slope_weighted * weight + slope_simple * (1 - weight)
@@ -167,8 +167,10 @@ mod tests {
     fn test_akima_slopes_linear_data() {
         let (device, client) = setup();
 
-        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0, 4.0], &[5], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[1.0, 3.0, 5.0, 7.0, 9.0], &[5], &device);
+        let x =
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0, 4.0], &[5], &device).unwrap();
+        let y =
+            Tensor::<CpuRuntime>::from_slice(&[1.0, 3.0, 5.0, 7.0, 9.0], &[5], &device).unwrap();
 
         let slopes = akima_slopes(&client, &x, &y).unwrap();
         let slopes_vec: Vec<f64> = slopes.to_vec();

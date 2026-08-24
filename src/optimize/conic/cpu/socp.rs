@@ -35,7 +35,7 @@ mod tests {
     fn test_socp_unconstrained() {
         let (_device, client) = setup();
         let device = _device.clone();
-        let c = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0], &[2], &device);
+        let c = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0], &[2], &device).unwrap();
 
         let result = client.solve_socp(&c, &[], &SocpOptions::default()).unwrap();
 
@@ -48,10 +48,10 @@ mod tests {
         let (_device, client) = setup();
         let device = _device.clone();
         // min c'*x = [1, 1]'*x s.t. ||[1, 1]'*x + 0|| <= 1'*x + 0
-        let c = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device);
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[1, 2], &device);
-        let b = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device);
-        let c_cone = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device);
+        let c = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device).unwrap();
+        let a = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[1, 2], &device).unwrap();
+        let b = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device).unwrap();
+        let c_cone = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device).unwrap();
         let d = 0.0;
 
         let constraint = SocConstraint { a, b, c: c_cone, d };

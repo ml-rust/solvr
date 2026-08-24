@@ -86,7 +86,7 @@ where
             v_corrected[i * d + (d - 1)] = -v_corrected[i * d + (d - 1)];
         }
 
-        let v_new = Tensor::<R>::from_slice(&v_corrected, &[d, d], device);
+        let v_new = Tensor::<R>::from_slice(&v_corrected, &[d, d], device)?;
         r = client.matmul(&v_new, &ut)?;
     }
 

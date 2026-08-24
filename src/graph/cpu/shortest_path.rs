@@ -115,7 +115,7 @@ mod tests {
         let graph = make_test_graph(&device);
 
         // Heuristic: estimated distance to node 2
-        let h = Tensor::<CpuRuntime>::from_slice(&[2.0f64, 1.0, 0.0], &[3], &device);
+        let h = Tensor::<CpuRuntime>::from_slice(&[2.0f64, 1.0, 0.0], &[3], &device).unwrap();
         let result = client.astar(&graph, 0, 2, &h).unwrap();
         assert!((result.distance - 3.0).abs() < 1e-10);
     }

@@ -1,6 +1,7 @@
 //! Shared ODE result extraction for time-dependent PDE solvers.
 use crate::DType;
 
+use numr::error::Result;
 use numr::runtime::Runtime;
 use numr::tensor::Tensor;
 
@@ -22,7 +23,7 @@ pub fn extract_ode_solutions<R: Runtime<DType = DType>>(
     stride: usize,
     sol_shape: &[usize],
     device: &R::Device,
-) -> TimeResult<R> {
+) -> Result<TimeResult<R>> {
     let y_data: Vec<f64> = ode_y.to_vec();
     let t_data: Vec<f64> = ode_t.to_vec();
     let n_steps = t_data.len();
@@ -32,13 +33,13 @@ pub fn extract_ode_solutions<R: Runtime<DType = DType>>(
         let start = step * stride;
         let end = start + n_vars;
         if end <= y_data.len() {
-            let sol = Tensor::<R>::from_slice(&y_data[start..end], sol_shape, device);
+            let sol = Tensor::<R>::from_slice(&y_data[start..end], sol_shape, device)?;
             solutions.push(sol);
         }
     }
 
-    TimeResult {
+    Ok(TimeResult {
         times: ode_t,
         solutions,
-    }
+    })
 }

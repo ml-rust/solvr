@@ -45,8 +45,8 @@ where
     let dx_data = chebyshev_diff_matrix(nx);
     let dy_data = chebyshev_diff_matrix(ny);
 
-    let dx = Tensor::<R>::from_slice(&dx_data, &[npx, npx], device);
-    let dy = Tensor::<R>::from_slice(&dy_data, &[npy, npy], device);
+    let dx = Tensor::<R>::from_slice(&dx_data, &[npx, npx], device)?;
+    let dy = Tensor::<R>::from_slice(&dy_data, &[npy, npy], device)?;
 
     // D^2 in each direction
     let dx2 = client.matmul(&dx, &dx).map_err(PdeError::from)?;
@@ -95,8 +95,8 @@ where
     }
 
     // Solve dense system
-    let a_tensor = Tensor::<R>::from_slice(&sys_data, &[total, total], device);
-    let b_tensor = Tensor::<R>::from_slice(&rhs, &[total, 1], device);
+    let a_tensor = Tensor::<R>::from_slice(&sys_data, &[total, total], device)?;
+    let b_tensor = Tensor::<R>::from_slice(&rhs, &[total, 1], device)?;
 
     let solution = client.solve(&a_tensor, &b_tensor).map_err(PdeError::from)?;
     let solution_2d = solution.reshape(&[npx, npy])?;
@@ -109,7 +109,7 @@ where
             coords.push(yj);
         }
     }
-    let nodes = Tensor::<R>::from_slice(&coords, &[total, 2], device);
+    let nodes = Tensor::<R>::from_slice(&coords, &[total, 2], device)?;
 
     Ok(SpectralResult {
         solution: solution_2d,

@@ -197,10 +197,10 @@ where
 
     Ok(Delaunay {
         points: points.clone(),
-        simplices: Tensor::<R>::from_slice(&simplices_data, &[n_triangles, 3], device),
-        neighbors: Tensor::<R>::from_slice(&neighbors_data, &[n_triangles, 3], device),
-        vertex_to_simplex: Tensor::<R>::from_slice(&vertex_to_simplex, &[n], device),
-        convex_hull: Tensor::<R>::from_slice(&hull, &[hull.len()], device),
+        simplices: Tensor::<R>::from_slice(&simplices_data, &[n_triangles, 3], device)?,
+        neighbors: Tensor::<R>::from_slice(&neighbors_data, &[n_triangles, 3], device)?,
+        vertex_to_simplex: Tensor::<R>::from_slice(&vertex_to_simplex, &[n], device)?,
+        convex_hull: Tensor::<R>::from_slice(&hull, &[hull.len()], device)?,
     })
 }
 
@@ -349,7 +349,7 @@ where
     let b_num = client.add(&client.mul(&y2_y0, &px_x2)?, &client.mul(&x0_x2, &py_y2)?)?;
 
     // Safe division: where denom is too small, set a,b to invalid values
-    let eps = Tensor::<R>::full_scalar(&[], dtype, 1e-10, device);
+    let eps = Tensor::<R>::full_scalar(&[], dtype, 1e-10, device)?;
     let denom_abs = client.abs(&denom)?;
     let denom_valid_raw = client.gt(&denom_abs, &eps)?;
     // Cast to U8 for boolean (comparison ops may return same dtype as input)
@@ -361,14 +361,14 @@ where
     let b = client.div(&b_num, &safe_denom)?;
     let c = client.sub(
         &client.sub(
-            &Tensor::<R>::ones(&[n_queries, n_simplices], dtype, device),
+            &Tensor::<R>::ones(&[n_queries, n_simplices], dtype, device)?,
             &a,
         )?,
         &b,
     )?;
 
     // Point is inside if a >= -eps, b >= -eps, c >= -eps, and denom was valid
-    let neg_eps = Tensor::<R>::full_scalar(&[], dtype, -1e-10, device);
+    let neg_eps = Tensor::<R>::full_scalar(&[], dtype, -1e-10, device)?;
     let a_ok_raw = client.ge(&a, &neg_eps)?;
     let b_ok_raw = client.ge(&b, &neg_eps)?;
     let c_ok_raw = client.ge(&c, &neg_eps)?;
@@ -390,7 +390,7 @@ where
     let max_val = client.max(&inside_f, &[1], true)?; // [n_queries, 1]
     let found_raw = client.gt(
         &max_val.reshape(&[n_queries])?,
-        &Tensor::<R>::zeros(&[n_queries], dtype, device),
+        &Tensor::<R>::zeros(&[n_queries], dtype, device)?,
     )?;
     // Cast to U8 for boolean (comparison ops may return same dtype as input)
     let found = client.cast(&found_raw, DType::U8)?;
@@ -398,10 +398,10 @@ where
     let simplex_idx = client.argmax(&inside_f, 1, false)?; // [n_queries]
 
     // Where not found, set to -1
-    let neg_one = Tensor::<R>::full_scalar(&[n_queries], DType::I64, -1.0, device);
+    let neg_one = Tensor::<R>::full_scalar(&[n_queries], DType::I64, -1.0, device)?;
     let found_i64 = client.cast(&found, DType::I64)?;
     let not_found_i64 = client.sub(
-        &Tensor::<R>::ones(&[n_queries], DType::I64, device),
+        &Tensor::<R>::ones(&[n_queries], DType::I64, device)?,
         &found_i64,
     )?;
 
@@ -455,7 +455,7 @@ where
     }
 
     Ok((
-        Tensor::<R>::from_slice(&indices, &[indices.len()], device),
-        Tensor::<R>::from_slice(&indptr, &[indptr.len()], device),
+        Tensor::<R>::from_slice(&indices, &[indices.len()], device)?,
+        Tensor::<R>::from_slice(&indptr, &[indptr.len()], device)?,
     ))
 }

@@ -69,7 +69,7 @@ where
     };
 
     // Convert real to complex (imaginary part = 0)
-    let zeros = Tensor::zeros(&[fft_len], x.dtype(), device);
+    let zeros = Tensor::zeros(&[fft_len], x.dtype(), device)?;
     let x_complex = client.make_complex(&x_padded, &zeros)?;
 
     // Compute FFT via numr
@@ -140,8 +140,8 @@ where
         let middle_len = output_len.saturating_sub(pos_len).saturating_sub(neg_copy);
         if middle_len > 0 {
             // Need zero padding in the middle
-            let zeros_real = Tensor::zeros(&[middle_len], x.dtype(), device);
-            let zeros_imag = Tensor::zeros(&[middle_len], x.dtype(), device);
+            let zeros_real = Tensor::zeros(&[middle_len], x.dtype(), device)?;
+            let zeros_imag = Tensor::zeros(&[middle_len], x.dtype(), device)?;
             let middle = client.make_complex(&zeros_real, &zeros_imag)?;
             client.cat(&[&pos_freqs, &middle, &neg], 0)?
         } else {
@@ -162,8 +162,8 @@ where
         // No negative frequencies (n <= 2)
         if output_len > pos_len {
             let pad = output_len - pos_len;
-            let zeros_real = Tensor::zeros(&[pad], x.dtype(), device);
-            let zeros_imag = Tensor::zeros(&[pad], x.dtype(), device);
+            let zeros_real = Tensor::zeros(&[pad], x.dtype(), device)?;
+            let zeros_imag = Tensor::zeros(&[pad], x.dtype(), device)?;
             let padding = client.make_complex(&zeros_real, &zeros_imag)?;
             client.cat(&[&pos_freqs, &padding], 0)?
         } else if output_len < pos_len {
@@ -180,8 +180,8 @@ where
     let curr_len = new_fft.shape()[0];
     let padded_fft = if curr_len < out_fft_len {
         let pad = out_fft_len - curr_len;
-        let zeros_real = Tensor::zeros(&[pad], x.dtype(), device);
-        let zeros_imag = Tensor::zeros(&[pad], x.dtype(), device);
+        let zeros_real = Tensor::zeros(&[pad], x.dtype(), device)?;
+        let zeros_imag = Tensor::zeros(&[pad], x.dtype(), device)?;
         let padding = client.make_complex(&zeros_real, &zeros_imag)?;
         client.cat(&[&new_fft, &padding], 0)?
     } else {

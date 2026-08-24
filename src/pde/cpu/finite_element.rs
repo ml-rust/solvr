@@ -62,25 +62,21 @@ mod tests {
         let x_data: Vec<f64> = (0..n).map(|i| i as f64 / (n - 1) as f64).collect();
         let f_data = vec![1.0; n];
 
-        let x_nodes = Tensor::<CpuRuntime>::from_slice(&x_data, &[n], &device);
-        let f_rhs = Tensor::<CpuRuntime>::from_slice(&f_data, &[n], &device);
+        let x_nodes = Tensor::<CpuRuntime>::from_slice(&x_data, &[n], &device).unwrap();
+        let f_rhs = Tensor::<CpuRuntime>::from_slice(&f_data, &[n], &device).unwrap();
 
         let boundary = vec![
             BoundarySpec {
                 side: BoundarySide::Left,
-                condition: BoundaryCondition::Dirichlet(Tensor::<CpuRuntime>::from_slice(
-                    &[0.0],
-                    &[1],
-                    &device,
-                )),
+                condition: BoundaryCondition::Dirichlet(
+                    Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device).unwrap(),
+                ),
             },
             BoundarySpec {
                 side: BoundarySide::Right,
-                condition: BoundaryCondition::Dirichlet(Tensor::<CpuRuntime>::from_slice(
-                    &[0.0],
-                    &[1],
-                    &device,
-                )),
+                condition: BoundaryCondition::Dirichlet(
+                    Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device).unwrap(),
+                ),
             },
         ];
 
@@ -112,15 +108,16 @@ mod tests {
         let nodes_data = vec![0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0];
         let elements_data: Vec<i64> = vec![0, 1, 2, 0, 2, 3];
 
-        let nodes = Tensor::<CpuRuntime>::from_slice(&nodes_data, &[4, 2], &device);
-        let elements = Tensor::<CpuRuntime>::from_slice(&elements_data, &[2, 3], &device);
+        let nodes = Tensor::<CpuRuntime>::from_slice(&nodes_data, &[4, 2], &device).unwrap();
+        let elements = Tensor::<CpuRuntime>::from_slice(&elements_data, &[2, 3], &device).unwrap();
 
         // All nodes are boundary nodes
-        let bc_nodes = Tensor::<CpuRuntime>::from_slice(&[0i64, 1, 2, 3], &[4], &device);
-        let bc_vals = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 0.0, 0.0], &[4], &device);
+        let bc_nodes = Tensor::<CpuRuntime>::from_slice(&[0i64, 1, 2, 3], &[4], &device).unwrap();
+        let bc_vals =
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 0.0, 0.0], &[4], &device).unwrap();
 
         let f_data = vec![1.0; 4];
-        let f_rhs = Tensor::<CpuRuntime>::from_slice(&f_data, &[4], &device);
+        let f_rhs = Tensor::<CpuRuntime>::from_slice(&f_data, &[4], &device).unwrap();
 
         let result = client
             .fem_triangular(

@@ -35,9 +35,9 @@
 //! use solvr::interpolate::{Interp1dAlgorithms, InterpMethod};
 //! # let device = CpuDevice::new();
 //! # let client = CpuClient::new(device.clone());
-//! # let x = Tensor::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], &device);
-//! # let y = Tensor::from_slice(&[0.0, 1.0, 4.0, 9.0], &[4], &device);
-//! # let x_new = Tensor::from_slice(&[0.5, 1.5, 2.5], &[3], &device);
+//! # let x = Tensor::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], &device)?;
+//! # let y = Tensor::from_slice(&[0.0, 1.0, 4.0, 9.0], &[4], &device)?;
+//! # let x_new = Tensor::from_slice(&[0.5, 1.5, 2.5], &[3], &device)?;
 //! let y_new = client.interp1d(&x, &y, &x_new, InterpMethod::Linear)?;
 //! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```

@@ -58,7 +58,8 @@ mod tests {
             &[0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0],
             &[4, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         let tree = client
             .kdtree_build(&points, KDTreeOptions::default())
@@ -75,14 +76,15 @@ mod tests {
             &[0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0],
             &[4, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         let tree = client
             .kdtree_build(&points, KDTreeOptions::default())
             .unwrap();
 
         // Query at (0.1, 0.1) - closest should be (0, 0) at index 0
-        let query = Tensor::<CpuRuntime>::from_slice(&[0.1, 0.1], &[1, 2], &device);
+        let query = Tensor::<CpuRuntime>::from_slice(&[0.1, 0.1], &[1, 2], &device).unwrap();
 
         let result = client.kdtree_query(&tree, &query, 2).unwrap();
 
@@ -102,14 +104,15 @@ mod tests {
             &[0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0],
             &[4, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         let tree = client
             .kdtree_build(&points, KDTreeOptions::default())
             .unwrap();
 
         // Query at origin with radius 0.5 - should only find (0,0)
-        let query = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[1, 2], &device);
+        let query = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[1, 2], &device).unwrap();
 
         let result = client.kdtree_query_radius(&tree, &query, 0.5).unwrap();
 

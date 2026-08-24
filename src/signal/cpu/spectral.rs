@@ -82,7 +82,7 @@ mod tests {
             .map(|i| (2.0 * PI * f0 * i as f64 / fs).sin())
             .collect();
 
-        let x = Tensor::from_slice(&signal, &[n], &device);
+        let x = Tensor::from_slice(&signal, &[n], &device).unwrap();
         let params = WelchParams::new(device.clone())
             .with_fs(fs)
             .with_nperseg(256)
@@ -118,7 +118,7 @@ mod tests {
         // Constant signal should have all power at DC
         let n = 256;
         let signal = vec![1.0; n];
-        let x = Tensor::from_slice(&signal, &[n], &device);
+        let x = Tensor::from_slice(&signal, &[n], &device).unwrap();
 
         let params = PeriodogramParams::new(device.clone())
             .with_fs(1.0)
@@ -150,7 +150,7 @@ mod tests {
             .map(|i| (2.0 * PI * 5.0 * i as f64 / fs).sin())
             .collect();
 
-        let x = Tensor::from_slice(&signal, &[n], &device);
+        let x = Tensor::from_slice(&signal, &[n], &device).unwrap();
         let params = WelchParams::new(device.clone())
             .with_fs(fs)
             .with_nperseg(128);
@@ -191,7 +191,7 @@ mod tests {
         let n = 512;
         let signal: Vec<f64> = (0..n).map(|i| (i as f64 * 0.1).sin()).collect();
 
-        let x = Tensor::from_slice(&signal, &[n], &device);
+        let x = Tensor::from_slice(&signal, &[n], &device).unwrap();
         let y = x.clone();
 
         let params = WelchParams::new(device.clone()).with_nperseg(64);
@@ -235,8 +235,8 @@ mod tests {
             })
             .collect();
 
-        let x = Tensor::from_slice(&x_data, &[n], &device);
-        let y = Tensor::from_slice(&y_data, &[n], &device);
+        let x = Tensor::from_slice(&x_data, &[n], &device).unwrap();
+        let y = Tensor::from_slice(&y_data, &[n], &device).unwrap();
 
         let params = WelchParams::new(device.clone()).with_nperseg(256);
         let result = client.coherence(&x, &y, params).unwrap();
@@ -265,12 +265,12 @@ mod tests {
             .map(|&ti| (2.0 * PI * f0 * ti).sin())
             .collect();
 
-        let t = Tensor::from_slice(&t_data, &[n], &device);
-        let x = Tensor::from_slice(&x_data, &[n], &device);
+        let t = Tensor::from_slice(&t_data, &[n], &device).unwrap();
+        let x = Tensor::from_slice(&x_data, &[n], &device).unwrap();
 
         // Test frequencies
         let freqs_data: Vec<f64> = (1..50).map(|i| i as f64 * 0.1).collect();
-        let freqs = Tensor::from_slice(&freqs_data, &[freqs_data.len()], &device);
+        let freqs = Tensor::from_slice(&freqs_data, &[freqs_data.len()], &device).unwrap();
 
         let power = client.lombscargle(&t, &x, &freqs, true).unwrap();
         let power_data: Vec<f64> = power.to_vec();
@@ -306,7 +306,7 @@ mod tests {
             })
             .collect();
 
-        let x = Tensor::from_slice(&signal, &[n], &device);
+        let x = Tensor::from_slice(&signal, &[n], &device).unwrap();
 
         // Without detrend
         let params_no_detrend = WelchParams {
@@ -349,7 +349,7 @@ mod tests {
         let signal: Vec<f64> = (0..n)
             .map(|i| (2.0 * PI * 10.0 * i as f64 / fs).sin())
             .collect();
-        let x = Tensor::from_slice(&signal, &[n], &device);
+        let x = Tensor::from_slice(&signal, &[n], &device).unwrap();
 
         // Density scaling
         let params_density = PeriodogramParams {

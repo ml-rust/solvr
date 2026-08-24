@@ -281,11 +281,11 @@ where
     for d in 0..ndim {
         matrix_data[d * ndim + d] = 1.0 / zoom[d];
     }
-    let matrix = Tensor::from_slice(&matrix_data, &[ndim, ndim], device);
+    let matrix = Tensor::from_slice(&matrix_data, &[ndim, ndim], device)?;
     let matrix_typed = client.cast(&matrix, dtype)?;
 
     let offset_data = vec![0.0f64; ndim];
-    let offset = Tensor::from_slice(&offset_data, &[ndim], device);
+    let offset = Tensor::from_slice(&offset_data, &[ndim], device)?;
     let offset_typed = client.cast(&offset, dtype)?;
 
     affine_transform_impl(
@@ -359,9 +359,8 @@ where
 
     // Compute output shape and offset
     let output_shape;
-    let offset_data;
 
-    if reshape {
+    let offset_data = if reshape {
         // Compute bounding box of rotated image
         let h = shape[ax0] as f64;
         let w = shape[ax1] as f64;
@@ -394,7 +393,7 @@ where
         let center_out_1 = (new_w as f64 - 1.0) / 2.0;
         od[ax0] = center_in_0 - cos_a * center_out_0 - sin_a * center_out_1;
         od[ax1] = center_in_1 + sin_a * center_out_0 - cos_a * center_out_1;
-        offset_data = od;
+        od
     } else {
         output_shape = shape.clone();
         let center_0 = (shape[ax0] as f64 - 1.0) / 2.0;
@@ -402,12 +401,12 @@ where
         let mut od = vec![0.0f64; ndim];
         od[ax0] = center_0 - cos_a * center_0 - sin_a * center_1;
         od[ax1] = center_1 + sin_a * center_0 - cos_a * center_1;
-        offset_data = od;
+        od
     };
 
-    let matrix = Tensor::from_slice(&matrix_data, &[ndim, ndim], device);
+    let matrix = Tensor::from_slice(&matrix_data, &[ndim, ndim], device)?;
     let matrix_typed = client.cast(&matrix, dtype)?;
-    let offset = Tensor::from_slice(&offset_data, &[ndim], device);
+    let offset = Tensor::from_slice(&offset_data, &[ndim], device)?;
     let offset_typed = client.cast(&offset, dtype)?;
 
     affine_transform_impl(
@@ -466,9 +465,9 @@ where
     // Negative shift as offset (mapping output coords to input coords)
     let offset_data: Vec<f64> = shift.iter().map(|&s| -s).collect();
 
-    let matrix = Tensor::from_slice(&matrix_data, &[ndim, ndim], device);
+    let matrix = Tensor::from_slice(&matrix_data, &[ndim, ndim], device)?;
     let matrix_typed = client.cast(&matrix, dtype)?;
-    let offset = Tensor::from_slice(&offset_data, &[ndim], device);
+    let offset = Tensor::from_slice(&offset_data, &[ndim], device)?;
     let offset_typed = client.cast(&offset, dtype)?;
 
     affine_transform_impl(

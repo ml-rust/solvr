@@ -98,7 +98,7 @@ where
 
     let two_c_left = client.mul_scalar(&c_left, 2.0)?;
     let sum_c = client.add(&two_c_left, &c_right)?;
-    let three = Tensor::full_scalar(&[n - 1], DType::F64, 3.0, device);
+    let three = Tensor::full_scalar(&[n - 1], DType::F64, 3.0, device)?;
     let hc_term = client.div(&client.mul(&h, &sum_c)?, &three)?;
     let b_tensor = client.sub(&slopes, &hc_term)?;
 
@@ -124,8 +124,8 @@ where
     C: ScalarOps<R> + RuntimeClient<R>,
 {
     let device = client.device();
-    let one = Tensor::full_scalar(&[1], DType::F64, 1.0, device);
-    let zero_1 = Tensor::zeros(&[1], DType::F64, device);
+    let one = Tensor::full_scalar(&[1], DType::F64, 1.0, device)?;
+    let zero_1 = Tensor::zeros(&[1], DType::F64, device)?;
     let h_lo_int = h.narrow(0, 0, n - 2)?.contiguous()?;
     let h_hi_int = h.narrow(0, 1, n - 2)?.contiguous()?;
 
@@ -149,8 +149,8 @@ where
 
             let s_first = slopes.narrow(0, 0, 1)?.contiguous()?;
             let s_last = slopes.narrow(0, n - 2, 1)?.contiguous()?;
-            let left_t = Tensor::full_scalar(&[1], DType::F64, *left, device);
-            let right_t = Tensor::full_scalar(&[1], DType::F64, *right, device);
+            let left_t = Tensor::full_scalar(&[1], DType::F64, *left, device)?;
+            let right_t = Tensor::full_scalar(&[1], DType::F64, *right, device)?;
             let rhs_first = client.mul_scalar(&client.sub(&s_first, &left_t)?, 3.0)?;
             let rhs_last = client.mul_scalar(&client.sub(&right_t, &s_last)?, 3.0)?;
             let rhs = client.cat(&[&rhs_first, rhs_interior, &rhs_last], 0)?;
@@ -230,9 +230,9 @@ where
 
     // Upper diagonal [n-1] → [n-1, n-1] → shift right: prepend zero column, append zero row
     let upper_small = client.diagflat(upper_diag)?;
-    let zero_col = Tensor::zeros(&[n - 1, 1], DType::F64, device);
+    let zero_col = Tensor::zeros(&[n - 1, 1], DType::F64, device)?;
     let upper_shifted = client.cat(&[&zero_col, &upper_small], 1)?; // [n-1, n]
-    let zero_row = Tensor::zeros(&[1, n], DType::F64, device);
+    let zero_row = Tensor::zeros(&[1, n], DType::F64, device)?;
     let upper_mat = client.cat(&[&upper_shifted, &zero_row], 0)?; // [n, n]
 
     // Lower diagonal [n-1] → [n-1, n-1] → shift down: append zero column, prepend zero row
@@ -258,8 +258,8 @@ mod tests {
     #[test]
     fn test_natural_spline_interpolates_knots() {
         let (device, client) = setup();
-        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 4.0, 9.0], &[4], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0], &[4], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 4.0, 9.0], &[4], &device).unwrap();
 
         let (a, b, c, d) =
             cubic_spline_coefficients(&client, &x, &y, &SplineBoundary::Natural).unwrap();
@@ -285,8 +285,8 @@ mod tests {
     #[test]
     fn test_clamped_spline_derivative() {
         let (device, client) = setup();
-        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0], &[3], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 0.0], &[3], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0], &[3], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 0.0], &[3], &device).unwrap();
 
         let (_a, b, _c, _d) = cubic_spline_coefficients(
             &client,
@@ -310,8 +310,10 @@ mod tests {
     #[test]
     fn test_not_a_knot_spline_continuity() {
         let (device, client) = setup();
-        let x = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0, 4.0], &[5], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 4.0, 9.0, 16.0], &[5], &device);
+        let x =
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 3.0, 4.0], &[5], &device).unwrap();
+        let y =
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 4.0, 9.0, 16.0], &[5], &device).unwrap();
 
         let (a, b, c, d) =
             cubic_spline_coefficients(&client, &x, &y, &SplineBoundary::NotAKnot).unwrap();

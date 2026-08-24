@@ -123,21 +123,21 @@ where
 
     // Create output tensors
     let sources = if mst_sources.is_empty() {
-        Tensor::<R>::from_slice(&[0i64; 0], &[0], &device)
+        Tensor::<R>::from_slice(&[0i64; 0], &[0], &device)?
     } else {
-        Tensor::<R>::from_slice(&mst_sources, &[mst_sources.len()], &device)
+        Tensor::<R>::from_slice(&mst_sources, &[mst_sources.len()], &device)?
     };
 
     let targets = if mst_targets.is_empty() {
-        Tensor::<R>::from_slice(&[0i64; 0], &[0], &device)
+        Tensor::<R>::from_slice(&[0i64; 0], &[0], &device)?
     } else {
-        Tensor::<R>::from_slice(&mst_targets, &[mst_targets.len()], &device)
+        Tensor::<R>::from_slice(&mst_targets, &[mst_targets.len()], &device)?
     };
 
     let weights = if mst_weights.is_empty() {
-        Tensor::<R>::from_slice(&[0.0f64; 0], &[0], &device)
+        Tensor::<R>::from_slice(&[0.0f64; 0], &[0], &device)?
     } else {
-        Tensor::<R>::from_slice(&mst_weights, &[mst_weights.len()], &device)
+        Tensor::<R>::from_slice(&mst_weights, &[mst_weights.len()], &device)?
     };
 
     Ok(MSTResult {

@@ -35,7 +35,7 @@ mod tests {
     fn test_trust_constr_unconstrained() {
         let device = CpuDevice::new();
         let client = CpuClient::new(device.clone());
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[2.0, 3.0], &[2], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[2.0, 3.0], &[2], &device).unwrap();
 
         let result = client
             .trust_constr(
@@ -61,7 +61,7 @@ mod tests {
     fn test_trust_constr_with_bounds() {
         let device = CpuDevice::new();
         let client = CpuClient::new(device.clone());
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[5.0, 5.0], &[2], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[5.0, 5.0], &[2], &device).unwrap();
 
         let result = client
             .trust_constr(
@@ -72,12 +72,12 @@ mod tests {
                 &x0,
                 &[],
                 &Bounds {
-                    lower: Some(Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device)),
-                    upper: Some(Tensor::<CpuRuntime>::from_slice(
-                        &[10.0, 10.0],
-                        &[2],
-                        &device,
-                    )),
+                    lower: Some(
+                        Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device).unwrap(),
+                    ),
+                    upper: Some(
+                        Tensor::<CpuRuntime>::from_slice(&[10.0, 10.0], &[2], &device).unwrap(),
+                    ),
                 },
                 &ConstrainedOptions {
                     max_iter: 200,

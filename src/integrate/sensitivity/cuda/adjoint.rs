@@ -61,8 +61,8 @@ mod tests {
         };
 
         let t_span = [0.0, 1.0];
-        let y0 = Tensor::<CudaRuntime>::from_slice(&[1.0f64], &[1], &device);
-        let k = Tensor::<CudaRuntime>::from_slice(&[0.5f64], &[1], &device);
+        let y0 = Tensor::<CudaRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
+        let k = Tensor::<CudaRuntime>::from_slice(&[0.5f64], &[1], &device).unwrap();
 
         let f = |_t: &Var<CudaRuntime>,
                  y: &Var<CudaRuntime>,

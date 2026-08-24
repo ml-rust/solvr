@@ -121,7 +121,7 @@ where
         .flat_map(|t| t.iter().map(|&i| i as f64))
         .collect();
     let device = client.device();
-    let tri_tensor = Tensor::from_slice(&tri_data, &[n_tris, 3], device);
+    let tri_tensor = Tensor::from_slice(&tri_data, &[n_tris, 3], device)?;
 
     Ok(Mesh {
         vertices: vertices.clone(),
@@ -370,8 +370,8 @@ where
 
     let n_new_verts = new_idx;
     let device = client.device();
-    let new_v_tensor = Tensor::from_slice(&new_verts, &[n_new_verts, n_dims.min(3)], device);
-    let new_t_tensor = Tensor::from_slice(&new_tris, &[n_new_tris, 3], device);
+    let new_v_tensor = Tensor::from_slice(&new_verts, &[n_new_verts, n_dims.min(3)], device)?;
+    let new_t_tensor = Tensor::from_slice(&new_tris, &[n_new_tris, 3], device)?;
 
     Ok(Mesh {
         vertices: new_v_tensor,
@@ -459,7 +459,7 @@ where
         }
     }
 
-    let lap_matrix = Tensor::from_slice(&lap_data, &[n_verts, n_verts], device);
+    let lap_matrix = Tensor::from_slice(&lap_data, &[n_verts, n_verts], device)?;
 
     let mut verts = mesh.vertices.clone();
 
@@ -511,7 +511,8 @@ mod tests {
             &[0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0],
             &[4, 2],
             &device,
-        );
+        )
+        .unwrap();
         let mesh = triangulate_polygon_impl(&client, &vertices).unwrap();
         assert_eq!(mesh.triangles.shape()[0], 2); // Square → 2 triangles
         assert_eq!(mesh.triangles.shape()[1], 3);
@@ -521,7 +522,8 @@ mod tests {
     fn test_triangulate_triangle() {
         let (client, device) = setup();
         let vertices =
-            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 0.0, 0.5, 1.0], &[3, 2], &device);
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 0.0, 0.5, 1.0], &[3, 2], &device)
+                .unwrap();
         let mesh = triangulate_polygon_impl(&client, &vertices).unwrap();
         assert_eq!(mesh.triangles.shape()[0], 1); // Triangle → 1 triangle
     }
@@ -536,7 +538,8 @@ mod tests {
             ],
             &[5, 2],
             &device,
-        );
+        )
+        .unwrap();
         let mesh = triangulate_polygon_impl(&client, &vertices).unwrap();
         assert_eq!(mesh.triangles.shape()[0], 3); // Pentagon → 3 triangles
     }
@@ -549,8 +552,10 @@ mod tests {
             &[0.0, 0.0, 1.0, 0.0, 0.5, 1.5], // Third vertex slightly off
             &[3, 2],
             &device,
-        );
-        let triangles = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0], &[1, 3], &device);
+        )
+        .unwrap();
+        let triangles =
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0], &[1, 3], &device).unwrap();
         let mesh = Mesh {
             vertices,
             triangles,
@@ -577,9 +582,11 @@ mod tests {
             &[0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.5, 1.0, 0.0, 0.5, -1.0, 0.0],
             &[4, 3],
             &device,
-        );
+        )
+        .unwrap();
         let triangles =
-            Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 0.0, 3.0, 1.0], &[2, 3], &device);
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 2.0, 0.0, 3.0, 1.0], &[2, 3], &device)
+                .unwrap();
         let mesh = Mesh {
             vertices,
             triangles,

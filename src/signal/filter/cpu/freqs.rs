@@ -40,10 +40,11 @@ mod tests {
         // First-order analog lowpass: H(s) = 1 / (s + 1)
         // At ω = 0: H = 1
         // At ω = 1: H = 1/(1+j) = (1-j)/2, |H| = 1/√2 ≈ 0.707
-        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 1.0], &[2], &device);
+        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
+        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 1.0], &[2], &device).unwrap();
 
-        let w = Tensor::<CpuRuntime>::from_slice(&[0.0f64, 1.0, 10.0, 100.0], &[4], &device);
+        let w =
+            Tensor::<CpuRuntime>::from_slice(&[0.0f64, 1.0, 10.0, 100.0], &[4], &device).unwrap();
 
         let result = client.freqs(&b, &a, &w, &device).unwrap();
         let mag = result.magnitude().unwrap();
@@ -67,10 +68,10 @@ mod tests {
         // At ω = 0: H = 1
         // At ω = 1: |H| = 1/√2
         let sqrt2 = 2.0_f64.sqrt();
-        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, sqrt2, 1.0], &[3], &device);
+        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
+        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, sqrt2, 1.0], &[3], &device).unwrap();
 
-        let w = Tensor::<CpuRuntime>::from_slice(&[0.0f64, 1.0], &[2], &device);
+        let w = Tensor::<CpuRuntime>::from_slice(&[0.0f64, 1.0], &[2], &device).unwrap();
 
         let result = client.freqs(&b, &a, &w, &device).unwrap();
         let mag = result.magnitude().unwrap();
@@ -89,10 +90,10 @@ mod tests {
 
         // Bandpass around ω₀=1: H(s) = s / (s² + s + 1)
         // At ω = 1: passes (resonance)
-        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0], &[2], &device);
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 1.0, 1.0], &[3], &device);
+        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0], &[2], &device).unwrap();
+        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 1.0, 1.0], &[3], &device).unwrap();
 
-        let w = Tensor::<CpuRuntime>::from_slice(&[0.01f64, 1.0, 100.0], &[3], &device);
+        let w = Tensor::<CpuRuntime>::from_slice(&[0.01f64, 1.0, 100.0], &[3], &device).unwrap();
 
         let result = client.freqs(&b, &a, &w, &device).unwrap();
         let mag = result.magnitude().unwrap();
@@ -116,10 +117,10 @@ mod tests {
         // Phase at ω=0: 0°
         // Phase at ω=1: -45° = -π/4
         // Phase at ω→∞: -90° = -π/2
-        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 1.0], &[2], &device);
+        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
+        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 1.0], &[2], &device).unwrap();
 
-        let w = Tensor::<CpuRuntime>::from_slice(&[0.0f64, 1.0, 1000.0], &[3], &device);
+        let w = Tensor::<CpuRuntime>::from_slice(&[0.0f64, 1.0, 1000.0], &[3], &device).unwrap();
 
         let result = client.freqs(&b, &a, &w, &device).unwrap();
         let phase = result.phase().unwrap();

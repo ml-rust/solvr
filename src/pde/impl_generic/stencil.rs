@@ -111,9 +111,9 @@ where
     }
 
     let nnz = rows.len();
-    let row_t = Tensor::<R>::from_slice(&rows, &[nnz], device);
-    let col_t = Tensor::<R>::from_slice(&cols, &[nnz], device);
-    let val_t = Tensor::<R>::from_slice(&vals, &[nnz], device);
+    let row_t = Tensor::<R>::from_slice(&rows, &[nnz], device)?;
+    let col_t = Tensor::<R>::from_slice(&cols, &[nnz], device)?;
+    let val_t = Tensor::<R>::from_slice(&vals, &[nnz], device)?;
 
     // COO to CSR: sort by row, build row_ptrs
     coo_to_csr_sorted::<R>(&row_t, &col_t, &val_t, [n, n], device)
@@ -174,9 +174,9 @@ where
     }
 
     let nnz = rows.len();
-    let row_t = Tensor::<R>::from_slice(&rows, &[nnz], device);
-    let col_t = Tensor::<R>::from_slice(&cols, &[nnz], device);
-    let val_t = Tensor::<R>::from_slice(&vals, &[nnz], device);
+    let row_t = Tensor::<R>::from_slice(&rows, &[nnz], device)?;
+    let col_t = Tensor::<R>::from_slice(&cols, &[nnz], device)?;
+    let val_t = Tensor::<R>::from_slice(&vals, &[nnz], device)?;
 
     coo_to_csr_sorted::<R>(&row_t, &col_t, &val_t, [n, n], device)
 }
@@ -250,9 +250,9 @@ where
     }
 
     let nnz = rows.len();
-    let row_t = Tensor::<R>::from_slice(&rows, &[nnz], device);
-    let col_t = Tensor::<R>::from_slice(&cols, &[nnz], device);
-    let val_t = Tensor::<R>::from_slice(&vals, &[nnz], device);
+    let row_t = Tensor::<R>::from_slice(&rows, &[nnz], device)?;
+    let col_t = Tensor::<R>::from_slice(&cols, &[nnz], device)?;
+    let val_t = Tensor::<R>::from_slice(&vals, &[nnz], device)?;
 
     coo_to_csr_sorted::<R>(&row_t, &col_t, &val_t, [n, n], device)
 }
@@ -666,9 +666,9 @@ fn coo_to_csr_unsorted<R: Runtime<DType = DType>>(
     }
     debug_assert_eq!(row_ptrs[nrows] as usize, nnz);
 
-    let rp_tensor = Tensor::<R>::from_slice(&row_ptrs, &[nrows + 1], device);
-    let col_tensor = Tensor::<R>::from_slice(&sorted_cols, &[nnz], device);
-    let val_tensor = Tensor::<R>::from_slice(&sorted_vals, &[nnz], device);
+    let rp_tensor = Tensor::<R>::from_slice(&row_ptrs, &[nrows + 1], device)?;
+    let col_tensor = Tensor::<R>::from_slice(&sorted_cols, &[nnz], device)?;
+    let val_tensor = Tensor::<R>::from_slice(&sorted_vals, &[nnz], device)?;
 
     CsrData::new(rp_tensor, col_tensor, val_tensor, shape)
 }
@@ -699,6 +699,6 @@ fn coo_to_csr_sorted<R: Runtime<DType = DType>>(
     }
     debug_assert_eq!(row_ptrs[nrows] as usize, nnz);
 
-    let rp_tensor = Tensor::<R>::from_slice(&row_ptrs, &[nrows + 1], device);
+    let rp_tensor = Tensor::<R>::from_slice(&row_ptrs, &[nrows + 1], device)?;
     CsrData::new(rp_tensor, col_indices.clone(), values.clone(), shape)
 }

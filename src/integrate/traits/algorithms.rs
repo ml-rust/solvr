@@ -36,8 +36,8 @@ use super::{
 /// # let device = CpuDevice::new();
 /// # let client = CpuClient::new(device.clone());
 /// // Integrate y = x^2 from 0 to 1
-/// # let x = Tensor::from_slice(&[0.0, 0.25, 0.5, 0.75, 1.0], &[5], &device);
-/// # let y = Tensor::from_slice(&[0.0, 0.0625, 0.25, 0.5625, 1.0], &[5], &device);
+/// # let x = Tensor::from_slice(&[0.0, 0.25, 0.5, 0.75, 1.0], &[5], &device)?;
+/// # let y = Tensor::from_slice(&[0.0, 0.0625, 0.25, 0.5625, 1.0], &[5], &device)?;
 /// let result = client.trapezoid(&y, &x)?;
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
@@ -160,7 +160,7 @@ pub trait IntegrationAlgorithms<R: Runtime<DType = DType>> {
     /// # let device = CpuDevice::new();
     /// # let client = CpuClient::new(device.clone());
     /// // Solve dy/dt = -y, y(0) = 1
-    /// # let y0 = Tensor::from_slice(&[1.0], &[1], &device);
+    /// # let y0 = Tensor::from_slice(&[1.0], &[1], &device)?;
     /// let result = client.solve_ivp(
     ///     |_t, y| Ok(client.mul_scalar(y, -1.0)?),
     ///     [0.0, 5.0],
@@ -492,8 +492,8 @@ pub trait IntegrationAlgorithms<R: Runtime<DType = DType>> {
     /// use numr::runtime::cpu::{CpuClient, CpuDevice, CpuRuntime};
     /// let device = CpuDevice::new();
     /// let client = CpuClient::new(device.clone());
-    /// let y0 = Tensor::from_slice(&[0.0], &[1], &device);
-    /// let yp0 = Tensor::from_slice(&[1.0], &[1], &device);
+    /// let y0 = Tensor::from_slice(&[0.0], &[1], &device)?;
+    /// let yp0 = Tensor::from_slice(&[1.0], &[1], &device)?;
     /// // Simple DAE: y' = z, y - sin(t) = 0
     /// let f = |_t: &DualTensor<CpuRuntime>, _y: &DualTensor<CpuRuntime>, _yp: &DualTensor<CpuRuntime>, _c: &CpuClient| {
     ///     // Compute residual using dual operations

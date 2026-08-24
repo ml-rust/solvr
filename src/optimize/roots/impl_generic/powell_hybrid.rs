@@ -484,14 +484,14 @@ mod tests {
         let (device, client) = setup();
 
         // F(x) = [x1 + x2 - 3, 2*x1 - x2], solution: x = [1, 2]
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[2], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[2], &device).unwrap();
 
         let result = powell_hybrid_impl(
             &client,
             |x| {
                 let data: Vec<f64> = x.to_vec();
                 let residuals = vec![data[0] + data[1] - 3.0, 2.0 * data[0] - data[1]];
-                Ok(Tensor::from_slice(&residuals, &[2], x.device()))
+                Tensor::from_slice(&residuals, &[2], x.device())
             },
             &x0,
             &RootOptions::default(),
@@ -509,7 +509,7 @@ mod tests {
         let (device, client) = setup();
 
         // x^2 + y^2 = 1, x = y => x = y = 1/sqrt(2)
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.5, 0.5], &[2], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.5, 0.5], &[2], &device).unwrap();
 
         let result = powell_hybrid_impl(
             &client,
@@ -519,7 +519,7 @@ mod tests {
                     data[0] * data[0] + data[1] * data[1] - 1.0,
                     data[0] - data[1],
                 ];
-                Ok(Tensor::from_slice(&residuals, &[2], x.device()))
+                Tensor::from_slice(&residuals, &[2], x.device())
             },
             &x0,
             &RootOptions::default(),
@@ -539,7 +539,7 @@ mod tests {
 
         // Broyden tridiagonal: (3-2*x_i)*x_i - x_{i-1} - 2*x_{i+1} + 1 = 0
         let n = 5;
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[-1.0; 5], &[n], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[-1.0; 5], &[n], &device).unwrap();
 
         let result = powell_hybrid_impl(
             &client,
@@ -552,7 +552,7 @@ mod tests {
                     let x_next = if i < n - 1 { data[i + 1] } else { 0.0 };
                     residuals[i] = (3.0 - 2.0 * data[i]) * data[i] - x_prev - 2.0 * x_next + 1.0;
                 }
-                Ok(Tensor::from_slice(&residuals, x.shape(), x.device()))
+                Tensor::from_slice(&residuals, x.shape(), x.device())
             },
             &x0,
             &RootOptions {

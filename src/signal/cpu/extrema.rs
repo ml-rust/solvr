@@ -153,7 +153,7 @@ fn argrel_cpu(
         }
     }
 
-    let values_tensor = Tensor::from_slice(&values, &[values.len()], device);
+    let values_tensor = Tensor::from_slice(&values, &[values.len()], device)?;
 
     Ok(ExtremaResult {
         indices,
@@ -178,7 +178,7 @@ mod tests {
 
         // Signal with clear minima at indices 2 and 6
         let signal = vec![1.0, 0.5, 0.0, 0.5, 1.0, 0.5, 0.0, 0.5, 1.0];
-        let x = Tensor::from_slice(&signal, &[signal.len()], &device);
+        let x = Tensor::from_slice(&signal, &[signal.len()], &device).unwrap();
 
         let result = client.argrelmin(&x, 1, ExtremumMode::Clip).unwrap();
 
@@ -194,7 +194,7 @@ mod tests {
 
         // Signal with clear maxima at indices 0, 4, 8
         let signal = vec![1.0, 0.5, 0.0, 0.5, 1.0, 0.5, 0.0, 0.5, 1.0];
-        let x = Tensor::from_slice(&signal, &[signal.len()], &device);
+        let x = Tensor::from_slice(&signal, &[signal.len()], &device).unwrap();
 
         let result = client.argrelmax(&x, 1, ExtremumMode::Clip).unwrap();
 
@@ -212,7 +212,7 @@ mod tests {
 
         // With order=2, a minimum must be less than 2 neighbors on each side
         let signal = vec![5.0, 4.0, 3.0, 2.0, 1.0, 2.0, 3.0, 4.0, 5.0];
-        let x = Tensor::from_slice(&signal, &[signal.len()], &device);
+        let x = Tensor::from_slice(&signal, &[signal.len()], &device).unwrap();
 
         let result = client.argrelmin(&x, 2, ExtremumMode::Clip).unwrap();
 
@@ -226,7 +226,7 @@ mod tests {
 
         // Periodic signal
         let signal = vec![0.0, 1.0, 0.0, 1.0, 0.0];
-        let x = Tensor::from_slice(&signal, &[signal.len()], &device);
+        let x = Tensor::from_slice(&signal, &[signal.len()], &device).unwrap();
 
         let result = client.argrelmax(&x, 1, ExtremumMode::Wrap).unwrap();
 
@@ -239,7 +239,7 @@ mod tests {
         let (client, device) = setup();
 
         let signal = vec![0.0, 1.0, 0.0, -1.0, 0.0];
-        let x = Tensor::from_slice(&signal, &[signal.len()], &device);
+        let x = Tensor::from_slice(&signal, &[signal.len()], &device).unwrap();
 
         let (minima, maxima) = client.argrelextrema(&x, 1, ExtremumMode::Clip).unwrap();
 
@@ -255,7 +255,7 @@ mod tests {
 
         // Monotonically increasing signal - no local minima (except possibly edges)
         let signal = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-        let x = Tensor::from_slice(&signal, &[signal.len()], &device);
+        let x = Tensor::from_slice(&signal, &[signal.len()], &device).unwrap();
 
         let result = client.argrelmin(&x, 1, ExtremumMode::Clip).unwrap();
 
@@ -271,7 +271,7 @@ mod tests {
         // Signal with a plateau (equal values) - these should NOT be minima
         // because we require strictly less than neighbors
         let signal = vec![1.0, 0.0, 0.0, 0.0, 1.0];
-        let x = Tensor::from_slice(&signal, &[signal.len()], &device);
+        let x = Tensor::from_slice(&signal, &[signal.len()], &device).unwrap();
 
         let result = client.argrelmin(&x, 1, ExtremumMode::Clip).unwrap();
 

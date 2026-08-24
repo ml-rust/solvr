@@ -134,9 +134,9 @@ where
         let jacobian = compute_bvp_jacobian(client, f, bc, x, &y_current, n_vars)?;
 
         // Solve J * delta = -residual
-        let j_tensor = Tensor::<R>::from_slice(&jacobian, &[n_unknowns, n_unknowns], device);
+        let j_tensor = Tensor::<R>::from_slice(&jacobian, &[n_unknowns, n_unknowns], device)?;
         let neg_res: Vec<f64> = residual.iter().map(|&r| -r).collect();
-        let neg_res_tensor = Tensor::<R>::from_slice(&neg_res, &[n_unknowns, 1], device);
+        let neg_res_tensor = Tensor::<R>::from_slice(&neg_res, &[n_unknowns, 1], device)?;
 
         let delta_tensor = client
             .solve(&j_tensor, &neg_res_tensor)
@@ -183,14 +183,14 @@ where
         let y_ip1: Vec<f64> = (0..n_vars).map(|v| y[v * n_points + i + 1]).collect();
 
         // Evaluate f at point i
-        let x_i_tensor = Tensor::<R>::from_slice(&[x[i]], &[1], device);
-        let y_i_tensor = Tensor::<R>::from_slice(&y_i, &[n_vars], device);
+        let x_i_tensor = Tensor::<R>::from_slice(&[x[i]], &[1], device)?;
+        let y_i_tensor = Tensor::<R>::from_slice(&y_i, &[n_vars], device)?;
         let f_i = f(&x_i_tensor, &y_i_tensor).map_err(to_integrate_err)?;
         let f_i_vec: Vec<f64> = f_i.to_vec();
 
         // Evaluate f at point i+1
-        let x_ip1_tensor = Tensor::<R>::from_slice(&[x[i + 1]], &[1], device);
-        let y_ip1_tensor = Tensor::<R>::from_slice(&y_ip1, &[n_vars], device);
+        let x_ip1_tensor = Tensor::<R>::from_slice(&[x[i + 1]], &[1], device)?;
+        let y_ip1_tensor = Tensor::<R>::from_slice(&y_ip1, &[n_vars], device)?;
         let f_ip1 = f(&x_ip1_tensor, &y_ip1_tensor).map_err(to_integrate_err)?;
         let f_ip1_vec: Vec<f64> = f_ip1.to_vec();
 
@@ -208,8 +208,8 @@ where
         .map(|v| y[v * n_points + n_points - 1])
         .collect();
 
-    let y_a_tensor = Tensor::<R>::from_slice(&y_a, &[n_vars], device);
-    let y_b_tensor = Tensor::<R>::from_slice(&y_b, &[n_vars], device);
+    let y_a_tensor = Tensor::<R>::from_slice(&y_a, &[n_vars], device)?;
+    let y_b_tensor = Tensor::<R>::from_slice(&y_b, &[n_vars], device)?;
     let bc_res = bc(&y_a_tensor, &y_b_tensor).map_err(to_integrate_err)?;
     let bc_vec: Vec<f64> = bc_res.to_vec();
 
@@ -295,14 +295,14 @@ where
             .collect();
 
         // Evaluate f at midpoint
-        let x_mid_tensor = Tensor::<R>::from_slice(&[x_mid], &[1], device);
-        let y_mid_tensor = Tensor::<R>::from_slice(&y_mid, &[n_vars], device);
+        let x_mid_tensor = Tensor::<R>::from_slice(&[x_mid], &[1], device)?;
+        let y_mid_tensor = Tensor::<R>::from_slice(&y_mid, &[n_vars], device)?;
         let f_mid = f(&x_mid_tensor, &y_mid_tensor).map_err(to_integrate_err)?;
         let f_mid_vec: Vec<f64> = f_mid.to_vec();
 
         // Also get f at endpoints
-        let x_i_tensor = Tensor::<R>::from_slice(&[x[i]], &[1], device);
-        let y_i_tensor = Tensor::<R>::from_slice(&y_i, &[n_vars], device);
+        let x_i_tensor = Tensor::<R>::from_slice(&[x[i]], &[1], device)?;
+        let y_i_tensor = Tensor::<R>::from_slice(&y_i, &[n_vars], device)?;
         let f_i = f(&x_i_tensor, &y_i_tensor).map_err(to_integrate_err)?;
         let f_i_vec: Vec<f64> = f_i.to_vec();
 
@@ -389,9 +389,9 @@ where
     let device = client.device();
     let n_points = x.len();
 
-    let x_tensor = Tensor::<R>::from_slice(x, &[n_points], device);
-    let y_tensor = Tensor::<R>::from_slice(y, &[n_vars, n_points], device);
-    let res_tensor = Tensor::<R>::from_slice(residual, &[residual.len()], device);
+    let x_tensor = Tensor::<R>::from_slice(x, &[n_points], device)?;
+    let y_tensor = Tensor::<R>::from_slice(y, &[n_vars, n_points], device)?;
+    let res_tensor = Tensor::<R>::from_slice(residual, &[residual.len()], device)?;
 
     Ok(BVPResult {
         x: x_tensor,
@@ -437,7 +437,7 @@ mod tests {
         let x_data: Vec<f64> = (0..n_points)
             .map(|i| i as f64 / (n_points - 1) as f64)
             .collect();
-        let x = Tensor::<CpuRuntime>::from_slice(&x_data, &[n_points], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&x_data, &[n_points], &device).unwrap();
 
         // Initial guess: y1 = x, y2 = 1
         let mut y_data = Vec::with_capacity(2 * n_points);
@@ -445,7 +445,7 @@ mod tests {
             y_data.push(xi); // y1 initial guess
         }
         y_data.extend(std::iter::repeat_n(1.0, n_points)); // y2 initial guess
-        let y = Tensor::<CpuRuntime>::from_slice(&y_data, &[2, n_points], &device);
+        let y = Tensor::<CpuRuntime>::from_slice(&y_data, &[2, n_points], &device).unwrap();
 
         let result = bvp_impl(
             &client,
@@ -454,14 +454,14 @@ mod tests {
                 let y_vec: Vec<f64> = y.to_vec();
                 let n_vars = y_vec.len();
                 let f_vec = vec![y_vec[n_vars / 2], 0.0]; // y2 and 0
-                Ok(Tensor::<CpuRuntime>::from_slice(&f_vec, &[2], &device))
+                Tensor::<CpuRuntime>::from_slice(&f_vec, &[2], &device)
             },
             |ya, yb| {
                 // bc: y1(0) = 0, y1(1) = 1
                 let ya_vec: Vec<f64> = ya.to_vec();
                 let yb_vec: Vec<f64> = yb.to_vec();
                 let bc_vec = vec![ya_vec[0], yb_vec[0] - 1.0];
-                Ok(Tensor::<CpuRuntime>::from_slice(&bc_vec, &[2], &device))
+                Tensor::<CpuRuntime>::from_slice(&bc_vec, &[2], &device)
             },
             &x,
             &y,

@@ -91,7 +91,8 @@ mod tests {
             ],
             &[6, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         let z = client
             .linkage_from_data(&data, LinkageMethod::Ward, DistanceMetric::Euclidean)
@@ -116,7 +117,8 @@ mod tests {
             ],
             &[6, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         let labels = client
             .fclusterdata(
@@ -147,7 +149,8 @@ mod tests {
             &[0.0, 0.0, 0.1, 0.1, 10.0, 10.0, 10.1, 10.1],
             &[4, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         let z = client
             .linkage_from_data(&data, LinkageMethod::Single, DistanceMetric::Euclidean)
@@ -168,7 +171,8 @@ mod tests {
             &[0.0, 0.0, 0.1, 0.1, 0.2, 0.0, 10.0, 10.0, 10.1, 10.1, 10.2, 10.0],
             &[6, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         let z = client
             .linkage_from_data(&data, LinkageMethod::Ward, DistanceMetric::Euclidean)
@@ -187,7 +191,8 @@ mod tests {
             &[0.0, 0.0, 1.0, 0.0, 5.0, 0.0, 6.0, 0.0],
             &[4, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         // All linkage methods should produce valid output
         for method in &[

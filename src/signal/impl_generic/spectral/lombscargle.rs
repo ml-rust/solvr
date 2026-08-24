@@ -48,7 +48,7 @@ where
     }
 
     if n_freqs == 0 {
-        return Ok(Tensor::zeros(&[0], dtype, device));
+        return Tensor::zeros(&[0], dtype, device);
     }
 
     // Compute mean and center the data
@@ -127,5 +127,5 @@ where
         power_vec.push(p);
     }
 
-    Ok(Tensor::from_slice(&power_vec, &[n_freqs], device))
+    Tensor::from_slice(&power_vec, &[n_freqs], device)
 }

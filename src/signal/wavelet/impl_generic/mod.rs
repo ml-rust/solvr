@@ -51,8 +51,8 @@ where
     let detail: Vec<f64> = detail_full.iter().step_by(2).cloned().collect();
 
     Ok(DwtResult {
-        approx: Tensor::from_slice(&approx, &[approx.len()], device),
-        detail: Tensor::from_slice(&detail, &[detail.len()], device),
+        approx: Tensor::from_slice(&approx, &[approx.len()], device)?,
+        detail: Tensor::from_slice(&detail, &[detail.len()], device)?,
     })
 }
 
@@ -99,7 +99,7 @@ where
         .map(|(&a, &d)| a + d)
         .collect();
 
-    Ok(Tensor::from_slice(&result, &[result.len()], device))
+    Tensor::from_slice(&result, &[result.len()], device)
 }
 
 /// Multi-level wavelet decomposition.
@@ -242,10 +242,10 @@ where
     let hh_t = transpose(&hh, new_cols, new_rows);
 
     Ok(Dwt2dResult {
-        ll: Tensor::from_slice(&ll_t, &[new_rows, new_cols], device),
-        lh: Tensor::from_slice(&lh_t, &[new_rows, new_cols], device),
-        hl: Tensor::from_slice(&hl_t, &[new_rows, new_cols], device),
-        hh: Tensor::from_slice(&hh_t, &[new_rows, new_cols], device),
+        ll: Tensor::from_slice(&ll_t, &[new_rows, new_cols], device)?,
+        lh: Tensor::from_slice(&lh_t, &[new_rows, new_cols], device)?,
+        hl: Tensor::from_slice(&hl_t, &[new_rows, new_cols], device)?,
+        hh: Tensor::from_slice(&hh_t, &[new_rows, new_cols], device)?,
     })
 }
 
@@ -327,7 +327,7 @@ where
     }
 
     let new_cols = result.len() / new_rows;
-    Ok(Tensor::from_slice(&result, &[new_rows, new_cols], device))
+    Tensor::from_slice(&result, &[new_rows, new_cols], device)
 }
 
 /// Compute continuous wavelet transform.
@@ -399,8 +399,8 @@ where
     }
 
     Ok(CwtResult {
-        coeffs_real: Tensor::from_slice(&coeffs_real, &[num_scales, n], device),
-        coeffs_imag: Tensor::from_slice(&coeffs_imag, &[num_scales, n], device),
+        coeffs_real: Tensor::from_slice(&coeffs_real, &[num_scales, n], device)?,
+        coeffs_imag: Tensor::from_slice(&coeffs_imag, &[num_scales, n], device)?,
         scales: scales.clone(),
     })
 }

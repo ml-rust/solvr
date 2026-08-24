@@ -27,11 +27,7 @@ impl WindowFunctions<WgpuRuntime> for WgpuClient {
         }
         let values = generate_hann_f64(size);
         let values_f32: Vec<f32> = values.iter().map(|&v| v as f32).collect();
-        Ok(Tensor::<WgpuRuntime>::from_slice(
-            &values_f32,
-            &[size],
-            device,
-        ))
+        Tensor::<WgpuRuntime>::from_slice(&values_f32, &[size], device)
     }
 
     fn hamming_window(
@@ -49,11 +45,7 @@ impl WindowFunctions<WgpuRuntime> for WgpuClient {
         }
         let values = generate_hamming_f64(size);
         let values_f32: Vec<f32> = values.iter().map(|&v| v as f32).collect();
-        Ok(Tensor::<WgpuRuntime>::from_slice(
-            &values_f32,
-            &[size],
-            device,
-        ))
+        Tensor::<WgpuRuntime>::from_slice(&values_f32, &[size], device)
     }
 
     fn blackman_window(
@@ -71,11 +63,7 @@ impl WindowFunctions<WgpuRuntime> for WgpuClient {
         }
         let values = generate_blackman_f64(size);
         let values_f32: Vec<f32> = values.iter().map(|&v| v as f32).collect();
-        Ok(Tensor::<WgpuRuntime>::from_slice(
-            &values_f32,
-            &[size],
-            device,
-        ))
+        Tensor::<WgpuRuntime>::from_slice(&values_f32, &[size], device)
     }
 
     fn kaiser_window(
@@ -94,11 +82,7 @@ impl WindowFunctions<WgpuRuntime> for WgpuClient {
         }
         let values = generate_kaiser_f64(size, beta);
         let values_f32: Vec<f32> = values.iter().map(|&v| v as f32).collect();
-        Ok(Tensor::<WgpuRuntime>::from_slice(
-            &values_f32,
-            &[size],
-            device,
-        ))
+        Tensor::<WgpuRuntime>::from_slice(&values_f32, &[size], device)
     }
 }
 

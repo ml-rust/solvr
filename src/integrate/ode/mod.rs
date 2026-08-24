@@ -41,7 +41,7 @@
 //! # let device = CpuDevice::new();
 //! # let client = CpuClient::new(device.clone());
 //! // Solve dy/dt = -y, y(0) = 1
-//! # let y0 = Tensor::from_slice(&[1.0], &[1], &device);
+//! # let y0 = Tensor::from_slice(&[1.0], &[1], &device)?;
 //! let result = client.solve_ivp(
 //!     |_t, y| Ok(client.mul_scalar(y, -1.0)?),
 //!     [0.0, 5.0],

@@ -105,7 +105,7 @@ where
 
     // Initialize state
     let mut t_val = t_start;
-    let t = Tensor::<R>::from_slice(&[t_val], &[1], device);
+    let t = Tensor::<R>::from_slice(&[t_val], &[1], device)?;
     let mut y = y0.clone();
 
     // History buffer for multistep method
@@ -152,7 +152,7 @@ where
     #[cfg(feature = "sparse")]
     let detected_pattern: Option<CsrData<R>> =
         if bdf_options.sparse_jacobian.enabled && bdf_options.sparse_jacobian.pattern.is_none() {
-            let t_init = Tensor::<R>::from_slice(&[t_start], &[1], device);
+            let t_init = Tensor::<R>::from_slice(&[t_start], &[1], device)?;
             match detect_jacobian_sparsity(client, &f, &t_init, y0) {
                 Ok(pat) => Some(pat),
                 Err(e) => {
@@ -203,7 +203,7 @@ where
 
         // Update Jacobian using autograd (exact, no finite differences!)
         if jacobian.is_none() || steps_since_jacobian >= jacobian_update_interval {
-            let t_new = Tensor::<R>::from_slice(&[t_val + h], &[1], device);
+            let t_new = Tensor::<R>::from_slice(&[t_val + h], &[1], device)?;
             jacobian = Some(
                 compute_jacobian_autograd(client, &f, &t_new, &y_pred).map_err(|e| {
                     IntegrateError::InvalidInput {
@@ -249,7 +249,7 @@ where
         }
 
         // Compute error estimate
-        let t_new = Tensor::<R>::from_slice(&[t_val + h], &[1], device);
+        let t_new = Tensor::<R>::from_slice(&[t_val + h], &[1], device)?;
         let f_new = eval_primal(client, &f, &t_new, &y_new).map_err(to_integrate_err)?;
         nfev += 1;
 
@@ -404,7 +404,7 @@ where
         .map_err(to_integrate_err)?;
 
     let mut y_iter = y_pred.clone();
-    let t_tensor = Tensor::<R>::from_slice(&[t_new], &[1], device);
+    let t_tensor = Tensor::<R>::from_slice(&[t_new], &[1], device)?;
     let mut nfev = 0;
 
     for _ in 0..options.max_newton_iter {
@@ -552,7 +552,7 @@ mod tests {
         let (_device, client) = setup();
 
         // dy/dt = -y, y(0) = 1, solution: y(t) = exp(-t)
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], client.device());
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], client.device()).unwrap();
 
         let result = bdf_impl(
             &client,
@@ -582,7 +582,7 @@ mod tests {
         let (_device, client) = setup();
 
         // Stiff system: dy/dt = -1000*y
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], client.device());
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], client.device()).unwrap();
 
         let result = bdf_impl(
             &client,
@@ -614,7 +614,7 @@ mod tests {
 
         // System: dy1/dt = -y1, dy2/dt = y1 - y2
         // Using dual operations for coupled system
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0], &[2], client.device());
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0], &[2], client.device()).unwrap();
 
         let mut opts = ODEOptions::with_tolerances(1e-4, 1e-6);
         opts.max_steps = 50000;
@@ -626,7 +626,7 @@ mod tests {
                 let y_data: Vec<f64> = y.primal().to_vec();
                 let dy = [-y_data[0], y_data[0] - y_data[1]];
                 // Create output DualTensor - tangent will be computed by autograd
-                let dy_tensor = Tensor::<CpuRuntime>::from_slice(&dy, &[2], c.device());
+                let dy_tensor = Tensor::<CpuRuntime>::from_slice(&dy, &[2], c.device())?;
                 Ok(DualTensor::new(dy_tensor, None))
             },
             [0.0, 2.0],

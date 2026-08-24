@@ -38,7 +38,7 @@ mod tests {
     fn linear_system(x: &Tensor<CpuRuntime>) -> Result<Tensor<CpuRuntime>> {
         let data: Vec<f64> = x.to_vec();
         let residuals = vec![data[0] + data[1] - 3.0, 2.0 * data[0] - data[1]];
-        Ok(Tensor::from_slice(&residuals, &[2], x.device()))
+        Tensor::from_slice(&residuals, &[2], x.device())
     }
 
     #[test]
@@ -46,7 +46,7 @@ mod tests {
         let device = CpuDevice::new();
         let client = CpuClient::new(device.clone());
 
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[2], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[2], &device).unwrap();
         let result = client
             .levenberg_marquardt(linear_system, &x0, &RootOptions::default())
             .expect("levenberg_marquardt failed");
@@ -68,10 +68,10 @@ mod tests {
                 data[0] * data[0] + data[1] * data[1] - 4.0,
                 data[0] - data[1],
             ];
-            Ok(Tensor::from_slice(&residuals, &[2], x.device()))
+            Tensor::from_slice(&residuals, &[2], x.device())
         };
 
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0], &[2], &device).unwrap();
         let expected = (2.0_f64).sqrt();
 
         use crate::optimize::roots::traits::{Broyden1Algorithms, NewtonSystemAlgorithms};

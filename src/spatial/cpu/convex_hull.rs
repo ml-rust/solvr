@@ -40,7 +40,8 @@ mod tests {
             &[0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0],
             &[4, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         let hull = client.convex_hull(&points).unwrap();
 
@@ -66,7 +67,8 @@ mod tests {
             &[0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 0.5, 0.5],
             &[5, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         let hull = client.convex_hull(&points).unwrap();
 
@@ -83,12 +85,14 @@ mod tests {
             &[0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0],
             &[4, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         let hull = client.convex_hull(&points).unwrap();
 
         // Test points: (0.5, 0.5) inside, (2.0, 2.0) outside
-        let test_points = Tensor::<CpuRuntime>::from_slice(&[0.5, 0.5, 2.0, 2.0], &[2, 2], &device);
+        let test_points =
+            Tensor::<CpuRuntime>::from_slice(&[0.5, 0.5, 2.0, 2.0], &[2, 2], &device).unwrap();
 
         let result = client.convex_hull_contains(&hull, &test_points).unwrap();
         let data: Vec<f64> = result.to_vec();
@@ -106,7 +110,8 @@ mod tests {
             &[0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
             &[4, 3],
             &device,
-        );
+        )
+        .unwrap();
 
         let hull = client.convex_hull(&points).unwrap();
 

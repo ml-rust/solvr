@@ -61,8 +61,8 @@ mod tests {
         let (client, device) = setup();
 
         // Simple 3-tap lowpass FIR: [0.25, 0.5, 0.25]
-        let b = Tensor::from_slice(&[0.25, 0.5, 0.25], &[3], &device);
-        let a = Tensor::from_slice(&[1.0], &[1], &device);
+        let b = Tensor::from_slice(&[0.25, 0.5, 0.25], &[3], &device).unwrap();
+        let a = Tensor::from_slice(&[1.0], &[1], &device).unwrap();
 
         let result = client
             .freqz(&b, &a, FreqzSpec::NumPoints(128), false, &device)
@@ -93,8 +93,8 @@ mod tests {
         let (client, device) = setup();
 
         // Unity gain filter
-        let b = Tensor::from_slice(&[1.0], &[1], &device);
-        let a = Tensor::from_slice(&[1.0], &[1], &device);
+        let b = Tensor::from_slice(&[1.0], &[1], &device).unwrap();
+        let a = Tensor::from_slice(&[1.0], &[1], &device).unwrap();
 
         let result = client
             .freqz(&b, &a, FreqzSpec::NumPoints(64), false, &device)
@@ -114,11 +114,11 @@ mod tests {
         let (client, device) = setup();
 
         // Test at specific frequencies
-        let b = Tensor::from_slice(&[1.0, -1.0], &[2], &device);
-        let a = Tensor::from_slice(&[1.0], &[1], &device);
+        let b = Tensor::from_slice(&[1.0, -1.0], &[2], &device).unwrap();
+        let a = Tensor::from_slice(&[1.0], &[1], &device).unwrap();
 
         // Evaluate at 0, pi/2, pi
-        let w_test = Tensor::from_slice(&[0.0, PI / 2.0, PI], &[3], &device);
+        let w_test = Tensor::from_slice(&[0.0, PI / 2.0, PI], &[3], &device).unwrap();
         let result = client
             .freqz(&b, &a, FreqzSpec::Frequencies(w_test), false, &device)
             .unwrap();
@@ -140,8 +140,8 @@ mod tests {
     fn test_freqz_whole() {
         let (client, device) = setup();
 
-        let b = Tensor::from_slice(&[1.0], &[1], &device);
-        let a = Tensor::from_slice(&[1.0], &[1], &device);
+        let b = Tensor::from_slice(&[1.0], &[1], &device).unwrap();
+        let a = Tensor::from_slice(&[1.0], &[1], &device).unwrap();
 
         let result = client
             .freqz(&b, &a, FreqzSpec::NumPoints(64), true, &device)
@@ -159,7 +159,8 @@ mod tests {
         let (client, device) = setup();
 
         // Single section: [b0, b1, b2, a0, a1, a2] = [0.25, 0.5, 0.25, 1, 0, 0]
-        let sections = Tensor::from_slice(&[0.25, 0.5, 0.25, 1.0, 0.0, 0.0], &[1, 6], &device);
+        let sections =
+            Tensor::from_slice(&[0.25, 0.5, 0.25, 1.0, 0.0, 0.0], &[1, 6], &device).unwrap();
         let sos = SosFilter { sections };
 
         let sos_result = client
@@ -167,8 +168,8 @@ mod tests {
             .unwrap();
 
         // Compare with equivalent tf form
-        let b = Tensor::from_slice(&[0.25, 0.5, 0.25], &[3], &device);
-        let a = Tensor::from_slice(&[1.0, 0.0, 0.0], &[3], &device);
+        let b = Tensor::from_slice(&[0.25, 0.5, 0.25], &[3], &device).unwrap();
+        let a = Tensor::from_slice(&[1.0, 0.0, 0.0], &[3], &device).unwrap();
         let tf_result = client
             .freqz(&b, &a, FreqzSpec::NumPoints(64), false, &device)
             .unwrap();
@@ -196,7 +197,8 @@ mod tests {
             ],
             &[2, 6],
             &device,
-        );
+        )
+        .unwrap();
         let sos = SosFilter { sections };
 
         let result = client
@@ -215,11 +217,11 @@ mod tests {
         let (client, device) = setup();
 
         // Linear phase FIR with N=5 taps has constant group delay = (N-1)/2 = 2
-        let b = Tensor::from_slice(&[1.0, 2.0, 3.0, 2.0, 1.0], &[5], &device);
-        let a = Tensor::from_slice(&[1.0], &[1], &device);
+        let b = Tensor::from_slice(&[1.0, 2.0, 3.0, 2.0, 1.0], &[5], &device).unwrap();
+        let a = Tensor::from_slice(&[1.0], &[1], &device).unwrap();
 
         // Test at a few frequencies
-        let w = Tensor::from_slice(&[0.1, 0.5, 1.0, 2.0], &[4], &device);
+        let w = Tensor::from_slice(&[0.1, 0.5, 1.0, 2.0], &[4], &device).unwrap();
 
         let tau = client.group_delay(&b, &a, &w).unwrap();
         let tau_data: Vec<f64> = tau.to_vec();
@@ -235,8 +237,8 @@ mod tests {
         let (client, device) = setup();
 
         // Filter with known gain
-        let b = Tensor::from_slice(&[2.0], &[1], &device); // Gain of 2
-        let a = Tensor::from_slice(&[1.0], &[1], &device);
+        let b = Tensor::from_slice(&[2.0], &[1], &device).unwrap(); // Gain of 2
+        let a = Tensor::from_slice(&[1.0], &[1], &device).unwrap();
 
         let result = client
             .freqz(&b, &a, FreqzSpec::NumPoints(10), false, &device)
@@ -257,10 +259,10 @@ mod tests {
         let (client, device) = setup();
 
         // Simple delay: H(z) = z^{-1}, phase = -omega
-        let b = Tensor::from_slice(&[0.0, 1.0], &[2], &device);
-        let a = Tensor::from_slice(&[1.0], &[1], &device);
+        let b = Tensor::from_slice(&[0.0, 1.0], &[2], &device).unwrap();
+        let a = Tensor::from_slice(&[1.0], &[1], &device).unwrap();
 
-        let w_test = Tensor::from_slice(&[0.0, PI / 4.0, PI / 2.0, PI], &[4], &device);
+        let w_test = Tensor::from_slice(&[0.0, PI / 4.0, PI / 2.0, PI], &[4], &device).unwrap();
         let result = client
             .freqz(&b, &a, FreqzSpec::Frequencies(w_test), false, &device)
             .unwrap();

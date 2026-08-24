@@ -29,7 +29,7 @@ where
     };
 
     if n <= 1 {
-        return Ok(Tensor::<R>::from_slice(&vec![0.0f64; n], &[n], &device));
+        return Tensor::<R>::from_slice(&vec![0.0f64; n], &[n], &device);
     }
 
     let mut closeness = vec![0.0f64; n];
@@ -70,5 +70,5 @@ where
         }
     }
 
-    Ok(Tensor::<R>::from_slice(&closeness, &[n], &device))
+    Tensor::<R>::from_slice(&closeness, &[n], &device)
 }

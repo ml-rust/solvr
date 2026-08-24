@@ -30,7 +30,7 @@ where
         StructuringElement::Full => {
             // All ones
             let data = vec![1.0f64; total];
-            let tensor = Tensor::from_slice(&data, &shape, device);
+            let tensor = Tensor::from_slice(&data, &shape, device)?;
             client.cast(&tensor, dtype)
         }
         StructuringElement::Cross => {
@@ -44,7 +44,7 @@ where
                 data[center - stride] = 1.0;
                 data[center + stride] = 1.0;
             }
-            let tensor = Tensor::from_slice(&data, &shape, device);
+            let tensor = Tensor::from_slice(&data, &shape, device)?;
             client.cast(&tensor, dtype)
         }
     }

@@ -134,7 +134,8 @@ mod tests {
         let (client, device) = setup();
 
         // 90 degree rotation around Z
-        let angles = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, PI / 2.0], &[3], &device);
+        let angles =
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, PI / 2.0], &[3], &device).unwrap();
 
         let rot = client
             .rotation_from_euler(&angles, EulerOrder::XYZ)
@@ -165,7 +166,7 @@ mod tests {
     fn test_rotation_inverse() {
         let (client, device) = setup();
 
-        let angles = Tensor::<CpuRuntime>::from_slice(&[0.1, 0.2, 0.3], &[3], &device);
+        let angles = Tensor::<CpuRuntime>::from_slice(&[0.1, 0.2, 0.3], &[3], &device).unwrap();
         let rot = client
             .rotation_from_euler(&angles, EulerOrder::XYZ)
             .unwrap();

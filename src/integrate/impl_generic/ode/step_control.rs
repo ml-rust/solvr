@@ -40,7 +40,7 @@ where
     let sum_sq = client.sum(&err_sq, &[0], false)?;
 
     // Compute sqrt(sum_sq / n) on device
-    let n_tensor = Tensor::<R>::from_slice(&[n], &[1], device);
+    let n_tensor = Tensor::<R>::from_slice(&[n], &[1], device)?;
     let mean_sq = client.div(&sum_sq, &n_tensor)?;
 
     // sqrt via x^0.5
@@ -66,9 +66,9 @@ where
     let exponent = 1.0 / (order as f64 + 1.0);
 
     // inv_error = 1 / (error + epsilon) to avoid division by zero
-    let epsilon = Tensor::<R>::from_slice(&[1e-10], &[1], device);
+    let epsilon = Tensor::<R>::from_slice(&[1e-10], &[1], device)?;
     let error_safe = client.add(error, &epsilon)?;
-    let one = Tensor::<R>::from_slice(&[1.0], &[1], device);
+    let one = Tensor::<R>::from_slice(&[1.0], &[1], device)?;
     let inv_error = client.div(&one, &error_safe)?;
 
     // factor = safety * inv_error^exponent
@@ -76,8 +76,8 @@ where
     let factor = client.mul_scalar(&power, safety)?;
 
     // Clamp to [min_factor, max_factor]
-    let min_t = Tensor::<R>::from_slice(&[min_factor], &[1], device);
-    let max_t = Tensor::<R>::from_slice(&[max_factor], &[1], device);
+    let min_t = Tensor::<R>::from_slice(&[min_factor], &[1], device)?;
+    let max_t = Tensor::<R>::from_slice(&[max_factor], &[1], device)?;
     let factor_clamped = client.minimum(&client.maximum(&factor, &min_t)?, &max_t)?;
 
     Ok(factor_clamped)
@@ -95,13 +95,13 @@ where
     let device = client.device();
 
     // diff = 1.0 - error (positive if error < 1)
-    let one = Tensor::<R>::from_slice(&[1.0], &[1], device);
+    let one = Tensor::<R>::from_slice(&[1.0], &[1], device)?;
     let diff = client.sub(&one, error)?;
 
     // Smooth indicator: (diff + |diff|) / (2 * |diff| + epsilon)
     // This gives ~1 if diff > 0 (error < 1), ~0 if diff < 0 (error > 1)
     let diff_abs = client.abs(&diff)?;
-    let epsilon = Tensor::<R>::from_slice(&[1e-14], &[1], device);
+    let epsilon = Tensor::<R>::from_slice(&[1e-14], &[1], device)?;
     let numerator = client.add(&diff, &diff_abs)?;
     let denominator = client.add(&client.mul_scalar(&diff_abs, 2.0)?, &epsilon)?;
 
@@ -123,7 +123,7 @@ where
     C: TensorOps<R> + ScalarOps<R> + RuntimeClient<R>,
 {
     let device = client.device();
-    let one = Tensor::<R>::from_slice(&[1.0], &[1], device);
+    let one = Tensor::<R>::from_slice(&[1.0], &[1], device)?;
 
     // one_minus_accepted = 1 - accepted
     let one_minus = client.sub(&one, accepted)?;
@@ -156,7 +156,7 @@ where
 {
     let device = client.device();
     let n = y0.shape()[0] as f64;
-    let n_tensor = Tensor::<R>::from_slice(&[n], &[1], device);
+    let n_tensor = Tensor::<R>::from_slice(&[n], &[1], device)?;
 
     // Compute scaling: sc = atol + rtol * |y0|
     let y0_abs = client.abs(y0)?;
@@ -177,14 +177,14 @@ where
     let d1 = client.pow_scalar(&d1_sq_n, 0.5)?;
 
     // h0 = 0.01 * d0 / (d1 + epsilon)
-    let epsilon = Tensor::<R>::from_slice(&[1e-10], &[1], device);
+    let epsilon = Tensor::<R>::from_slice(&[1e-10], &[1], device)?;
     let d1_safe = client.add(&d1, &epsilon)?;
     let ratio = client.div(&d0, &d1_safe)?;
     let h0 = client.mul_scalar(&ratio, 0.01)?;
 
     // Clamp h0 to reasonable range
-    let min_h = Tensor::<R>::from_slice(&[1e-6], &[1], device);
-    let max_h = Tensor::<R>::from_slice(&[0.1], &[1], device);
+    let min_h = Tensor::<R>::from_slice(&[1e-6], &[1], device)?;
+    let max_h = Tensor::<R>::from_slice(&[0.1], &[1], device)?;
     let h0_clamped = client.minimum(&client.maximum(&h0, &min_h)?, &max_h)?;
 
     // Euler step: y1 = y0 + h0 * f0
@@ -207,7 +207,7 @@ where
     // h1 = (0.01 / max(d1, d2))^(1/(order+1))
     let d_max = client.maximum(&d1, &d2)?;
     let d_max_safe = client.add(&d_max, &epsilon)?;
-    let point_01 = Tensor::<R>::from_slice(&[0.01], &[1], device);
+    let point_01 = Tensor::<R>::from_slice(&[0.01], &[1], device)?;
     let ratio2 = client.div(&point_01, &d_max_safe)?;
     let exponent = 1.0 / (order as f64 + 1.0);
     let h1 = client.pow_scalar(&ratio2, exponent)?;
@@ -232,9 +232,10 @@ mod tests {
     fn test_compute_error() {
         let (device, client) = setup();
 
-        let y_old = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0, 3.0], &[3], &device);
-        let y_new = Tensor::<CpuRuntime>::from_slice(&[1.1, 2.1, 3.1], &[3], &device);
-        let y_err = Tensor::<CpuRuntime>::from_slice(&[0.001, 0.001, 0.001], &[3], &device);
+        let y_old = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0, 3.0], &[3], &device).unwrap();
+        let y_new = Tensor::<CpuRuntime>::from_slice(&[1.1, 2.1, 3.1], &[3], &device).unwrap();
+        let y_err =
+            Tensor::<CpuRuntime>::from_slice(&[0.001, 0.001, 0.001], &[3], &device).unwrap();
 
         // With rtol=1e-3, atol=1e-3: sc ≈ 0.001 + 0.001 * 3.1 ≈ 0.004
         // err_scaled = 0.001 / 0.004 ≈ 0.25
@@ -251,13 +252,13 @@ mod tests {
         let (device, client) = setup();
 
         // Error < 1 should give acceptance ~1
-        let error_small = Tensor::<CpuRuntime>::from_slice(&[0.5], &[1], &device);
+        let error_small = Tensor::<CpuRuntime>::from_slice(&[0.5], &[1], &device).unwrap();
         let accept = compute_acceptance(&client, &error_small).unwrap();
         let accept_val: Vec<f64> = accept.to_vec();
         assert!(accept_val[0] > 0.9);
 
         // Error > 1 should give acceptance ~0
-        let error_large = Tensor::<CpuRuntime>::from_slice(&[2.0], &[1], &device);
+        let error_large = Tensor::<CpuRuntime>::from_slice(&[2.0], &[1], &device).unwrap();
         let reject = compute_acceptance(&client, &error_large).unwrap();
         let reject_val: Vec<f64> = reject.to_vec();
         assert!(reject_val[0] < 0.1);
@@ -268,13 +269,13 @@ mod tests {
         let (device, client) = setup();
 
         // Small error should give large factor (clamped to max)
-        let error_small = Tensor::<CpuRuntime>::from_slice(&[0.01], &[1], &device);
+        let error_small = Tensor::<CpuRuntime>::from_slice(&[0.01], &[1], &device).unwrap();
         let factor = compute_step_factor(&client, &error_small, 4, 0.9, 0.2, 10.0).unwrap();
         let factor_val: Vec<f64> = factor.to_vec();
         assert!(factor_val[0] >= 1.0);
 
         // Large error should give small factor
-        let error_large = Tensor::<CpuRuntime>::from_slice(&[10.0], &[1], &device);
+        let error_large = Tensor::<CpuRuntime>::from_slice(&[10.0], &[1], &device).unwrap();
         let factor2 = compute_step_factor(&client, &error_large, 4, 0.9, 0.2, 10.0).unwrap();
         let factor2_val: Vec<f64> = factor2.to_vec();
         assert!(factor2_val[0] <= 1.0);
@@ -284,17 +285,17 @@ mod tests {
     fn test_conditional_update() {
         let (device, client) = setup();
 
-        let y_old = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0], &[2], &device);
-        let y_new = Tensor::<CpuRuntime>::from_slice(&[10.0, 20.0], &[2], &device);
+        let y_old = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0], &[2], &device).unwrap();
+        let y_new = Tensor::<CpuRuntime>::from_slice(&[10.0, 20.0], &[2], &device).unwrap();
 
         // Accepted = 1 should give y_new
-        let accepted = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
+        let accepted = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
         let result = conditional_update(&client, &y_old, &y_new, &accepted).unwrap();
         let result_val: Vec<f64> = result.to_vec();
         assert!((result_val[0] - 10.0).abs() < 1e-10);
 
         // Accepted = 0 should give y_old
-        let rejected = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device);
+        let rejected = Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device).unwrap();
         let result2 = conditional_update(&client, &y_old, &y_new, &rejected).unwrap();
         let result2_val: Vec<f64> = result2.to_vec();
         assert!((result2_val[0] - 1.0).abs() < 1e-10);

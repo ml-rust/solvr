@@ -57,8 +57,8 @@ mod tests {
         let (device, client) = setup();
 
         let t_span = [0.0, 1.0];
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
-        let k = Tensor::<CpuRuntime>::from_slice(&[0.5f64], &[1], &device);
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
+        let k = Tensor::<CpuRuntime>::from_slice(&[0.5f64], &[1], &device).unwrap();
 
         // ODE: dy/dt = -k * y
         let f = |_t: &Var<CpuRuntime>,

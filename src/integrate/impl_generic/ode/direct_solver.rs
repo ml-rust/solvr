@@ -284,8 +284,8 @@ impl<R: Runtime<DType = DType>> DirectSparseSolver<R> {
             self.row_scales = Some(row_scales.clone());
             self.col_scales = Some(col_scales.clone());
             // Tensor versions for on-device b/solution scaling
-            self.row_scales_tensor = Some(Tensor::<R>::from_slice(&row_scales, &[n], device));
-            self.col_scales_tensor = Some(Tensor::<R>::from_slice(&col_scales, &[n], device));
+            self.row_scales_tensor = Some(Tensor::<R>::from_slice(&row_scales, &[n], device)?);
+            self.col_scales_tensor = Some(Tensor::<R>::from_slice(&col_scales, &[n], device)?);
         }
 
         // Step 5: Build gather indices mapping permuted CSC nonzeros → dense matrix positions
@@ -296,7 +296,7 @@ impl<R: Runtime<DType = DType>> DirectSparseSolver<R> {
         // Step 6: Build tensor permutations for on-device solve_with_factors
         if let Some(row_perm) = &self.row_perm {
             let row_perm_i64: Vec<i64> = row_perm.iter().map(|&i| i as i64).collect();
-            self.row_perm_tensor = Some(Tensor::<R>::from_slice(&row_perm_i64, &[n], device));
+            self.row_perm_tensor = Some(Tensor::<R>::from_slice(&row_perm_i64, &[n], device)?);
         }
         // Compute inverse column permutation: inv[col_perm[i]] = i
         let mut inv_col_perm = vec![0usize; n];
@@ -304,7 +304,7 @@ impl<R: Runtime<DType = DType>> DirectSparseSolver<R> {
             inv_col_perm[col_perm[i]] = i;
         }
         let inv_col_perm_i64: Vec<i64> = inv_col_perm.iter().map(|&i| i as i64).collect();
-        self.inv_col_perm_tensor = Some(Tensor::<R>::from_slice(&inv_col_perm_i64, &[n], device));
+        self.inv_col_perm_tensor = Some(Tensor::<R>::from_slice(&inv_col_perm_i64, &[n], device)?);
 
         // Step 7: Cache the permuted CSC (subsequent solves update values in-place)
         self.cached_permuted_csc = Some(perm_csc);
@@ -345,8 +345,8 @@ impl<R: Runtime<DType = DType>> DirectSparseSolver<R> {
         }
 
         let device = perm_csc.col_ptrs().device();
-        let row_tensor = Tensor::<R>::from_slice(&dense_rows, &[nnz], device);
-        let col_tensor = Tensor::<R>::from_slice(&dense_cols, &[nnz], device);
+        let row_tensor = Tensor::<R>::from_slice(&dense_rows, &[nnz], device)?;
+        let col_tensor = Tensor::<R>::from_slice(&dense_cols, &[nnz], device)?;
         Ok((row_tensor, col_tensor))
     }
 

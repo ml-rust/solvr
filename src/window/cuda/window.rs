@@ -74,9 +74,9 @@ fn create_window_tensor_cuda(
                 &values_f32,
                 &[size],
                 device,
-            ))
+            )?)
         }
-        DType::F64 => Ok(Tensor::<CudaRuntime>::from_slice(&values, &[size], device)),
+        DType::F64 => Ok(Tensor::<CudaRuntime>::from_slice(&values, &[size], device)?),
         _ => Err(Error::UnsupportedDType {
             dtype,
             op: "window",

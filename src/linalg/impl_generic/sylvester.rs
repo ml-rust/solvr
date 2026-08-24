@@ -164,7 +164,7 @@ where
 
     // Step 4: X = U Y V^T
     let device = a.device();
-    let y = Tensor::from_slice(&y_data, &[na, mb], device);
+    let y = Tensor::from_slice(&y_data, &[na, mb], device)?;
     let vt = v.transpose(0, 1)?;
     client.matmul(&client.matmul(u, &y)?, &vt)
 }

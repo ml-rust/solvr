@@ -26,8 +26,8 @@ mod tests {
         let device = CpuDevice::new();
         let client = CpuClient::new(device.clone());
 
-        let lower = Tensor::<CpuRuntime>::from_slice(&[-5.0, -5.0], &[2], &device);
-        let upper = Tensor::<CpuRuntime>::from_slice(&[5.0, 5.0], &[2], &device);
+        let lower = Tensor::<CpuRuntime>::from_slice(&[-5.0, -5.0], &[2], &device).unwrap();
+        let upper = Tensor::<CpuRuntime>::from_slice(&[5.0, 5.0], &[2], &device).unwrap();
 
         // DE and DA converge faster
         let opts = GlobalOptions {
@@ -64,9 +64,10 @@ mod tests {
         let device = CpuDevice::new();
         let client = CpuClient::new(device.clone());
 
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[2.0, 2.0, 2.0], &[3], &device);
-        let lower = Tensor::<CpuRuntime>::from_slice(&[-10.0, -10.0, -10.0], &[3], &device);
-        let upper = Tensor::<CpuRuntime>::from_slice(&[10.0, 10.0, 10.0], &[3], &device);
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[2.0, 2.0, 2.0], &[3], &device).unwrap();
+        let lower =
+            Tensor::<CpuRuntime>::from_slice(&[-10.0, -10.0, -10.0], &[3], &device).unwrap();
+        let upper = Tensor::<CpuRuntime>::from_slice(&[10.0, 10.0, 10.0], &[3], &device).unwrap();
 
         let opts = GlobalOptions {
             max_iter: 50,

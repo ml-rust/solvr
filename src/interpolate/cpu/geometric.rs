@@ -78,7 +78,7 @@ mod tests {
     fn test_zoom_2x() {
         let (client, device) = setup();
         let data = vec![1.0, 2.0, 3.0, 4.0];
-        let input = Tensor::from_slice(&data, &[2, 2], &device);
+        let input = Tensor::from_slice(&data, &[2, 2], &device).unwrap();
         let result = client
             .zoom(&input, &[2.0, 2.0], InterpolationOrder::Nearest)
             .unwrap();
@@ -89,7 +89,7 @@ mod tests {
     fn test_rotate_90() {
         let (client, device) = setup();
         let data = vec![1.0, 2.0, 3.0, 4.0];
-        let input = Tensor::from_slice(&data, &[2, 2], &device);
+        let input = Tensor::from_slice(&data, &[2, 2], &device).unwrap();
         let result = client
             .rotate(
                 &input,
@@ -107,7 +107,7 @@ mod tests {
     fn test_shift_identity() {
         let (client, device) = setup();
         let data = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-        let input = Tensor::from_slice(&data, &[5], &device);
+        let input = Tensor::from_slice(&data, &[5], &device).unwrap();
         let result = client
             .shift(&input, &[0.0], InterpolationOrder::Linear, 0.0)
             .unwrap();

@@ -56,7 +56,8 @@ mod tests {
             &[0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0],
             &[4, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         let tree = client
             .balltree_build(&points, BallTreeOptions::default())
@@ -73,13 +74,14 @@ mod tests {
             &[0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0],
             &[4, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         let tree = client
             .balltree_build(&points, BallTreeOptions::default())
             .unwrap();
 
-        let query = Tensor::<CpuRuntime>::from_slice(&[0.1, 0.1], &[1, 2], &device);
+        let query = Tensor::<CpuRuntime>::from_slice(&[0.1, 0.1], &[1, 2], &device).unwrap();
 
         let result = client.balltree_query(&tree, &query, 2).unwrap();
 

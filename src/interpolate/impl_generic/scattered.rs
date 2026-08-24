@@ -130,11 +130,11 @@ where
     let dist_sq = client.sub(&sum, &two_dot)?;
 
     // Clamp to avoid division by zero
-    let eps = Tensor::full_scalar(&[m, n], DType::F64, 1e-30, device);
+    let eps = Tensor::full_scalar(&[m, n], DType::F64, 1e-30, device)?;
     let dist_sq_safe = client.maximum(&dist_sq, &eps)?;
 
     // Weights = 1/dist_sq (IDW with power 2)
-    let ones = Tensor::full_scalar(&[m, n], DType::F64, 1.0, device);
+    let ones = Tensor::full_scalar(&[m, n], DType::F64, 1.0, device)?;
     let weights = client.div(&ones, &dist_sq_safe)?;
 
     // Normalize weights: w_j / sum(w_j)
@@ -194,15 +194,18 @@ mod tests {
             &[0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0],
             &[4, 2],
             &device,
-        );
-        let values = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0, 3.0, 4.0], &[4], &device);
+        )
+        .unwrap();
+        let values =
+            Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0, 3.0, 4.0], &[4], &device).unwrap();
 
         // Query points close to known points
         let xi = Tensor::<CpuRuntime>::from_slice(
             &[0.1, 0.1, 0.9, 0.1, 0.1, 0.9, 0.9, 0.9],
             &[4, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         let result =
             griddata_impl(&client, &points, &values, &xi, ScatteredMethod::Nearest).unwrap();
@@ -221,11 +224,13 @@ mod tests {
             &[0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0],
             &[4, 2],
             &device,
-        );
-        let values = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 1.0, 2.0], &[4], &device);
+        )
+        .unwrap();
+        let values =
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0, 1.0, 2.0], &[4], &device).unwrap();
 
         // At the center (0.5, 0.5), all 4 points are equidistant -> average
-        let xi = Tensor::<CpuRuntime>::from_slice(&[0.5, 0.5], &[1, 2], &device);
+        let xi = Tensor::<CpuRuntime>::from_slice(&[0.5, 0.5], &[1, 2], &device).unwrap();
         let result =
             griddata_impl(&client, &points, &values, &xi, ScatteredMethod::Linear).unwrap();
         let vals: Vec<f64> = result.to_vec();

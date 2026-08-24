@@ -29,7 +29,7 @@
 //! use numr::autograd::DualTensor;
 //! # let device = CpuDevice::new();
 //! # let client = CpuClient::new(device.clone());
-//! # let y = Tensor::from_slice(&[1.0, 1.0], &[2], &device);
+//! # let y = Tensor::from_slice(&[1.0, 1.0], &[2], &device)?;
 //!
 //! // f(y) = [y[0]^2 - y[1], y[0] * y[1] - 1]
 //! let jacobian = solvr::common::jacobian::jacobian_autograd(&client, |_y: &DualTensor<CpuRuntime>, _c: &CpuClient| {
@@ -72,7 +72,7 @@ use numr::tensor::Tensor;
 /// use numr::autograd::DualTensor;
 /// let device = CpuDevice::new();
 /// let client = CpuClient::new(device.clone());
-/// let x = Tensor::from_slice(&[1.0], &[1], &device);
+/// let x = Tensor::from_slice(&[1.0], &[1], &device)?;
 /// // F(x) = x² (element-wise), Jacobian = diag(2x)
 /// let jacobian = solvr::common::jacobian::jacobian_autograd(
 ///     &client,
@@ -156,8 +156,8 @@ where
 /// use numr::autograd::Var;
 /// let device = CpuDevice::new();
 /// let client = CpuClient::new(device.clone());
-/// let x = Tensor::from_slice(&[2.0], &[1], &device);
-/// let v = Tensor::from_slice(&[1.0], &[1], &device);
+/// let x = Tensor::from_slice(&[2.0], &[1], &device)?;
+/// let v = Tensor::from_slice(&[1.0], &[1], &device)?;
 /// // F(x) = x², at x=[2], v=[1]
 /// let (fx, vjp_result) = solvr::common::jacobian::vjp_autograd(
 ///     &client,
@@ -201,7 +201,7 @@ where
         Some(g) => g.clone(),
         None => {
             // If no gradient, return zeros
-            Tensor::<R>::zeros(x.shape(), x.dtype(), x.device())
+            Tensor::<R>::zeros(x.shape(), x.dtype(), x.device())?
         }
     };
 
@@ -242,7 +242,7 @@ where
     let device = y.device();
 
     // Create input variables with grad tracking
-    let t_var = Var::new(Tensor::<R>::from_slice(&[t], &[1], device), false);
+    let t_var = Var::new(Tensor::<R>::from_slice(&[t], &[1], device)?, false);
     let y_var = Var::new(y.clone(), true);
     let p_var = Var::new(p.clone(), true);
 
@@ -263,12 +263,12 @@ where
     // Get gradients w.r.t. y and p
     let vjp_y = match grads.get(y_var.id()) {
         Some(g) => g.clone(),
-        None => Tensor::<R>::zeros(y.shape(), y.dtype(), device),
+        None => Tensor::<R>::zeros(y.shape(), y.dtype(), device)?,
     };
 
     let vjp_p = match grads.get(p_var.id()) {
         Some(g) => g.clone(),
-        None => Tensor::<R>::zeros(p.shape(), p.dtype(), device),
+        None => Tensor::<R>::zeros(p.shape(), p.dtype(), device)?,
     };
 
     Ok((fx, vjp_y, vjp_p))
@@ -292,7 +292,7 @@ mod tests {
         let (device, client) = setup();
 
         // F(x) = 2x, Jacobian = 2I
-        let x = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device).unwrap();
 
         let jacobian =
             jacobian_autograd(&client, |dual_x, c| dual_mul_scalar(dual_x, 2.0, c), &x).unwrap();
@@ -314,7 +314,7 @@ mod tests {
         let (device, client) = setup();
 
         // F(x) = x², Jacobian = diag(2x)
-        let x = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device).unwrap();
 
         let jacobian =
             jacobian_autograd(&client, |dual_x, c| dual_mul(dual_x, dual_x, c), &x).unwrap();
@@ -333,8 +333,8 @@ mod tests {
 
         // F(x) = x², at x=[2], v=[1]
         // F(x) = 4, J @ v = 2*2*1 = 4
-        let x = Tensor::<CpuRuntime>::from_slice(&[2.0f64], &[1], &device);
-        let v = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[2.0f64], &[1], &device).unwrap();
+        let v = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
 
         let (fx, jv) = jvp_autograd(
             &client,
@@ -357,8 +357,8 @@ mod tests {
 
         // F(x) = x², at x=[2], v=[1]
         // vᵀ @ J = 1 * 2*2 = 4
-        let x = Tensor::<CpuRuntime>::from_slice(&[2.0f64], &[1], &device);
-        let v = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[2.0f64], &[1], &device).unwrap();
+        let v = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
 
         let (fx, vjp_result) =
             vjp_autograd(&client, |x_var, c| var_mul(x_var, x_var, c), &x, &v).unwrap();
@@ -373,8 +373,8 @@ mod tests {
 
         // F(x) = 2x, Jacobian = 2I
         // vᵀ @ J = [1, 1, 1] @ 2I = [2, 2, 2]
-        let x = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device);
-        let v = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 1.0, 1.0], &[3], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device).unwrap();
+        let v = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 1.0, 1.0], &[3], &device).unwrap();
 
         let (fx, vjp_result) =
             vjp_autograd(&client, |x_var, c| var_mul_scalar(x_var, 2.0, c), &x, &v).unwrap();
@@ -397,9 +397,9 @@ mod tests {
         // f(t, y, p) = p * y (scalar multiplication)
         // ∂f/∂y = p, ∂f/∂p = y
         // vᵀ @ (∂f/∂y) = v * p, vᵀ @ (∂f/∂p) = v * y
-        let y = Tensor::<CpuRuntime>::from_slice(&[2.0f64], &[1], &device);
-        let p = Tensor::<CpuRuntime>::from_slice(&[3.0f64], &[1], &device);
-        let v = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device);
+        let y = Tensor::<CpuRuntime>::from_slice(&[2.0f64], &[1], &device).unwrap();
+        let p = Tensor::<CpuRuntime>::from_slice(&[3.0f64], &[1], &device).unwrap();
+        let v = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
 
         let (fx, vjp_y, vjp_p) = vjp_with_params(
             &client,

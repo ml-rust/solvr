@@ -68,7 +68,8 @@ mod tests {
             ],
             &[8, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         let options = BayesianGmmOptions {
             n_components: 2,
@@ -105,7 +106,8 @@ mod tests {
             &[0.0, 0.0, 0.1, 0.1, 5.0, 5.0, 5.1, 5.1],
             &[4, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         let options = BayesianGmmOptions {
             n_components: 3,
@@ -140,7 +142,8 @@ mod tests {
             ],
             &[6, 2],
             &device,
-        );
+        )
+        .unwrap();
 
         let options = BayesianGmmOptions {
             n_components: 3,

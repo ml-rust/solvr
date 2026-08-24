@@ -184,8 +184,8 @@ mod tests {
     fn test_detect_diagonal_jacobian() {
         let (device, client) = setup();
 
-        let t0 = Tensor::<CpuRuntime>::from_slice(&[0.0_f64], &[1], &device);
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0_f64, 2.0, 3.0], &[3], &device);
+        let t0 = Tensor::<CpuRuntime>::from_slice(&[0.0_f64], &[1], &device).unwrap();
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0_f64, 2.0, 3.0], &[3], &device).unwrap();
 
         // f(t, y) = [-y0, -2*y1, -3*y2]  (diagonal, decoupled)
         let f = |_t: &DualTensor<CpuRuntime>,
@@ -236,8 +236,9 @@ mod tests {
         let (device, client) = setup();
         let n = 4_usize;
 
-        let t0 = Tensor::<CpuRuntime>::from_slice(&[0.0_f64], &[1], &device);
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0_f64, 2.0, 3.0, 4.0], &[n], &device);
+        let t0 = Tensor::<CpuRuntime>::from_slice(&[0.0_f64], &[1], &device).unwrap();
+        let y0 =
+            Tensor::<CpuRuntime>::from_slice(&[1.0_f64, 2.0, 3.0, 4.0], &[n], &device).unwrap();
 
         // f(t, y) = -y + (sum(y) / n) * ones  — all components couple to each other.
         let f = |_t: &DualTensor<CpuRuntime>,
@@ -274,8 +275,8 @@ mod tests {
     fn test_no_spurious_nonzeros() {
         let (device, client) = setup();
 
-        let t0 = Tensor::<CpuRuntime>::from_slice(&[0.0_f64], &[1], &device);
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0_f64, 0.5, -0.3], &[3], &device);
+        let t0 = Tensor::<CpuRuntime>::from_slice(&[0.0_f64], &[1], &device).unwrap();
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0_f64, 0.5, -0.3], &[3], &device).unwrap();
 
         // f = 2*y — diagonal Jacobian = 2*I
         let f = |_t: &DualTensor<CpuRuntime>,
@@ -299,8 +300,9 @@ mod tests {
     fn test_pattern_validity() {
         let (device, client) = setup();
 
-        let t0 = Tensor::<CpuRuntime>::from_slice(&[0.0_f64], &[1], &device);
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0_f64, -1.0, 2.0, 0.5], &[4], &device);
+        let t0 = Tensor::<CpuRuntime>::from_slice(&[0.0_f64], &[1], &device).unwrap();
+        let y0 =
+            Tensor::<CpuRuntime>::from_slice(&[1.0_f64, -1.0, 2.0, 0.5], &[4], &device).unwrap();
 
         let f = |_t: &DualTensor<CpuRuntime>,
                  y: &DualTensor<CpuRuntime>,
@@ -340,7 +342,7 @@ mod tests {
 
         let (device, client) = setup();
 
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0_f64, 0.5], &[2], &device);
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0_f64, 0.5], &[2], &device).unwrap();
 
         // Stiff diagonal decay: dy/dt = -100*y
         let f = |_t: &DualTensor<CpuRuntime>,

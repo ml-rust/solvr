@@ -196,11 +196,11 @@ use numr::autograd::{Var, VarGradStore, backward, backward_with_graph, var_mul, 
 ///
 /// let device = CpuDevice::new();
 /// let client = CpuClient::new(device.clone());
-/// let tensor = Tensor::from_slice(&[1.0], &[1], &device);
+/// let tensor = Tensor::from_slice(&[1.0], &[1], &device)?;
 /// // f(x) = x², H = 2, so H @ v = 2v
 /// let x = Var::new(tensor, true);
 /// let loss = /* compute loss */;
-/// let v = Tensor::from_slice(&[1.0], &[1], &device);
+/// let v = Tensor::from_slice(&[1.0], &[1], &device)?;
 /// let hvp = solvr::optimize::minimize::impl_generic::helpers::hvp_reverse_over_reverse(&client, &loss, &x, &v)?;
 /// ```
 pub fn hvp_reverse_over_reverse<R, C>(
@@ -397,8 +397,8 @@ mod hvp_tests {
         // ∇f = [2x₁, 2x₂, 2x₃]
         // H = diag([2, 2, 2])
         // H @ v = [2v₁, 2v₂, 2v₃]
-        let x = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device);
-        let v = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 1.0, 1.0], &[3], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device).unwrap();
+        let v = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 1.0, 1.0], &[3], &device).unwrap();
 
         let (fx, hvp) = hvp_from_fn(
             &client,
@@ -427,8 +427,8 @@ mod hvp_tests {
 
         // f(x) = sum(x²)
         // H @ v where v = [1, 0, 0] should give [2, 0, 0]
-        let x = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device);
-        let v = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0, 0.0], &[3], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device).unwrap();
+        let v = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 0.0, 0.0], &[3], &device).unwrap();
 
         let (_, hvp) = hvp_from_fn(
             &client,
@@ -453,7 +453,7 @@ mod hvp_tests {
 
         // f(x) = sum(x²)
         // ∇f = 2x
-        let x = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0], &[3], &device).unwrap();
 
         let (fx, grad) = gradient_from_fn(
             &client,

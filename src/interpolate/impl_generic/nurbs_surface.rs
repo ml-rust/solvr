@@ -186,14 +186,14 @@ where
         let h = 1e-7;
 
         if du > 0 {
-            let h_t = Tensor::full_scalar(&[m], DType::F64, h, device);
+            let h_t = Tensor::full_scalar(&[m], DType::F64, h, device)?;
             let u_plus = client.add(u, &h_t)?;
             let u_minus = client.sub(u, &h_t)?;
             let f_plus = nurbs_surface_partial_impl(client, surface, &u_plus, v, du - 1, dv)?;
             let f_minus = nurbs_surface_partial_impl(client, surface, &u_minus, v, du - 1, dv)?;
             Ok(client.mul_scalar(&client.sub(&f_plus, &f_minus)?, 0.5 / h)?)
         } else {
-            let h_t = Tensor::full_scalar(&[m], DType::F64, h, device);
+            let h_t = Tensor::full_scalar(&[m], DType::F64, h, device)?;
             let v_plus = client.add(v, &h_t)?;
             let v_minus = client.sub(v, &h_t)?;
             let f_plus = nurbs_surface_partial_impl(client, surface, u, &v_plus, du, dv - 1)?;
@@ -246,10 +246,14 @@ mod tests {
             &[0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0],
             &[2, 2, 3],
             &device,
-        );
-        let weights = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0, 1.0, 1.0], &[2, 2], &device);
-        let knots_u = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[4], &device);
-        let knots_v = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[4], &device);
+        )
+        .unwrap();
+        let weights =
+            Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0, 1.0, 1.0], &[2, 2], &device).unwrap();
+        let knots_u =
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[4], &device).unwrap();
+        let knots_v =
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[4], &device).unwrap();
 
         let surface = NurbsSurface {
             control_points: cp,
@@ -260,8 +264,8 @@ mod tests {
             degree_v: 1,
         };
 
-        let u = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.5, 1.0], &[3], &device);
-        let v = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.5, 1.0], &[3], &device);
+        let u = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.5, 1.0], &[3], &device).unwrap();
+        let v = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.5, 1.0], &[3], &device).unwrap();
         let result = nurbs_surface_evaluate_impl(&client, &surface, &u, &v).unwrap();
         let vals: Vec<f64> = result.to_vec();
 
@@ -278,10 +282,14 @@ mod tests {
             &[0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0],
             &[2, 2, 2],
             &device,
-        );
-        let weights = Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0, 1.0, 1.0], &[2, 2], &device);
-        let knots_u = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[4], &device);
-        let knots_v = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[4], &device);
+        )
+        .unwrap();
+        let weights =
+            Tensor::<CpuRuntime>::from_slice(&[1.0, 1.0, 1.0, 1.0], &[2, 2], &device).unwrap();
+        let knots_u =
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[4], &device).unwrap();
+        let knots_v =
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 1.0], &[4], &device).unwrap();
 
         let surface = NurbsSurface {
             control_points: cp,
@@ -292,8 +300,8 @@ mod tests {
             degree_v: 1,
         };
 
-        let u = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0], &[2], &device);
-        let v = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0], &[2], &device);
+        let u = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0], &[2], &device).unwrap();
+        let v = Tensor::<CpuRuntime>::from_slice(&[0.0, 1.0], &[2], &device).unwrap();
         let result = nurbs_surface_evaluate_impl(&client, &surface, &u, &v).unwrap();
         let vals: Vec<f64> = result.to_vec();
 

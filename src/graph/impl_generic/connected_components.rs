@@ -77,7 +77,7 @@ where
     }
 
     // Create output tensor
-    let labels_tensor = Tensor::<R>::from_slice(&labels, &[n], &device);
+    let labels_tensor = Tensor::<R>::from_slice(&labels, &[n], &device)?;
 
     Ok(ComponentResult {
         labels: labels_tensor,

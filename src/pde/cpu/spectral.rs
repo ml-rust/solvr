@@ -51,24 +51,20 @@ mod tests {
         let np1 = n + 1;
 
         let f_data = vec![2.0; np1];
-        let f_rhs = Tensor::<CpuRuntime>::from_slice(&f_data, &[np1], &device);
+        let f_rhs = Tensor::<CpuRuntime>::from_slice(&f_data, &[np1], &device).unwrap();
 
         let boundary = vec![
             BoundarySpec {
                 side: BoundarySide::Left,
-                condition: BoundaryCondition::Dirichlet(Tensor::<CpuRuntime>::from_slice(
-                    &[0.0],
-                    &[1],
-                    &device,
-                )),
+                condition: BoundaryCondition::Dirichlet(
+                    Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device).unwrap(),
+                ),
             },
             BoundarySpec {
                 side: BoundarySide::Right,
-                condition: BoundaryCondition::Dirichlet(Tensor::<CpuRuntime>::from_slice(
-                    &[0.0],
-                    &[1],
-                    &device,
-                )),
+                condition: BoundaryCondition::Dirichlet(
+                    Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device).unwrap(),
+                ),
             },
         ];
 
@@ -107,15 +103,13 @@ mod tests {
 
         // Simple constant RHS
         let f_data = vec![1.0; total];
-        let f_rhs = Tensor::<CpuRuntime>::from_slice(&f_data, &[total], &device);
+        let f_rhs = Tensor::<CpuRuntime>::from_slice(&f_data, &[total], &device).unwrap();
 
         let boundary = vec![BoundarySpec {
             side: BoundarySide::All,
-            condition: BoundaryCondition::Dirichlet(Tensor::<CpuRuntime>::from_slice(
-                &[0.0],
-                &[1],
-                &device,
-            )),
+            condition: BoundaryCondition::Dirichlet(
+                Tensor::<CpuRuntime>::from_slice(&[0.0], &[1], &device).unwrap(),
+            ),
         }];
 
         let result = client

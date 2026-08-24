@@ -43,7 +43,7 @@ where
     let d_data = chebyshev_diff_matrix(n);
 
     // D^2
-    let d_tensor = Tensor::<R>::from_slice(&d_data, &[np1, np1], device);
+    let d_tensor = Tensor::<R>::from_slice(&d_data, &[np1, np1], device)?;
     let d2 = client
         .matmul(&d_tensor, &d_tensor)
         .map_err(PdeError::from)?;
@@ -57,7 +57,7 @@ where
         for i in 0..np1.min(q_data.len()) {
             diag_q[i * np1 + i] = q_data[i];
         }
-        let diag_q_tensor = Tensor::<R>::from_slice(&diag_q, &[np1, np1], device);
+        let diag_q_tensor = Tensor::<R>::from_slice(&diag_q, &[np1, np1], device)?;
         client
             .add(&neg_d2, &diag_q_tensor)
             .map_err(PdeError::from)?
@@ -90,13 +90,13 @@ where
     rhs[n] = bc_right;
 
     // Solve dense system
-    let a_tensor = Tensor::<R>::from_slice(&sys_data, &[np1, np1], device);
-    let b_tensor = Tensor::<R>::from_slice(&rhs, &[np1, 1], device);
+    let a_tensor = Tensor::<R>::from_slice(&sys_data, &[np1, np1], device)?;
+    let b_tensor = Tensor::<R>::from_slice(&rhs, &[np1, 1], device)?;
 
     let solution = client.solve(&a_tensor, &b_tensor).map_err(PdeError::from)?;
     let solution_flat = solution.reshape(&[np1])?;
 
-    let nodes = Tensor::<R>::from_slice(&x_data, &[np1], device);
+    let nodes = Tensor::<R>::from_slice(&x_data, &[np1], device)?;
 
     Ok(SpectralResult {
         solution: solution_flat,

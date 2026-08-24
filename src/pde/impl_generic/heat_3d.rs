@@ -90,5 +90,5 @@ where
         n,
         &[nx, ny, nz],
         device,
-    ))
+    )?)
 }

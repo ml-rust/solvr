@@ -63,7 +63,7 @@ where
         let x_transformed: Vec<f64> = x_points.iter().map(|&x| mid + half_width * x).collect();
 
         // Batch evaluate function
-        let x_tensor = Tensor::<R>::from_slice(&x_transformed, &[x_transformed.len()], device);
+        let x_tensor = Tensor::<R>::from_slice(&x_transformed, &[x_transformed.len()], device)?;
         let f_values = f(&x_tensor)?;
         let f_vec: Vec<f64> = f_values.to_vec();
         neval += f_vec.len();
@@ -90,7 +90,7 @@ where
             let tolerance = options.atol + options.rtol * integral.abs();
 
             if error < tolerance {
-                let result_tensor = Tensor::<R>::from_slice(&[integral], &[1], device);
+                let result_tensor = Tensor::<R>::from_slice(&[integral], &[1], device)?;
                 return Ok(QuadResult {
                     integral: result_tensor,
                     error,
@@ -105,7 +105,7 @@ where
 
     // Did not converge, return best estimate
     let error = (integral - prev_integral).abs();
-    let result_tensor = Tensor::<R>::from_slice(&[integral], &[1], device);
+    let result_tensor = Tensor::<R>::from_slice(&[integral], &[1], device)?;
 
     Ok(QuadResult {
         integral: result_tensor,
@@ -238,11 +238,7 @@ mod tests {
             |x| {
                 let data: Vec<f64> = x.to_vec();
                 let sin_data: Vec<f64> = data.iter().map(|&xi| xi.sin()).collect();
-                Ok(Tensor::<CpuRuntime>::from_slice(
-                    &sin_data,
-                    x.shape(),
-                    &device,
-                ))
+                Tensor::<CpuRuntime>::from_slice(&sin_data, x.shape(), &device)
             },
             0.0,
             PI,
@@ -271,11 +267,7 @@ mod tests {
             |x| {
                 let data: Vec<f64> = x.to_vec();
                 let inv_sqrt: Vec<f64> = data.iter().map(|&xi| 1.0 / xi.sqrt()).collect();
-                Ok(Tensor::<CpuRuntime>::from_slice(
-                    &inv_sqrt,
-                    x.shape(),
-                    &device,
-                ))
+                Tensor::<CpuRuntime>::from_slice(&inv_sqrt, x.shape(), &device)
             },
             0.0,
             1.0,
@@ -302,11 +294,7 @@ mod tests {
             |x| {
                 let data: Vec<f64> = x.to_vec();
                 let neg_log: Vec<f64> = data.iter().map(|&xi| -xi.ln()).collect();
-                Ok(Tensor::<CpuRuntime>::from_slice(
-                    &neg_log,
-                    x.shape(),
-                    &device,
-                ))
+                Tensor::<CpuRuntime>::from_slice(&neg_log, x.shape(), &device)
             },
             0.0,
             1.0,
@@ -336,7 +324,7 @@ mod tests {
                     .iter()
                     .map(|&xi| 1.0 / (xi * (1.0 - xi)).sqrt())
                     .collect();
-                Ok(Tensor::<CpuRuntime>::from_slice(&vals, x.shape(), &device))
+                Tensor::<CpuRuntime>::from_slice(&vals, x.shape(), &device)
             },
             0.0,
             1.0,

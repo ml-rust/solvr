@@ -113,7 +113,7 @@ where
         })?;
 
     // Mask for valid (inside hull) points: simplex_id >= 0
-    let zero = Tensor::zeros(&[m], DType::I64, device);
+    let zero = Tensor::zeros(&[m], DType::I64, device)?;
     let valid_mask = client.ge(&simplex_ids, &zero)?; // [m] bool
 
     // Clamp negative simplex IDs to 0 for safe indexing (results masked out later)
@@ -159,16 +159,16 @@ where
     // det = d0*e1 - e0*d1
     let det = client.sub(&client.mul(&d0, &e1)?, &client.mul(&e0, &d1)?)?;
     // Safe inverse: clamp |det| away from 0, preserve sign
-    let eps = Tensor::full_scalar(&[m], DType::F64, 1e-15, device);
-    let neg_eps = Tensor::full_scalar(&[m], DType::F64, -1e-15, device);
-    let zero = Tensor::zeros(&[m], DType::F64, device);
+    let eps = Tensor::full_scalar(&[m], DType::F64, 1e-15, device)?;
+    let neg_eps = Tensor::full_scalar(&[m], DType::F64, -1e-15, device)?;
+    let zero = Tensor::zeros(&[m], DType::F64, device)?;
     let det_ge_zero = client.ge(&det, &zero)?;
     let det_safe = client.where_cond(
         &det_ge_zero,
         &client.maximum(&det, &eps)?,
         &client.minimum(&det, &neg_eps)?,
     )?;
-    let one = Tensor::full_scalar(&[m], DType::F64, 1.0, device);
+    let one = Tensor::full_scalar(&[m], DType::F64, 1.0, device)?;
     let inv_det = client.div(&one, &det_safe)?;
 
     // b1 = inv_det * (e1*q0 - e0*q1), b2 = inv_det * (-d1*q0 + d0*q1)
@@ -181,7 +181,7 @@ where
         &client.sub(&client.mul(&d0, &q1)?, &client.mul(&d1, &q0)?)?,
     )?;
     let b0 = client.sub(
-        &client.sub(&Tensor::full_scalar(&[m], DType::F64, 1.0, device), &b1)?,
+        &client.sub(&Tensor::full_scalar(&[m], DType::F64, 1.0, device)?, &b1)?,
         &b2,
     )?;
 
@@ -210,7 +210,7 @@ where
     let df2_12 = client.sum(&client.mul(&g2, &e12)?, &[1], false)?;
 
     // Bernstein-Bézier control points
-    let third = Tensor::full_scalar(&[m], DType::F64, 1.0 / 3.0, device);
+    let third = Tensor::full_scalar(&[m], DType::F64, 1.0 / 3.0, device)?;
     let c300 = f0.clone();
     let c030 = f1.clone();
     let c003 = f2.clone();
@@ -222,7 +222,7 @@ where
     let c012 = client.sub(&f2, &client.mul(&df2_12, &third)?)?;
 
     // Interior control point: average of edge estimates
-    let sixth = Tensor::full_scalar(&[m], DType::F64, 1.0 / 6.0, device);
+    let sixth = Tensor::full_scalar(&[m], DType::F64, 1.0 / 6.0, device)?;
     let c111_sum = client.add(
         &client.add(&client.add(&c210, &c120)?, &client.add(&c201, &c021)?)?,
         &client.add(&c102, &c012)?,
@@ -233,8 +233,8 @@ where
     let b00 = client.mul(&b0, &b0)?;
     let b11 = client.mul(&b1, &b1)?;
     let b22 = client.mul(&b2, &b2)?;
-    let three = Tensor::full_scalar(&[m], DType::F64, 3.0, device);
-    let six = Tensor::full_scalar(&[m], DType::F64, 6.0, device);
+    let three = Tensor::full_scalar(&[m], DType::F64, 3.0, device)?;
+    let six = Tensor::full_scalar(&[m], DType::F64, 6.0, device)?;
 
     // c300*b0³ + c030*b1³ + c003*b2³
     let mut result = client.add(
@@ -269,7 +269,7 @@ where
     result = client.add(&result, &client.mul(&six, &client.mul(&c111, &b012)?)?)?;
 
     // Apply fill_value for points outside the convex hull
-    let fill = Tensor::full_scalar(&[m], DType::F64, ct.fill_value, device);
+    let fill = Tensor::full_scalar(&[m], DType::F64, ct.fill_value, device)?;
     let result = client.where_cond(&valid_mask, &result, &fill)?;
 
     Ok(result)
@@ -341,7 +341,7 @@ where
     let dydf = client.mul(&dy, &df)?;
 
     // Scatter-reduce into per-vertex accumulators using src vertex indices
-    let zeros_n = Tensor::zeros(&[n], DType::F64, device);
+    let zeros_n = Tensor::zeros(&[n], DType::F64, device)?;
     let ata_00 = client.scatter_reduce(&zeros_n, 0, &src, &dxdx, ScatterReduceOp::Sum, true)?;
     let ata_01 = client.scatter_reduce(&zeros_n, 0, &src, &dxdy, ScatterReduceOp::Sum, true)?;
     let ata_11 = client.scatter_reduce(&zeros_n, 0, &src, &dydy, ScatterReduceOp::Sum, true)?;
@@ -355,16 +355,16 @@ where
     )?;
 
     // Safe inverse of determinant (clamp away from zero)
-    let eps = Tensor::full_scalar(&[n], DType::F64, 1e-15, device);
-    let neg_eps = Tensor::full_scalar(&[n], DType::F64, -1e-15, device);
-    let zero = Tensor::zeros(&[n], DType::F64, device);
+    let eps = Tensor::full_scalar(&[n], DType::F64, 1e-15, device)?;
+    let neg_eps = Tensor::full_scalar(&[n], DType::F64, -1e-15, device)?;
+    let zero = Tensor::zeros(&[n], DType::F64, device)?;
     let det_ge_zero = client.ge(&det, &zero)?;
     let det_safe = client.where_cond(
         &det_ge_zero,
         &client.maximum(&det, &eps)?,
         &client.minimum(&det, &neg_eps)?,
     )?;
-    let one = Tensor::full_scalar(&[n], DType::F64, 1.0, device);
+    let one = Tensor::full_scalar(&[n], DType::F64, 1.0, device)?;
     let inv_det = client.div(&one, &det_safe)?;
 
     // Cramer's rule: gx = inv_det * (a11*b0 - a01*b1)
@@ -404,18 +404,18 @@ mod tests {
             0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.25, 0.75, 0.75, 0.25,
         ];
         let n = points_data.len() / 2;
-        let points = Tensor::<CpuRuntime>::from_slice(&points_data, &[n, 2], &device);
+        let points = Tensor::<CpuRuntime>::from_slice(&points_data, &[n, 2], &device).unwrap();
 
         let values_data: Vec<f64> = (0..n)
             .map(|i| 2.0 * points_data[i * 2] + 3.0 * points_data[i * 2 + 1] + 1.0)
             .collect();
-        let values = Tensor::<CpuRuntime>::from_slice(&values_data, &[n], &device);
+        let values = Tensor::<CpuRuntime>::from_slice(&values_data, &[n], &device).unwrap();
 
         let ct = clough_tocher_fit_impl(&client, &points, &values, f64::NAN).unwrap();
 
         // Query at interior points
         let xi_data = vec![0.3, 0.3, 0.6, 0.2, 0.2, 0.6];
-        let xi = Tensor::<CpuRuntime>::from_slice(&xi_data, &[3, 2], &device);
+        let xi = Tensor::<CpuRuntime>::from_slice(&xi_data, &[3, 2], &device).unwrap();
 
         let result = clough_tocher_evaluate_impl(&client, &ct, &xi).unwrap();
         let vals: Vec<f64> = result.to_vec();
@@ -451,13 +451,13 @@ mod tests {
             }
         }
         let n = values_data.len();
-        let points = Tensor::<CpuRuntime>::from_slice(&points_data, &[n, 2], &device);
-        let values = Tensor::<CpuRuntime>::from_slice(&values_data, &[n], &device);
+        let points = Tensor::<CpuRuntime>::from_slice(&points_data, &[n, 2], &device).unwrap();
+        let values = Tensor::<CpuRuntime>::from_slice(&values_data, &[n], &device).unwrap();
 
         let ct = clough_tocher_fit_impl(&client, &points, &values, f64::NAN).unwrap();
 
         // Query at center-ish point
-        let xi = Tensor::<CpuRuntime>::from_slice(&[0.5, 0.5], &[1, 2], &device);
+        let xi = Tensor::<CpuRuntime>::from_slice(&[0.5, 0.5], &[1, 2], &device).unwrap();
         let result = clough_tocher_evaluate_impl(&client, &ct, &xi).unwrap();
         let vals: Vec<f64> = result.to_vec();
 
@@ -475,13 +475,14 @@ mod tests {
         let (device, client) = setup();
 
         let points =
-            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 0.0, 0.0, 1.0], &[3, 2], &device);
-        let values = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0, 3.0], &[3], &device);
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 0.0, 0.0, 1.0], &[3, 2], &device)
+                .unwrap();
+        let values = Tensor::<CpuRuntime>::from_slice(&[1.0, 2.0, 3.0], &[3], &device).unwrap();
 
         let ct = clough_tocher_fit_impl(&client, &points, &values, -999.0).unwrap();
 
         // Query outside the triangle
-        let xi = Tensor::<CpuRuntime>::from_slice(&[5.0, 5.0], &[1, 2], &device);
+        let xi = Tensor::<CpuRuntime>::from_slice(&[5.0, 5.0], &[1, 2], &device).unwrap();
         let result = clough_tocher_evaluate_impl(&client, &ct, &xi).unwrap();
         let vals: Vec<f64> = result.to_vec();
 

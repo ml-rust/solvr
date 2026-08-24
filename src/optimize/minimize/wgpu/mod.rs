@@ -143,7 +143,7 @@ mod tests {
             eprintln!("Skipping WebGPU test: no device");
             return;
         };
-        let x0 = Tensor::<WgpuRuntime>::from_slice(&[1.0f32, 1.0], &[2], &device);
+        let x0 = Tensor::<WgpuRuntime>::from_slice(&[1.0f32, 1.0], &[2], &device).unwrap();
 
         // BFGS internally uses F64 for Hessian (eye), which wgpu doesn't support.
         let result = match client.bfgs(

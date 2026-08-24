@@ -77,7 +77,7 @@ where
     let max_val: f64 = client.max(&vals, &[0], false)?.item::<f64>()?;
     if max_val >= 0.0 {
         // Find which halfspace is violated for error message
-        let zero = Tensor::<R>::zeros(&[], dtype, device);
+        let zero = Tensor::<R>::zeros(&[], dtype, device)?;
         let violated_raw = client.ge(&vals, &zero)?;
         let violated = client.cast(&violated_raw, DType::U8)?;
         let violated_data: Vec<u8> = violated.to_vec();
@@ -142,8 +142,8 @@ where
             b_data.push(-hs_data[hi * d_plus_1 + d]);
         }
 
-        let a_tensor = Tensor::<R>::from_slice(&a_data, &[d, d], device);
-        let b_tensor = Tensor::<R>::from_slice(&b_data, &[d, 1], device);
+        let a_tensor = Tensor::<R>::from_slice(&a_data, &[d, d], device)?;
+        let b_tensor = Tensor::<R>::from_slice(&b_data, &[d, 1], device)?;
 
         match LinalgOps::solve(client, &a_tensor, &b_tensor) {
             Ok(x) => {
@@ -166,7 +166,7 @@ where
         });
     }
 
-    let intersections = Tensor::<R>::from_slice(&primal_vertices, &[n_vertices, d], device);
+    let intersections = Tensor::<R>::from_slice(&primal_vertices, &[n_vertices, d], device)?;
 
     Ok(HalfspaceIntersection {
         halfspaces: halfspaces.clone(),

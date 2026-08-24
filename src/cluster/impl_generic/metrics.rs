@@ -59,7 +59,7 @@ where
     // count of same-cluster (including self) minus 1
     let count_same = client.sum(&same_f, &[1], false)?; // [n]
     let count_same_excl = client.sub_scalar(&count_same, 1.0)?;
-    let count_safe = client.maximum(&count_same_excl, &Tensor::<R>::ones(&[n], dtype, device))?;
+    let count_safe = client.maximum(&count_same_excl, &Tensor::<R>::ones(&[n], dtype, device)?)?;
     let a_i = client.div(&sum_same, &count_safe)?; // [n]
 
     // b_i: min mean distance to any other cluster
@@ -68,11 +68,11 @@ where
     let max_label: f64 = client.max(&labels_f, &[0], false)?.item()?;
     let n_clusters = (max_label as usize) + 1;
 
-    let inf_tensor = Tensor::<R>::full_scalar(&[n], dtype, f64::INFINITY, device);
+    let inf_tensor = Tensor::<R>::full_scalar(&[n], dtype, f64::INFINITY, device)?;
     let mut b_i = inf_tensor;
 
     for k in 0..n_clusters {
-        let k_tensor = Tensor::<R>::full_scalar(&[1], dtype, k as f64, device);
+        let k_tensor = Tensor::<R>::full_scalar(&[1], dtype, k as f64, device)?;
         // mask_k[j] = (labels[j] == k) → [1, n] for broadcasting
         let mask_k = client.eq(&labels_col, &k_tensor)?; // [1, n]
         let mask_k_f = client.cast(&mask_k, dtype)?; // [1, n]
@@ -81,16 +81,16 @@ where
         let dist_to_k = client.mul(&dists, &mask_k_f)?; // [n, n]
         let sum_to_k = client.sum(&dist_to_k, &[1], false)?; // [n]
         let count_k = client.sum(&mask_k_f, &[1], false)?; // [n] (same value repeated)
-        let count_k_safe = client.maximum(&count_k, &Tensor::<R>::ones(&[n], dtype, device))?;
+        let count_k_safe = client.maximum(&count_k, &Tensor::<R>::ones(&[n], dtype, device)?)?;
         let mean_to_k = client.div(&sum_to_k, &count_k_safe)?; // [n]
 
         // Only consider for points NOT in cluster k
         let in_k = client.eq(
             &labels_f,
-            &Tensor::<R>::full_scalar(&[1], dtype, k as f64, device),
+            &Tensor::<R>::full_scalar(&[1], dtype, k as f64, device)?,
         )?;
         // Set in-cluster points to infinity so they don't affect minimum
-        let inf_n = Tensor::<R>::full_scalar(&[n], dtype, f64::INFINITY, device);
+        let inf_n = Tensor::<R>::full_scalar(&[n], dtype, f64::INFINITY, device)?;
         let mean_to_k = client.where_cond(&in_k, &inf_n, &mean_to_k)?;
 
         b_i = client.minimum(&b_i, &mean_to_k)?;
@@ -99,7 +99,7 @@ where
     // s_i = (b_i - a_i) / max(a_i, b_i)
     let num = client.sub(&b_i, &a_i)?;
     let den = client.maximum(&a_i, &b_i)?;
-    let den_safe = client.maximum(&den, &Tensor::<R>::full_scalar(&[n], dtype, 1e-10, device))?;
+    let den_safe = client.maximum(&den, &Tensor::<R>::full_scalar(&[n], dtype, 1e-10, device)?)?;
     client.div(&num, &den_safe)
 }
 
@@ -164,7 +164,7 @@ where
     let k = (max_label as usize) + 1;
 
     if k <= 1 || n <= k {
-        return Ok(Tensor::<R>::full_scalar(&[], dtype, 0.0, device));
+        return Tensor::<R>::full_scalar(&[], dtype, 0.0, device);
     }
 
     // Global centroid [1, d]
@@ -172,7 +172,7 @@ where
 
     // Compute cluster centroids and sizes via scatter_reduce
     let labels_exp = labels.unsqueeze(1)?.broadcast_to(&[n, d])?;
-    let dst = Tensor::<R>::zeros(&[k, d], dtype, device);
+    let dst = Tensor::<R>::zeros(&[k, d], dtype, device)?;
     let cluster_sums = client.scatter_reduce(
         &dst,
         0,
@@ -183,7 +183,7 @@ where
     )?;
     let counts = client.bincount(labels, None, k)?;
     let counts_f = client.cast(&counts, dtype)?;
-    let counts_safe = client.maximum(&counts_f, &Tensor::<R>::ones(&[k], dtype, device))?;
+    let counts_safe = client.maximum(&counts_f, &Tensor::<R>::ones(&[k], dtype, device)?)?;
     let counts_exp = counts_safe.unsqueeze(1)?.broadcast_to(&[k, d])?;
     let centroids = client.div(&cluster_sums, &counts_exp)?; // [k, d]
 
@@ -242,12 +242,12 @@ where
     let k = (max_label as usize) + 1;
 
     if k <= 1 {
-        return Ok(Tensor::<R>::full_scalar(&[], dtype, 0.0, device));
+        return Tensor::<R>::full_scalar(&[], dtype, 0.0, device);
     }
 
     // Compute centroids [k, d]
     let labels_exp = labels.unsqueeze(1)?.broadcast_to(&[n, d])?;
-    let dst = Tensor::<R>::zeros(&[k, d], dtype, device);
+    let dst = Tensor::<R>::zeros(&[k, d], dtype, device)?;
     let cluster_sums = client.scatter_reduce(
         &dst,
         0,
@@ -258,7 +258,7 @@ where
     )?;
     let counts = client.bincount(labels, None, k)?;
     let counts_f = client.cast(&counts, dtype)?;
-    let counts_safe = client.maximum(&counts_f, &Tensor::<R>::ones(&[k], dtype, device))?;
+    let counts_safe = client.maximum(&counts_f, &Tensor::<R>::ones(&[k], dtype, device)?)?;
     let counts_exp = counts_safe.unsqueeze(1)?.broadcast_to(&[k, d])?;
     let centroids = client.div(&cluster_sums, &counts_exp)?;
 
@@ -269,7 +269,7 @@ where
         client.sqrt(&client.sum(&client.mul(&point_diff, &point_diff)?, &[1], false)?)?; // [n]
 
     // Sum distances per cluster, divide by count → S_i
-    let dst_s = Tensor::<R>::zeros(&[k], dtype, device);
+    let dst_s = Tensor::<R>::zeros(&[k], dtype, device)?;
     let labels_1d = labels.reshape(&[n])?;
     let s_sums = client.scatter_reduce(
         &dst_s,
@@ -292,7 +292,7 @@ where
     // Avoid division by zero on diagonal
     let inter_safe = client.add(
         &inter_dists,
-        &Tensor::<R>::full_scalar(&[1], dtype, 1e-10, device),
+        &Tensor::<R>::full_scalar(&[1], dtype, 1e-10, device)?,
     )?;
     let r_matrix = client.div(&s_sum, &inter_safe)?;
 
@@ -346,7 +346,7 @@ where
     let true_scaled = client.mul_scalar(&true_f, n_pred as f64)?;
     let flat_idx = client.add(&true_scaled, &pred_f)?;
     let flat_idx_i64 = client.cast(&flat_idx, DType::I64)?;
-    let ones = Tensor::<R>::ones(&[n], dtype, device);
+    let ones = Tensor::<R>::ones(&[n], dtype, device)?;
     let contingency_flat = client.bincount(&flat_idx_i64, Some(&ones), n_true * n_pred)?;
     let contingency = contingency_flat.reshape(&[n_true, n_pred])?;
 
@@ -400,7 +400,7 @@ where
     // n choose 2
     let n_f: f64 = labels_true.shape()[0] as f64;
     let n_comb = n_f * (n_f - 1.0) / 2.0;
-    let n_comb_t = Tensor::<R>::full_scalar(&[], dtype, n_comb, device);
+    let n_comb_t = Tensor::<R>::full_scalar(&[], dtype, n_comb, device)?;
 
     // Expected = sum_comb_a * sum_comb_b / n_comb
     let expected = client.div(&client.mul(&sum_comb_a, &sum_comb_b)?, &n_comb_t)?;
@@ -414,7 +414,7 @@ where
     // Handle edge case: denominator == 0 → ARI = 0
     let denom_safe = client.maximum(
         &client.abs(&denominator)?,
-        &Tensor::<R>::full_scalar(&[], dtype, 1e-15, device),
+        &Tensor::<R>::full_scalar(&[], dtype, 1e-15, device)?,
     )?;
     // Preserve sign
     let sign = client.div(&denominator, &denom_safe)?;
@@ -436,13 +436,13 @@ where
 {
     let dtype = counts.dtype();
     let device = counts.device();
-    let n_t = Tensor::<R>::full_scalar(&[1], dtype, n, device);
+    let n_t = Tensor::<R>::full_scalar(&[1], dtype, n, device)?;
 
     // p = counts / n, H = -sum(p * log(p)) for p > 0
     let p = client.div(counts, &n_t)?;
-    let zero = Tensor::<R>::zeros(&[1], dtype, device);
+    let zero = Tensor::<R>::zeros(&[1], dtype, device)?;
     let mask = client.gt(&p, &zero)?;
-    let safe_p = client.maximum(&p, &Tensor::<R>::full_scalar(&[1], dtype, 1e-15, device))?;
+    let safe_p = client.maximum(&p, &Tensor::<R>::full_scalar(&[1], dtype, 1e-15, device)?)?;
     let log_p = client.log(&safe_p)?;
     let p_log_p = client.mul(&p, &log_p)?;
     let masked = client.where_cond(&mask, &p_log_p, &zero)?;
@@ -484,8 +484,8 @@ where
 
     // MI = sum_{ij} (n_ij/n) * log(n * n_ij / (a_i * b_j))
     // Only for n_ij > 0
-    let n_t = Tensor::<R>::full_scalar(&[1], dtype, n, device);
-    let zero = Tensor::<R>::zeros(&[1], dtype, device);
+    let n_t = Tensor::<R>::full_scalar(&[1], dtype, n, device)?;
+    let zero = Tensor::<R>::zeros(&[1], dtype, device)?;
     let mask = client.gt(&contingency, &zero)?;
 
     // outer product a_i * b_j
@@ -497,12 +497,12 @@ where
     let numer = client.mul_scalar(&contingency, n)?;
     let outer_safe = client.maximum(
         &outer,
-        &Tensor::<R>::full_scalar(&[1], dtype, 1e-15, device),
+        &Tensor::<R>::full_scalar(&[1], dtype, 1e-15, device)?,
     )?;
     let ratio = client.div(&numer, &outer_safe)?;
     let safe_ratio = client.maximum(
         &ratio,
-        &Tensor::<R>::full_scalar(&[1], dtype, 1e-15, device),
+        &Tensor::<R>::full_scalar(&[1], dtype, 1e-15, device)?,
     )?;
     let log_ratio = client.log(&safe_ratio)?;
 
@@ -513,7 +513,10 @@ where
 
     // NMI = 2 * MI / (H_true + H_pred)
     let h_sum = client.add(&h_true, &h_pred)?;
-    let h_safe = client.maximum(&h_sum, &Tensor::<R>::full_scalar(&[], dtype, 1e-15, device))?;
+    let h_safe = client.maximum(
+        &h_sum,
+        &Tensor::<R>::full_scalar(&[], dtype, 1e-15, device)?,
+    )?;
     let nmi = client.div(&client.mul_scalar(&mi, 2.0)?, &h_safe)?;
     Ok(nmi)
 }
@@ -551,19 +554,19 @@ where
     let h_k = entropy_from_counts(client, &b, n)?; // H(K) entropy of clusters
 
     // H(C|K) = -sum_{ij} (n_ij/n) * log(n_ij / b_j)
-    let n_t = Tensor::<R>::full_scalar(&[1], dtype, n, device);
-    let zero = Tensor::<R>::zeros(&[1], dtype, device);
+    let n_t = Tensor::<R>::full_scalar(&[1], dtype, n, device)?;
+    let zero = Tensor::<R>::zeros(&[1], dtype, device)?;
     let mask = client.gt(&contingency, &zero)?;
 
     let b_row = b.unsqueeze(0)?;
     let b_safe = client.maximum(
         &b_row,
-        &Tensor::<R>::full_scalar(&[1], dtype, 1e-15, device),
+        &Tensor::<R>::full_scalar(&[1], dtype, 1e-15, device)?,
     )?;
     let ratio_ck = client.div(&contingency, &b_safe)?;
     let safe_ratio_ck = client.maximum(
         &ratio_ck,
-        &Tensor::<R>::full_scalar(&[1], dtype, 1e-15, device),
+        &Tensor::<R>::full_scalar(&[1], dtype, 1e-15, device)?,
     )?;
     let log_ck = client.log(&safe_ratio_ck)?;
     let p_ij = client.div(&contingency, &n_t)?;
@@ -575,12 +578,12 @@ where
     let a_col = a.unsqueeze(1)?;
     let a_safe = client.maximum(
         &a_col,
-        &Tensor::<R>::full_scalar(&[1], dtype, 1e-15, device),
+        &Tensor::<R>::full_scalar(&[1], dtype, 1e-15, device)?,
     )?;
     let ratio_kc = client.div(&contingency, &a_safe)?;
     let safe_ratio_kc = client.maximum(
         &ratio_kc,
-        &Tensor::<R>::full_scalar(&[1], dtype, 1e-15, device),
+        &Tensor::<R>::full_scalar(&[1], dtype, 1e-15, device)?,
     )?;
     let log_kc = client.log(&safe_ratio_kc)?;
     let terms_kc = client.mul(&p_ij, &log_kc)?;
@@ -588,12 +591,12 @@ where
     let h_k_given_c = client.mul_scalar(&client.sum(&masked_kc, &[0, 1], false)?, -1.0)?;
 
     // Homogeneity = 1 - H(C|K) / H(C)
-    let h_c_safe = client.maximum(&h_c, &Tensor::<R>::full_scalar(&[], dtype, 1e-15, device))?;
+    let h_c_safe = client.maximum(&h_c, &Tensor::<R>::full_scalar(&[], dtype, 1e-15, device)?)?;
     let homogeneity = client.sub_scalar(&client.div(&h_c_given_k, &h_c_safe)?, 1.0)?;
     let homogeneity = client.mul_scalar(&homogeneity, -1.0)?; // 1 - x = -(x - 1)
 
     // Completeness = 1 - H(K|C) / H(K)
-    let h_k_safe = client.maximum(&h_k, &Tensor::<R>::full_scalar(&[], dtype, 1e-15, device))?;
+    let h_k_safe = client.maximum(&h_k, &Tensor::<R>::full_scalar(&[], dtype, 1e-15, device)?)?;
     let completeness = client.sub_scalar(&client.div(&h_k_given_c, &h_k_safe)?, 1.0)?;
     let completeness = client.mul_scalar(&completeness, -1.0)?;
 
@@ -601,7 +604,7 @@ where
     let hc_sum = client.add(&homogeneity, &completeness)?;
     let hc_safe = client.maximum(
         &hc_sum,
-        &Tensor::<R>::full_scalar(&[], dtype, 1e-15, device),
+        &Tensor::<R>::full_scalar(&[], dtype, 1e-15, device)?,
     )?;
     let hc_prod = client.mul(&homogeneity, &completeness)?;
     let v_measure = client.div(&client.mul_scalar(&hc_prod, 2.0)?, &hc_safe)?;

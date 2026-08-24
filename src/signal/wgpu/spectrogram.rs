@@ -39,7 +39,7 @@ mod tests {
         };
 
         let signal: Vec<f32> = (0..512).map(|i| (i as f32 * 0.05).sin()).collect();
-        let signal_tensor = Tensor::<WgpuRuntime>::from_slice(&signal, &[512], &device);
+        let signal_tensor = Tensor::<WgpuRuntime>::from_slice(&signal, &[512], &device).unwrap();
 
         // Spectrogram uses FFT → Complex64, which wgpu doesn't support.
         let result = match client.spectrogram(&signal_tensor, 64, Some(32), None, 2.0) {

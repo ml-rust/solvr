@@ -264,8 +264,8 @@ impl ContinuousDistribution for Beta {
         C: TensorOps<R> + ScalarOps<R> + SpecialFunctions<R> + RuntimeClient<R>,
     {
         // CDF(x) = betainc(α, β, x)
-        let alpha_t = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.alpha, client.device());
-        let beta_t = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.beta, client.device());
+        let alpha_t = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.alpha, client.device())?;
+        let beta_t = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.beta, client.device())?;
         client.betainc(&alpha_t, &beta_t, x)
     }
 
@@ -280,8 +280,8 @@ impl ContinuousDistribution for Beta {
         // SF(x) = betainc(β, α, 1-x)
         let one_minus_x = client.mul_scalar(x, -1.0)?;
         let one_minus_x = client.add_scalar(&one_minus_x, 1.0)?;
-        let alpha_t = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.alpha, client.device());
-        let beta_t = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.beta, client.device());
+        let alpha_t = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.alpha, client.device())?;
+        let beta_t = Tensor::<R>::full_scalar(x.shape(), x.dtype(), self.beta, client.device())?;
         client.betainc(&beta_t, &alpha_t, &one_minus_x)
     }
 
@@ -307,8 +307,8 @@ impl ContinuousDistribution for Beta {
         C: TensorOps<R> + ScalarOps<R> + SpecialFunctions<R> + RuntimeClient<R>,
     {
         // PPF(p) = betaincinv(α, β, p)
-        let alpha_t = Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.alpha, client.device());
-        let beta_t = Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.beta, client.device());
+        let alpha_t = Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.alpha, client.device())?;
+        let beta_t = Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.beta, client.device())?;
         client.betaincinv(&alpha_t, &beta_t, p)
     }
 
@@ -323,8 +323,8 @@ impl ContinuousDistribution for Beta {
         // ISF(p) = PPF(1 - p) = betaincinv(α, β, 1-p)
         let one_minus_p = client.mul_scalar(p, -1.0)?;
         let one_minus_p = client.add_scalar(&one_minus_p, 1.0)?;
-        let alpha_t = Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.alpha, client.device());
-        let beta_t = Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.beta, client.device());
+        let alpha_t = Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.alpha, client.device())?;
+        let beta_t = Tensor::<R>::full_scalar(p.shape(), p.dtype(), self.beta, client.device())?;
         client.betaincinv(&alpha_t, &beta_t, &one_minus_p)
     }
 }

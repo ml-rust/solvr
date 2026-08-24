@@ -103,7 +103,8 @@ mod tests {
     #[test]
     fn test_ttest_1samp() {
         let (client, device) = setup();
-        let data = Tensor::<CpuRuntime>::from_slice(&[1.2f64, 1.5, 1.3, 1.4, 1.6], &[5], &device);
+        let data =
+            Tensor::<CpuRuntime>::from_slice(&[1.2f64, 1.5, 1.3, 1.4, 1.6], &[5], &device).unwrap();
 
         let result = client.ttest_1samp(&data, 1.0).unwrap();
         let stat = extract_scalar(&result.statistic).unwrap();
@@ -116,8 +117,10 @@ mod tests {
     #[test]
     fn test_ttest_ind() {
         let (client, device) = setup();
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device);
-        let b = Tensor::<CpuRuntime>::from_slice(&[2.0f64, 3.0, 4.0, 5.0, 6.0], &[5], &device);
+        let a =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device).unwrap();
+        let b =
+            Tensor::<CpuRuntime>::from_slice(&[2.0f64, 3.0, 4.0, 5.0, 6.0], &[5], &device).unwrap();
 
         let result = client.ttest_ind(&a, &b).unwrap();
         let stat = extract_scalar(&result.statistic).unwrap();
@@ -130,8 +133,10 @@ mod tests {
     #[test]
     fn test_pearsonr() {
         let (client, device) = setup();
-        let x = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&[2.0f64, 4.0, 6.0, 8.0, 10.0], &[5], &device);
+        let x =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&[2.0f64, 4.0, 6.0, 8.0, 10.0], &[5], &device)
+            .unwrap();
 
         let result = client.pearsonr(&x, &y).unwrap();
         let r = extract_scalar(&result.statistic).unwrap();
@@ -144,9 +149,12 @@ mod tests {
     #[test]
     fn test_f_oneway() {
         let (client, device) = setup();
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device);
-        let b = Tensor::<CpuRuntime>::from_slice(&[2.0f64, 3.0, 4.0, 5.0, 6.0], &[5], &device);
-        let c = Tensor::<CpuRuntime>::from_slice(&[10.0f64, 11.0, 12.0, 13.0, 14.0], &[5], &device);
+        let a =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device).unwrap();
+        let b =
+            Tensor::<CpuRuntime>::from_slice(&[2.0f64, 3.0, 4.0, 5.0, 6.0], &[5], &device).unwrap();
+        let c = Tensor::<CpuRuntime>::from_slice(&[10.0f64, 11.0, 12.0, 13.0, 14.0], &[5], &device)
+            .unwrap();
 
         let result = client.f_oneway(&[&a, &b, &c]).unwrap();
         let f_stat = extract_scalar(&result.statistic).unwrap();
@@ -160,8 +168,10 @@ mod tests {
     #[test]
     fn test_kruskal() {
         let (client, device) = setup();
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device);
-        let b = Tensor::<CpuRuntime>::from_slice(&[10.0f64, 11.0, 12.0, 13.0, 14.0], &[5], &device);
+        let a =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device).unwrap();
+        let b = Tensor::<CpuRuntime>::from_slice(&[10.0f64, 11.0, 12.0, 13.0, 14.0], &[5], &device)
+            .unwrap();
 
         let result = client.kruskal(&[&a, &b]).unwrap();
         let h = extract_scalar(&result.statistic).unwrap();
@@ -175,10 +185,13 @@ mod tests {
     fn test_friedmanchisquare() {
         let (client, device) = setup();
         // 5 subjects, 3 treatments
-        let t1 = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device);
-        let t2 = Tensor::<CpuRuntime>::from_slice(&[2.0f64, 3.0, 4.0, 5.0, 6.0], &[5], &device);
+        let t1 =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device).unwrap();
+        let t2 =
+            Tensor::<CpuRuntime>::from_slice(&[2.0f64, 3.0, 4.0, 5.0, 6.0], &[5], &device).unwrap();
         let t3 =
-            Tensor::<CpuRuntime>::from_slice(&[10.0f64, 11.0, 12.0, 13.0, 14.0], &[5], &device);
+            Tensor::<CpuRuntime>::from_slice(&[10.0f64, 11.0, 12.0, 13.0, 14.0], &[5], &device)
+                .unwrap();
 
         let result = client.friedmanchisquare(&[&t1, &t2, &t3]).unwrap();
         let chi2 = extract_scalar(&result.statistic).unwrap();
@@ -196,7 +209,8 @@ mod tests {
             &[-1.2f64, -0.5, 0.0, 0.3, 0.7, 1.0, 1.5, 2.0, -0.8, 0.2],
             &[10],
             &device,
-        );
+        )
+        .unwrap();
 
         let result = client.shapiro(&data).unwrap();
         let w = extract_scalar(&result.statistic).unwrap();
@@ -213,7 +227,7 @@ mod tests {
         let (client, device) = setup();
         // Roughly normal data (n=30)
         let data: Vec<f64> = (0..30).map(|i| (i as f64 - 15.0) / 5.0).collect();
-        let x = Tensor::<CpuRuntime>::from_slice(&data, &[30], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&data, &[30], &device).unwrap();
 
         let result = client.normaltest(&x).unwrap();
         let k2 = extract_scalar(&result.statistic).unwrap();
@@ -226,8 +240,10 @@ mod tests {
     #[test]
     fn test_levene() {
         let (client, device) = setup();
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device);
-        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 10.0, 1.0, 10.0, 1.0], &[5], &device);
+        let a =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device).unwrap();
+        let b = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 10.0, 1.0, 10.0, 1.0], &[5], &device)
+            .unwrap();
 
         // b has much higher variance
         let result = client.levene(&[&a, &b], LeveneCenter::Median).unwrap();
@@ -241,9 +257,11 @@ mod tests {
     #[test]
     fn test_bartlett() {
         let (client, device) = setup();
-        let a = Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device);
+        let a =
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 2.0, 3.0, 4.0, 5.0], &[5], &device).unwrap();
         let b =
-            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 10.0, 1.0, 10.0, 1.0, 10.0], &[6], &device);
+            Tensor::<CpuRuntime>::from_slice(&[1.0f64, 10.0, 1.0, 10.0, 1.0, 10.0], &[6], &device)
+                .unwrap();
 
         let result = client.bartlett(&[&a, &b]).unwrap();
         let t_stat = extract_scalar(&result.statistic).unwrap();

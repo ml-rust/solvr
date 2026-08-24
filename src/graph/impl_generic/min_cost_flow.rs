@@ -159,7 +159,7 @@ where
         flow_flat.extend(row.iter().take(n).copied());
     }
 
-    let flow_tensor = Tensor::<R>::from_slice(&flow_flat, &[n * n], &device);
+    let flow_tensor = Tensor::<R>::from_slice(&flow_flat, &[n * n], &device)?;
 
     Ok(FlowResult {
         max_flow: total_cost, // Return cost as "max_flow" (API uses this for cost value)

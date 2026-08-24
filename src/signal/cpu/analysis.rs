@@ -116,7 +116,7 @@ fn decimate_cpu(
         }
     }
 
-    Ok(Tensor::from_slice(&result, &[result.len()], device))
+    Tensor::from_slice(&result, &[result.len()], device)
 }
 
 /// Find peaks in a signal (CPU implementation).
@@ -133,7 +133,7 @@ fn find_peaks_cpu(x: &Tensor<CpuRuntime>, params: PeakParams) -> Result<PeakResu
         // Need at least 3 points to find a peak
         return Ok(PeakResult {
             indices: vec![],
-            heights: Tensor::from_slice(&[] as &[f64], &[0], device),
+            heights: Tensor::from_slice(&[] as &[f64], &[0], device)?,
             prominences: None,
         });
     }
@@ -183,9 +183,9 @@ fn find_peaks_cpu(x: &Tensor<CpuRuntime>, params: PeakParams) -> Result<PeakResu
 
             peaks = filtered.iter().map(|(i, _)| *i).collect();
             let new_proms: Vec<f64> = filtered.iter().map(|(_, p)| *p).collect();
-            Some(Tensor::from_slice(&new_proms, &[new_proms.len()], device))
+            Some(Tensor::from_slice(&new_proms, &[new_proms.len()], device)?)
         } else {
-            Some(Tensor::from_slice(&proms, &[proms.len()], device))
+            Some(Tensor::from_slice(&proms, &[proms.len()], device)?)
         }
     } else {
         None
@@ -196,7 +196,7 @@ fn find_peaks_cpu(x: &Tensor<CpuRuntime>, params: PeakParams) -> Result<PeakResu
 
     Ok(PeakResult {
         indices: peaks,
-        heights: Tensor::from_slice(&heights, &[heights.len()], device),
+        heights: Tensor::from_slice(&heights, &[heights.len()], device)?,
         prominences,
     })
 }
@@ -267,7 +267,7 @@ fn savgol_filter_cpu(
         result.push(sum);
     }
 
-    Ok(Tensor::from_slice(&result, &[n], device))
+    Tensor::from_slice(&result, &[n], device)
 }
 
 #[cfg(test)]
@@ -292,7 +292,7 @@ mod tests {
             .map(|i| (2.0 * PI * freq * i as f64 / n as f64).sin())
             .collect();
 
-        let x = Tensor::from_slice(&signal, &[n], &device);
+        let x = Tensor::from_slice(&signal, &[n], &device).unwrap();
         let result = client.hilbert(&x).unwrap();
 
         let env = result.envelope().unwrap();
@@ -321,7 +321,7 @@ mod tests {
             })
             .collect();
 
-        let x = Tensor::from_slice(&signal, &[n], &device);
+        let x = Tensor::from_slice(&signal, &[n], &device).unwrap();
         let result = client.hilbert(&x).unwrap();
         let env = result.envelope().unwrap();
         let env_data: Vec<f64> = env.to_vec();
@@ -336,7 +336,7 @@ mod tests {
 
         let signal = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let n = signal.len();
-        let x = Tensor::from_slice(&signal, &[n], &device);
+        let x = Tensor::from_slice(&signal, &[n], &device).unwrap();
 
         let result = client.resample(&x, 2, 1).unwrap();
         let result_data: Vec<f64> = result.to_vec();
@@ -350,7 +350,7 @@ mod tests {
 
         let n = 100;
         let signal: Vec<f64> = (0..n).map(|i| (i as f64 * 0.1).sin()).collect();
-        let x = Tensor::from_slice(&signal, &[n], &device);
+        let x = Tensor::from_slice(&signal, &[n], &device).unwrap();
 
         let result = client.resample(&x, 1, 2).unwrap();
         let result_data: Vec<f64> = result.to_vec();
@@ -366,7 +366,7 @@ mod tests {
         let signal: Vec<f64> = (0..n)
             .map(|i| (2.0 * PI * 2.0 * i as f64 / n as f64).sin())
             .collect();
-        let x = Tensor::from_slice(&signal, &[n], &device);
+        let x = Tensor::from_slice(&signal, &[n], &device).unwrap();
 
         let params = DecimateParams::default();
         let result = client.decimate(&x, 4, params).unwrap();
@@ -383,7 +383,7 @@ mod tests {
         let (client, device) = setup();
 
         let signal = vec![0.0, 1.0, 0.0, 2.0, 0.0, 1.5, 0.0];
-        let x = Tensor::from_slice(&signal, &[signal.len()], &device);
+        let x = Tensor::from_slice(&signal, &[signal.len()], &device).unwrap();
 
         let params = PeakParams::new();
         let result = client.find_peaks(&x, params).unwrap();
@@ -401,7 +401,7 @@ mod tests {
         let (client, device) = setup();
 
         let signal = vec![0.0, 1.0, 0.0, 2.0, 0.0, 0.5, 0.0];
-        let x = Tensor::from_slice(&signal, &[signal.len()], &device);
+        let x = Tensor::from_slice(&signal, &[signal.len()], &device).unwrap();
 
         let params = PeakParams::new().with_height(1.0);
         let result = client.find_peaks(&x, params).unwrap();
@@ -414,7 +414,7 @@ mod tests {
         let (client, device) = setup();
 
         let signal = vec![0.0, 1.0, 0.5, 1.2, 0.0, 0.0, 2.0, 0.0];
-        let x = Tensor::from_slice(&signal, &[signal.len()], &device);
+        let x = Tensor::from_slice(&signal, &[signal.len()], &device).unwrap();
 
         let params = PeakParams::new().with_distance(3);
         let result = client.find_peaks(&x, params).unwrap();
@@ -435,7 +435,7 @@ mod tests {
             })
             .collect();
 
-        let x = Tensor::from_slice(&signal, &[n], &device);
+        let x = Tensor::from_slice(&signal, &[n], &device).unwrap();
 
         let result = client.savgol_filter(&x, 11, 2, 0).unwrap();
         let result_data: Vec<f64> = result.to_vec();
@@ -467,7 +467,7 @@ mod tests {
             })
             .collect();
 
-        let x = Tensor::from_slice(&signal, &[n], &device);
+        let x = Tensor::from_slice(&signal, &[n], &device).unwrap();
 
         let result = client.savgol_filter(&x, 11, 3, 1).unwrap();
         let result_data: Vec<f64> = result.to_vec();
@@ -491,7 +491,7 @@ mod tests {
         let (client, device) = setup();
 
         let signal = vec![0.0, 1.0, 0.8, 2.0, 0.5, 0.6, 0.0];
-        let x = Tensor::from_slice(&signal, &[signal.len()], &device);
+        let x = Tensor::from_slice(&signal, &[signal.len()], &device).unwrap();
 
         let params = PeakParams::new().with_prominence(0.5);
         let result = client.find_peaks(&x, params).unwrap();

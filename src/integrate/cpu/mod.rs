@@ -316,8 +316,8 @@ mod tests {
         let x_data: Vec<f64> = (0..n).map(|i| i as f64 / (n - 1) as f64).collect();
         let y_data: Vec<f64> = x_data.iter().map(|&xi| xi * xi).collect();
 
-        let x = Tensor::<CpuRuntime>::from_slice(&x_data, &[n], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&y_data, &[n], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&x_data, &[n], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&y_data, &[n], &device).unwrap();
 
         let result = client.trapezoid(&y, &x).unwrap();
         let result_val: Vec<f64> = result.to_vec();
@@ -340,7 +340,7 @@ mod tests {
             })
             .collect();
 
-        let y = Tensor::<CpuRuntime>::from_slice(&y_data, &[n], &device);
+        let y = Tensor::<CpuRuntime>::from_slice(&y_data, &[n], &device).unwrap();
 
         let result = client.simpson(&y, None, dx).unwrap();
         let result_val: Vec<f64> = result.to_vec();
@@ -359,11 +359,7 @@ mod tests {
                 |x| {
                     let data: Vec<f64> = x.to_vec();
                     let sin_data: Vec<f64> = data.iter().map(|&xi| xi.sin()).collect();
-                    Ok(Tensor::<CpuRuntime>::from_slice(
-                        &sin_data,
-                        x.shape(),
-                        &device,
-                    ))
+                    Tensor::<CpuRuntime>::from_slice(&sin_data, x.shape(), &device)
                 },
                 0.0,
                 std::f64::consts::PI,
@@ -387,11 +383,7 @@ mod tests {
                 |x| {
                     let data: Vec<f64> = x.to_vec();
                     let sin_data: Vec<f64> = data.iter().map(|&xi| xi.sin()).collect();
-                    Ok(Tensor::<CpuRuntime>::from_slice(
-                        &sin_data,
-                        x.shape(),
-                        &device,
-                    ))
+                    Tensor::<CpuRuntime>::from_slice(&sin_data, x.shape(), &device)
                 },
                 0.0,
                 std::f64::consts::PI,
@@ -416,11 +408,7 @@ mod tests {
                 |x| {
                     let data: Vec<f64> = x.to_vec();
                     let exp_data: Vec<f64> = data.iter().map(|&xi| xi.exp()).collect();
-                    Ok(Tensor::<CpuRuntime>::from_slice(
-                        &exp_data,
-                        x.shape(),
-                        &device,
-                    ))
+                    Tensor::<CpuRuntime>::from_slice(&exp_data, x.shape(), &device)
                 },
                 0.0,
                 1.0,
@@ -454,8 +442,8 @@ mod tests {
             y_data.push(xi * xi);
         }
 
-        let x = Tensor::<CpuRuntime>::from_slice(&x_data, &[n], &device);
-        let y = Tensor::<CpuRuntime>::from_slice(&y_data, &[2, n], &device);
+        let x = Tensor::<CpuRuntime>::from_slice(&x_data, &[n], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&y_data, &[2, n], &device).unwrap();
 
         let result = client.trapezoid(&y, &x).unwrap();
         let result_val: Vec<f64> = result.to_vec();
@@ -470,7 +458,7 @@ mod tests {
 
         // Solve dy/dt = -y, y(0) = 1
         // Solution: y(t) = exp(-t)
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device);
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0], &[1], &device).unwrap();
 
         let result = client
             .solve_ivp(
@@ -502,7 +490,7 @@ mod tests {
         // y'' + y = 0 as system: y1' = y2, y2' = -y1
         // y1(0) = 1, y2(0) = 0
         // Solution: y1 = cos(t), y2 = -sin(t)
-        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0], &[2], &device);
+        let y0 = Tensor::<CpuRuntime>::from_slice(&[1.0, 0.0], &[2], &device).unwrap();
 
         let opts = crate::integrate::ODEOptions::with_tolerances(1e-6, 1e-8);
 
@@ -512,11 +500,7 @@ mod tests {
                     // For harmonic oscillator: dy1/dt = y2, dy2/dt = -y1
                     // Transfer to host for indexing (this test is about the solver, not tensor ops)
                     let y_data: Vec<f64> = y.to_vec();
-                    Ok(Tensor::<CpuRuntime>::from_slice(
-                        &[y_data[1], -y_data[0]],
-                        &[2],
-                        &device,
-                    ))
+                    Tensor::<CpuRuntime>::from_slice(&[y_data[1], -y_data[0]], &[2], &device)
                 },
                 [0.0, 2.0 * std::f64::consts::PI],
                 &y0,

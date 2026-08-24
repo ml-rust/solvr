@@ -74,7 +74,7 @@ mod tests {
     fn test_gaussian_filter_1d() {
         let (client, device) = setup();
         let data = vec![0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0];
-        let input = Tensor::from_slice(&data, &[7], &device);
+        let input = Tensor::from_slice(&data, &[7], &device).unwrap();
         let result = client
             .gaussian_filter(&input, &[1.0], &[], BoundaryMode::Constant(0.0), 4.0)
             .unwrap();
@@ -90,7 +90,7 @@ mod tests {
         // 5x5 with center spike
         let mut data = vec![0.0; 25];
         data[12] = 1.0;
-        let input = Tensor::from_slice(&data, &[5, 5], &device);
+        let input = Tensor::from_slice(&data, &[5, 5], &device).unwrap();
         let result = client
             .gaussian_filter(&input, &[1.0], &[], BoundaryMode::Constant(0.0), 4.0)
             .unwrap();
@@ -106,7 +106,7 @@ mod tests {
     fn test_uniform_filter_1d() {
         let (client, device) = setup();
         let data = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-        let input = Tensor::from_slice(&data, &[5], &device);
+        let input = Tensor::from_slice(&data, &[5], &device).unwrap();
         let result = client
             .uniform_filter(&input, &[3], BoundaryMode::Reflect)
             .unwrap();
@@ -119,7 +119,7 @@ mod tests {
     fn test_minimum_filter_1d() {
         let (client, device) = setup();
         let data = vec![5.0, 3.0, 7.0, 1.0, 4.0];
-        let input = Tensor::from_slice(&data, &[5], &device);
+        let input = Tensor::from_slice(&data, &[5], &device).unwrap();
         let result = client
             .minimum_filter(&input, &[3], BoundaryMode::Nearest)
             .unwrap();
@@ -132,7 +132,7 @@ mod tests {
     fn test_maximum_filter_1d() {
         let (client, device) = setup();
         let data = vec![5.0, 3.0, 7.0, 1.0, 4.0];
-        let input = Tensor::from_slice(&data, &[5], &device);
+        let input = Tensor::from_slice(&data, &[5], &device).unwrap();
         let result = client
             .maximum_filter(&input, &[3], BoundaryMode::Nearest)
             .unwrap();
@@ -145,7 +145,7 @@ mod tests {
     fn test_percentile_filter_median() {
         let (client, device) = setup();
         let data = vec![5.0, 3.0, 7.0, 1.0, 4.0];
-        let input = Tensor::from_slice(&data, &[5], &device);
+        let input = Tensor::from_slice(&data, &[5], &device).unwrap();
         let result = client
             .percentile_filter(&input, 50.0, &[3], BoundaryMode::Nearest)
             .unwrap();

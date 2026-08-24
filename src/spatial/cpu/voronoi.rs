@@ -43,7 +43,8 @@ mod tests {
         let (client, device) = setup();
 
         let points =
-            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 0.0, 0.5, 1.0], &[3, 2], &device);
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 0.0, 0.5, 1.0], &[3, 2], &device)
+                .unwrap();
 
         let vor = client.voronoi(&points).unwrap();
 
@@ -57,12 +58,13 @@ mod tests {
         let (client, device) = setup();
 
         let points =
-            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 0.0, 0.5, 1.0], &[3, 2], &device);
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 1.0, 0.0, 0.5, 1.0], &[3, 2], &device)
+                .unwrap();
 
         let vor = client.voronoi(&points).unwrap();
 
         // Query at generator 0
-        let query = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[1, 2], &device);
+        let query = Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0], &[1, 2], &device).unwrap();
 
         let result = client.voronoi_find_region(&vor, &query).unwrap();
         let regions: Vec<i64> = result.to_vec();
@@ -76,13 +78,15 @@ mod tests {
         let (client, device) = setup();
 
         let points =
-            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 2.0, 0.0, 1.0, 2.0], &[3, 2], &device);
+            Tensor::<CpuRuntime>::from_slice(&[0.0, 0.0, 2.0, 0.0, 1.0, 2.0], &[3, 2], &device)
+                .unwrap();
 
         let vor = client.voronoi(&points).unwrap();
 
         // Query points near each generator
         let query =
-            Tensor::<CpuRuntime>::from_slice(&[0.1, 0.1, 1.9, 0.1, 1.0, 1.9], &[3, 2], &device);
+            Tensor::<CpuRuntime>::from_slice(&[0.1, 0.1, 1.9, 0.1, 1.0, 1.9], &[3, 2], &device)
+                .unwrap();
 
         let result = client.voronoi_find_region(&vor, &query).unwrap();
         let regions: Vec<i64> = result.to_vec();
