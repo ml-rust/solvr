@@ -20,7 +20,7 @@
 //! ```
 
 // NOTE: This module contains shared Hermite primitives for potential future use.
-// PCHIP and Akima are already implemented in their own modules.
+// PCHIP lives in `pchip.rs`, Akima in `akima.rs` (traits/, impl_generic/, cpu/, cuda/, wgpu/).
 #![allow(dead_code)]
 use crate::DType;
 

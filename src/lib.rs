@@ -187,7 +187,7 @@ pub use stats::{
     ChiSquared,
     // Distribution traits
     ContinuousDistribution,
-    // Runtime-generic traits for statistics operations (split into focused traits)
+    // Runtime-generic traits for statistics operations
     DescriptiveStatisticsAlgorithms,
     DiscreteDistribution,
     DiscreteUniform,
