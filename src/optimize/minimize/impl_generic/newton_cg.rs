@@ -326,8 +326,8 @@ where
 ///
 /// - Each call transfers a single f64 value (8 bytes) from device to host
 /// - ~200 transfers × 8 bytes = 1.6 KB per Newton step
-/// - Modern GPU memcpy latency: ~10 µs for small transfers
-/// - Total overhead: ~2 ms per Newton step (negligible vs compute time)
+/// - Small-transfer memcpy latency dominates over the bytes moved
+/// - Total overhead is negligible next to the HVP compute time below
 ///
 /// For comparison, a single HVP computation (which happens 20× per step) involves
 /// two full gradient computations, each processing thousands of parameters. The
