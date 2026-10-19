@@ -335,4 +335,78 @@ mod tests {
         let sol: Vec<f64> = result.x.to_vec();
         assert!((sol[0] - 2.0).abs() < 1e-6);
     }
+
+    #[test]
+    fn test_anderson_identical_residual_history() {
+        // g(x) = x + d has a constant residual d. Every residual difference
+        // is zero, so the history matrix has identical (all-zero) columns.
+        // The min-norm solve gives theta = 0 and each step adds alpha * d.
+        let (device, client) = setup();
+        let d = [1.0f64, -2.0, 0.5];
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.0f64; 3], &[3], &device).unwrap();
+        let mut options = AndersonOptions {
+            m: 3,
+            alpha: 0.5,
+            ..Default::default()
+        };
+        options.base.max_iter = 6;
+
+        let result = anderson_impl(
+            &client,
+            |x| {
+                let data: Vec<f64> = x.to_vec();
+                let out: Vec<f64> = data.iter().zip(d.iter()).map(|(a, b)| a + b).collect();
+                Tensor::from_slice(&out, x.shape(), x.device())
+            },
+            &x0,
+            &options,
+        )
+        .unwrap();
+
+        assert!(!result.converged);
+        let sol: Vec<f64> = result.x.to_vec();
+        for (s, di) in sol.iter().zip(d.iter()) {
+            assert!(s.is_finite());
+            assert!((s - 3.0 * di).abs() < 1e-12, "sol = {:?}", sol);
+        }
+        let norm = (1.0f64 + 4.0 + 0.25).sqrt();
+        assert!((result.residual_norm - norm).abs() < 1e-12);
+    }
+
+    #[test]
+    fn test_anderson_history_shorter_than_unknowns() {
+        // Six unknowns with history depth two: at most two difference
+        // columns, fewer than the unknown count. Fixed point of
+        // g_i(x) = a_i x_i + 1 is x_i = 1 / (1 - a_i).
+        let (device, client) = setup();
+        let a = [0.1f64, 0.2, 0.3, 0.4, 0.5, 0.6];
+        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.0f64; 6], &[6], &device).unwrap();
+        let mut options = AndersonOptions {
+            m: 2,
+            ..Default::default()
+        };
+        options.base.max_iter = 500;
+
+        let result = anderson_impl(
+            &client,
+            |x| {
+                let data: Vec<f64> = x.to_vec();
+                let out: Vec<f64> = data
+                    .iter()
+                    .zip(a.iter())
+                    .map(|(v, c)| c * v + 1.0)
+                    .collect();
+                Tensor::from_slice(&out, x.shape(), x.device())
+            },
+            &x0,
+            &options,
+        )
+        .unwrap();
+
+        assert!(result.converged, "residual = {}", result.residual_norm);
+        let sol: Vec<f64> = result.x.to_vec();
+        for (s, c) in sol.iter().zip(a.iter()) {
+            assert!((s - 1.0 / (1.0 - c)).abs() < 1e-6, "sol = {:?}", sol);
+        }
+    }
 }

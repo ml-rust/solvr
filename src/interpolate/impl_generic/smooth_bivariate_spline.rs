@@ -312,4 +312,83 @@ mod tests {
             vals[1]
         );
     }
+
+    fn eval_at(
+        client: &CpuClient,
+        spline: &BivariateSpline<CpuRuntime>,
+        xs: &[f64],
+        ys: &[f64],
+        device: &CpuDevice,
+    ) -> Vec<f64> {
+        let xi = Tensor::<CpuRuntime>::from_slice(xs, &[xs.len()], device).unwrap();
+        let yi = Tensor::<CpuRuntime>::from_slice(ys, &[ys.len()], device).unwrap();
+        smooth_bivariate_spline_evaluate_impl(client, spline, &xi, &yi)
+            .unwrap()
+            .to_vec()
+    }
+
+    #[test]
+    fn test_smooth_collinear_points_rank_deficient() {
+        // All points lie on y = x, so the design matrix is rank deficient.
+        // z = t^2 equals x*y on the line and lies in the cubic tensor space.
+        // The min-norm fit is finite and reproduces z at the data points.
+        let (device, client) = setup();
+        let n = 25;
+        let ts: Vec<f64> = (0..n).map(|i| i as f64 / 24.0).collect();
+        let zs: Vec<f64> = ts.iter().map(|t| t * t).collect();
+        let x = Tensor::<CpuRuntime>::from_slice(&ts, &[n], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&ts, &[n], &device).unwrap();
+        let z = Tensor::<CpuRuntime>::from_slice(&zs, &[n], &device).unwrap();
+
+        let spline =
+            smooth_bivariate_spline_fit_impl(&client, &x, &y, &z, None, 0.0, 3, 3).unwrap();
+        let coeffs: Vec<f64> = spline.coefficients.to_vec();
+        assert!(coeffs.iter().all(|c| c.is_finite()));
+
+        let inner: Vec<f64> = ts[1..n - 1].to_vec();
+        let vals = eval_at(&client, &spline, &inner, &inner, &device);
+        for (v, t) in vals.iter().zip(inner.iter()) {
+            assert!((v - t * t).abs() < 1e-6, "t = {}, got {}", t, v);
+        }
+    }
+
+    #[test]
+    fn test_smooth_fewer_distinct_points_than_coefficients() {
+        // Sixteen samples at four distinct corners: rank is at most four,
+        // below the sixteen coefficients. The min-norm fit is finite and
+        // interpolates the four corner values.
+        let (device, client) = setup();
+        let corners = [
+            (0.0, 0.0, 1.0),
+            (1.0, 0.0, 2.0),
+            (0.0, 1.0, 3.0),
+            (1.0, 1.0, 6.0),
+        ];
+        let mut xv = Vec::new();
+        let mut yv = Vec::new();
+        let mut zv = Vec::new();
+        for _ in 0..4 {
+            for &(cx, cy, cz) in &corners {
+                xv.push(cx);
+                yv.push(cy);
+                zv.push(cz);
+            }
+        }
+        let n = xv.len();
+        let x = Tensor::<CpuRuntime>::from_slice(&xv, &[n], &device).unwrap();
+        let y = Tensor::<CpuRuntime>::from_slice(&yv, &[n], &device).unwrap();
+        let z = Tensor::<CpuRuntime>::from_slice(&zv, &[n], &device).unwrap();
+
+        let spline =
+            smooth_bivariate_spline_fit_impl(&client, &x, &y, &z, None, 0.0, 3, 3).unwrap();
+        let coeffs: Vec<f64> = spline.coefficients.to_vec();
+        assert!(coeffs.iter().all(|c| c.is_finite()));
+
+        let cx: Vec<f64> = corners.iter().map(|c| c.0).collect();
+        let cy: Vec<f64> = corners.iter().map(|c| c.1).collect();
+        let vals = eval_at(&client, &spline, &cx, &cy, &device);
+        for (v, c) in vals.iter().zip(corners.iter()) {
+            assert!((v - c.2).abs() < 1e-8, "corner {:?}, got {}", c, v);
+        }
+    }
 }
