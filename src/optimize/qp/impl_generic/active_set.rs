@@ -215,7 +215,9 @@ where
                     message: format!("active_set: reshape rhs - {}", e),
                 })?;
 
-            let sol = LinearAlgebraAlgorithms::solve(client, &kkt, &rhs_col).map_err(|e| {
+            // Dependent working constraints make the KKT matrix singular.
+            // The system stays consistent, so the min-norm solution is exact.
+            let sol = LinearAlgebraAlgorithms::lstsq(client, &kkt, &rhs_col).map_err(|e| {
                 OptimizeError::NumericalError {
                     message: format!("active_set: solve kkt - {}", e),
                 }
@@ -251,39 +253,51 @@ where
 
             if d_norm < options.tol {
                 // At stationary point of subproblem. Check multipliers.
-                // Extract inequality multipliers (skip equality multipliers)
-                let ineq_lambdas = if m_eq > 0 {
-                    lambdas
-                        .narrow(0, m_eq, lambdas.shape()[0] - m_eq)
+                // With no inequality in the working set, nothing can leave it.
+                let dropped_row = if m_working > m_eq {
+                    // Extract inequality multipliers (skip equality multipliers)
+                    let ineq_lambdas = lambdas
+                        .narrow(0, m_eq, m_working - m_eq)
                         .map_err(|e| OptimizeError::NumericalError {
                             message: format!("active_set: extract ineq lambdas - {}", e),
                         })?
                         .contiguous()
                         .map_err(|e| OptimizeError::NumericalError {
                             message: format!("active_set: contiguous ineq lambdas - {}", e),
-                        })?
-                } else {
-                    lambdas.clone()
-                };
+                        })?;
 
-                // Find minimum value (most negative multiplier)
-                let min_lambda = client.min(&ineq_lambdas, &[0], false).map_err(|e| {
-                    OptimizeError::NumericalError {
-                        message: format!("active_set: min lambda - {}", e),
-                    }
-                })?;
-                let min_val: f64 = min_lambda.to_vec()[0];
-
-                if min_val < -1e-10 {
-                    // Find index of most negative multiplier
-                    let idx_tensor = client.argmin(&ineq_lambdas, 0, false).map_err(|e| {
+                    // The KKT rows are Q d + A' lambda = -g, so the multiplier of
+                    // a'x >= b is mu = -lambda. Optimal when every mu is non-negative.
+                    let ineq_lambdas = client.mul_scalar(&ineq_lambdas, -1.0).map_err(|e| {
                         OptimizeError::NumericalError {
-                            message: format!("active_set: argmin lambda - {}", e),
+                            message: format!("active_set: negate lambda - {}", e),
                         }
                     })?;
-                    let idx_vals: Vec<f64> = idx_tensor.to_vec();
-                    let idx_val = idx_vals[0] as i64;
-                    let row_i = active_rows[idx_val as usize];
+                    let min_lambda = client.min(&ineq_lambdas, &[0], false).map_err(|e| {
+                        OptimizeError::NumericalError {
+                            message: format!("active_set: min lambda - {}", e),
+                        }
+                    })?;
+                    let min_val: f64 = min_lambda.to_vec()[0];
+
+                    if min_val < -1e-10 {
+                        // Find index of most negative multiplier
+                        let idx_tensor = client.argmin(&ineq_lambdas, 0, false).map_err(|e| {
+                            OptimizeError::NumericalError {
+                                message: format!("active_set: argmin lambda - {}", e),
+                            }
+                        })?;
+                        let idx_vals: Vec<f64> = idx_tensor.to_vec();
+                        let idx_val = idx_vals[0] as i64;
+                        Some(active_rows[idx_val as usize])
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+
+                if let Some(row_i) = dropped_row {
                     active_set[row_i] = false;
                 } else {
                     // All multipliers non-negative -> optimal
@@ -560,4 +574,95 @@ where
         })?;
 
     Ok((combined_a, combined_b))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use numr::runtime::cpu::{CpuClient, CpuDevice, CpuRuntime};
+
+    fn setup() -> (CpuDevice, CpuClient) {
+        let device = CpuDevice::new();
+        let client = CpuClient::new(device.clone());
+        (device, client)
+    }
+
+    fn t(data: &[f64], shape: &[usize], device: &CpuDevice) -> Tensor<CpuRuntime> {
+        Tensor::<CpuRuntime>::from_slice(data, shape, device).unwrap()
+    }
+
+    fn eye3() -> Vec<f64> {
+        vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+    }
+
+    #[test]
+    fn test_active_set_fewer_equalities_than_variables() {
+        // min 0.5|x|^2 s.t. x1 + x2 + x3 = 3. One row, three unknowns.
+        // Solution x = (1, 1, 1), objective 1.5, multiplier -1.
+        let (device, client) = setup();
+        let q = t(&eye3(), &[3, 3], &device);
+        let c = t(&[0.0; 3], &[3], &device);
+        let a = t(&[1.0, 1.0, 1.0], &[1, 3], &device);
+        let b = t(&[3.0], &[1], &device);
+        let opts = QpOptions::default();
+        let r = active_set_qp_impl(&client, &q, &c, Some(&a), Some(&b), None, None, &opts).unwrap();
+        assert!(r.converged);
+        let x: Vec<f64> = r.x.to_vec();
+        for xi in &x {
+            assert!((xi - 1.0).abs() < 1e-8, "x = {:?}", x);
+        }
+        assert!((r.fun - 1.5).abs() < 1e-8, "fun = {}", r.fun);
+        let lam: Vec<f64> = r.dual_eq.unwrap().to_vec();
+        // Stationarity: Qx + c + A' lambda = 0.
+        assert!((x[0] + lam[0]).abs() < 1e-8, "lambda = {:?}", lam);
+    }
+
+    #[test]
+    fn test_active_set_dependent_equalities() {
+        // Rows (1,1,1) and (2,2,2) are dependent and consistent (b = 3, 6).
+        // Solution x = (1, 1, 1). Min-norm multipliers satisfy l1 + 2 l2 = -1.
+        let (device, client) = setup();
+        let q = t(&eye3(), &[3, 3], &device);
+        let c = t(&[0.0; 3], &[3], &device);
+        let a = t(&[1.0, 1.0, 1.0, 2.0, 2.0, 2.0], &[2, 3], &device);
+        let b = t(&[3.0, 6.0], &[2], &device);
+        let opts = QpOptions::default();
+        let r = active_set_qp_impl(&client, &q, &c, Some(&a), Some(&b), None, None, &opts).unwrap();
+        assert!(r.converged);
+        let x: Vec<f64> = r.x.to_vec();
+        for xi in &x {
+            assert!(xi.is_finite() && (xi - 1.0).abs() < 1e-8, "x = {:?}", x);
+        }
+        let lam: Vec<f64> = r.dual_eq.unwrap().to_vec();
+        assert!(lam.iter().all(|l| l.is_finite()));
+        assert!(
+            (lam[0] + 2.0 * lam[1] + 1.0).abs() < 1e-8,
+            "lambda = {:?}",
+            lam
+        );
+        assert!((x.iter().sum::<f64>() - 3.0).abs() < 1e-8);
+    }
+
+    #[test]
+    fn test_active_set_one_active_inequality_of_three_variables() {
+        // min 0.5|x - (2,2,2)|^2 s.t. -(x1 + x2 + x3) >= -3.
+        // Projection onto the half-space: x = (1, 1, 1), objective -4.5.
+        // The origin is feasible. One active row, three unknowns.
+        let (device, client) = setup();
+        let q = t(&eye3(), &[3, 3], &device);
+        let c = t(&[-2.0; 3], &[3], &device);
+        let a = t(&[-1.0, -1.0, -1.0], &[1, 3], &device);
+        let b = t(&[-3.0], &[1], &device);
+        let opts = QpOptions {
+            method: crate::optimize::qp::traits::QpMethod::ActiveSet,
+            ..QpOptions::default()
+        };
+        let r = active_set_qp_impl(&client, &q, &c, None, None, Some(&a), Some(&b), &opts).unwrap();
+        assert!(r.converged);
+        let x: Vec<f64> = r.x.to_vec();
+        for xi in &x {
+            assert!((xi - 1.0).abs() < 1e-8, "x = {:?}", x);
+        }
+        assert!((r.fun + 4.5).abs() < 1e-8, "fun = {}", r.fun);
+    }
 }
