@@ -13,7 +13,7 @@ keywords = ["solver", "optimization", "ode", "interpolation", "statistics"]
 categories = ["algorithms", "mathematics", "science"]
 
 [dependencies]
-numr = { version = "0.7" }
+numr = { version = "0.13" }
 
 [dev-dependencies]
 
