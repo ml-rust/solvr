@@ -48,7 +48,7 @@ pub struct Gumbel {
 }
 
 /// Euler-Mascheroni constant
-const EULER_MASCHERONI: f64 = 0.5772156649015329;
+const EULER_MASCHERONI: f64 = std::f64::consts::EULER_GAMMA;
 
 impl Gumbel {
     /// Create a new Gumbel distribution (right-skewed / maximum).

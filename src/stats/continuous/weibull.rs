@@ -105,7 +105,7 @@ impl Distribution for Weibull {
     fn entropy(&self) -> f64 {
         let k = self.shape;
         let lambda = self.scale;
-        let euler_mascheroni = 0.5772156649015329;
+        let euler_mascheroni = std::f64::consts::EULER_GAMMA;
         euler_mascheroni * (1.0 - 1.0 / k) + (lambda / k).ln() + 1.0
     }
 

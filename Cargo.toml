@@ -2,7 +2,7 @@
 name = "solvr"
 version = "0.2.0"
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.95"
 description = "Advanced computing library for real-world problem solving - optimization, differential equations, interpolation, statistics, and more"
 license = "Apache-2.0"
 repository = "https://github.com/ml-rust/solvr"
@@ -23,7 +23,6 @@ default = ["graph", "pde"]
 # Backend features (passed through to numr)
 cuda = ["numr/cuda"]
 wgpu = ["numr/wgpu"]
-# rocm = ["numr/rocm"]  # Future: when numr adds ROCm support
 
 # Sparse tensor support (required by graph and pde modules)
 sparse = ["numr/sparse"]
