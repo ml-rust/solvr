@@ -1,6 +1,6 @@
 //! Interior point method for quadratic programming.
 //!
-//! Predictor-corrector Mehrotra scheme.
+//! Infeasible-start primal-dual path following with a fixed centering parameter.
 
 use numr::algorithm::linalg::LinearAlgebraAlgorithms;
 use numr::dtype::DType;
@@ -9,14 +9,25 @@ use numr::runtime::{Runtime, RuntimeClient};
 use numr::tensor::Tensor;
 
 use crate::optimize::error::{OptimizeError, OptimizeResult};
-use crate::optimize::minimize::impl_generic::utils::tensor_dot;
+use crate::optimize::minimize::impl_generic::utils::{tensor_dot, tensor_norm};
 use crate::optimize::qp::traits::{QpOptions, QpResult};
 
-/// Interior point QP solver using Mehrotra predictor-corrector.
+/// Interior point QP solver.
 ///
 /// Transforms inequality constraints A_ineq*x >= b_ineq into standard form
-/// with slack variables: A_ineq*x - s = b_ineq, s >= 0.
-/// Then solves the barrier KKT system.
+/// with slack variables: A_ineq*x - s = b_ineq, s >= 0. Each iteration takes
+/// a Newton step on the perturbed KKT conditions
+///
+/// ```text
+/// r_dual   = Q*x + c + A_eq'*y - A_ineq'*z = 0
+/// r_eq     = A_eq*x - b_eq                  = 0
+/// r_primal = A_ineq*x - s - b_ineq          = 0
+/// s .* z   = sigma * mu
+/// ```
+///
+/// with `s, z > 0`. The solve converges when `mu = s'z / m_ineq` and every
+/// residual norm, relative to `1 + ||c||` or `1 + ||b||`, falls below `tol`.
+/// `dual_eq` is `y` and `dual_ineq` is `z`, in the sign convention of [`QpResult`].
 #[allow(clippy::too_many_arguments)]
 pub fn interior_point_qp_impl<R, C>(
     client: &C,
@@ -52,6 +63,50 @@ where
     let bi = b_ineq.ok_or(OptimizeError::InvalidInput {
         context: "interior_point: b_ineq must be present when m_ineq > 0".to_string(),
     })?;
+    let eq = if m_eq > 0 {
+        let ae = a_eq.ok_or(OptimizeError::InvalidInput {
+            context: "interior_point: a_eq must be present when m_eq > 0".to_string(),
+        })?;
+        let be = b_eq.ok_or(OptimizeError::InvalidInput {
+            context: "interior_point: b_eq must be present when a_eq is present".to_string(),
+        })?;
+        let ae_t = ae
+            .transpose(0, 1)
+            .map_err(|e| OptimizeError::NumericalError {
+                message: format!("ip_qp: transpose A_eq - {}", e),
+            })?;
+        Some((ae, be, ae_t))
+    } else {
+        None
+    };
+    let ai_t = ai
+        .transpose(0, 1)
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("ip_qp: transpose A - {}", e),
+        })?;
+
+    // Residual scales for the relative convergence test.
+    let norm = |t: &Tensor<R>, what: &str| {
+        tensor_norm(client, t).map_err(|e| OptimizeError::NumericalError {
+            message: format!("ip_qp: {} - {}", what, e),
+        })
+    };
+    let dual_scale = 1.0 + norm(c_vec, "||c||")?;
+    let ineq_scale = 1.0 + norm(bi, "||b_ineq||")?;
+    let eq_scale = match &eq {
+        Some((_, be, _)) => 1.0 + norm(be, "||b_eq||")?,
+        None => 1.0,
+    };
+
+    // Equality multipliers y, zero at the start.
+    let mut y = match &eq {
+        Some(_) => Some(client.fill(&[m_eq], 0.0, DType::F64).map_err(|e| {
+            OptimizeError::NumericalError {
+                message: format!("ip_qp: initial y - {}", e),
+            }
+        })?),
+        None => None,
+    };
 
     // Initialize primal x, slack s, dual z
     let mut x = client
@@ -83,20 +138,8 @@ where
         })?;
         let mu = sz / m_ineq as f64;
 
-        if mu < options.tol {
-            let fun = compute_objective(client, q, c_vec, &x, n)?;
-            return Ok(QpResult {
-                x,
-                fun,
-                iterations: iter + 1,
-                converged: true,
-                dual_eq: None,
-                dual_ineq: Some(z),
-            });
-        }
-
         // Compute residuals
-        // r_dual = Q*x + c - A_ineq'*z  (- A_eq'*y if eq constraints)
+        // r_dual = Q*x + c + A_eq'*y - A_ineq'*z
         let x_col = x
             .reshape(&[n, 1])
             .map_err(|e| OptimizeError::NumericalError {
@@ -112,11 +155,6 @@ where
                 message: format!("ip_qp: reshape Qx - {}", e),
             })?;
 
-        let ai_t = ai
-            .transpose(0, 1)
-            .map_err(|e| OptimizeError::NumericalError {
-                message: format!("ip_qp: transpose A - {}", e),
-            })?;
         let z_col = z
             .reshape(&[m_ineq, 1])
             .map_err(|e| OptimizeError::NumericalError {
@@ -132,12 +170,55 @@ where
                 message: format!("ip_qp: reshape A'z - {}", e),
             })?;
 
-        let r_dual = client
+        let mut r_dual = client
             .add(&qx, c_vec)
             .and_then(|r| client.sub(&r, &atz))
             .map_err(|e| OptimizeError::NumericalError {
                 message: format!("ip_qp: r_dual - {}", e),
             })?;
+
+        // r_eq = A_eq*x - b_eq, and the A_eq'*y term of r_dual
+        let r_eq = match (&eq, &y) {
+            (Some((ae, be, ae_t)), Some(y_cur)) => {
+                let y_col =
+                    y_cur
+                        .reshape(&[m_eq, 1])
+                        .map_err(|e| OptimizeError::NumericalError {
+                            message: format!("ip_qp: reshape y - {}", e),
+                        })?;
+                let aty = client
+                    .matmul(ae_t, &y_col)
+                    .map_err(|e| OptimizeError::NumericalError {
+                        message: format!("ip_qp: A_eq'y - {}", e),
+                    })?
+                    .reshape(&[n])
+                    .map_err(|e| OptimizeError::NumericalError {
+                        message: format!("ip_qp: reshape A_eq'y - {}", e),
+                    })?;
+                r_dual = client
+                    .add(&r_dual, &aty)
+                    .map_err(|e| OptimizeError::NumericalError {
+                        message: format!("ip_qp: r_dual + A_eq'y - {}", e),
+                    })?;
+                let aex = client
+                    .matmul(*ae, &x_col)
+                    .map_err(|e| OptimizeError::NumericalError {
+                        message: format!("ip_qp: A_eq*x - {}", e),
+                    })?
+                    .reshape(&[m_eq])
+                    .map_err(|e| OptimizeError::NumericalError {
+                        message: format!("ip_qp: reshape A_eq*x - {}", e),
+                    })?;
+                Some(
+                    client
+                        .sub(&aex, *be)
+                        .map_err(|e| OptimizeError::NumericalError {
+                            message: format!("ip_qp: r_eq - {}", e),
+                        })?,
+                )
+            }
+            _ => None,
+        };
 
         // r_primal = A*x - s - b
         let ax = client
@@ -155,6 +236,29 @@ where
             .map_err(|e| OptimizeError::NumericalError {
                 message: format!("ip_qp: r_primal - {}", e),
             })?;
+
+        // Converged when the gap and every residual are small.
+        let dual_res = norm(&r_dual, "||r_dual||")? / dual_scale;
+        let ineq_res = norm(&r_primal, "||r_primal||")? / ineq_scale;
+        let eq_res = match &r_eq {
+            Some(r) => norm(r, "||r_eq||")? / eq_scale,
+            None => 0.0,
+        };
+        if mu < options.tol
+            && dual_res < options.tol
+            && ineq_res < options.tol
+            && eq_res < options.tol
+        {
+            let fun = compute_objective(client, q, c_vec, &x, n)?;
+            return Ok(QpResult {
+                x,
+                fun,
+                iterations: iter + 1,
+                converged: true,
+                dual_eq: y,
+                dual_ineq: Some(z),
+            });
+        }
 
         // Centering parameter
         let sigma = 0.3;
@@ -178,10 +282,17 @@ where
                     message: format!("ip_qp: r_comp - {}", e),
                 })?;
 
-        // Solve Newton system by eliminating ds and dz:
-        // dz = (r_comp - z.*ds) / s
-        // ds = A*dx - r_primal
-        // (Q + A'*(Z/S)*A) dx = -(r_dual + A'*(r_comp/s - z.*r_primal/s))
+        // Newton step on the residuals:
+        //   Q dx + A_eq' dy - A' dz = -r_dual
+        //   A_eq dx                 = -r_eq
+        //   A dx - ds               = -r_primal
+        //   Z ds + S dz             = -r_comp
+        // Eliminate ds and dz:
+        //   ds = A dx + r_primal
+        //   dz = -(r_comp + z.*ds) / s
+        //   H = Q + A'*(Z/S)*A
+        //   [H     A_eq'] [dx]   [-(r_dual + A'*((r_comp + z.*r_primal) / s))]
+        //   [A_eq  0    ] [dy] = [-r_eq                                       ]
         let z_over_s = client
             .div(&z, &s)
             .map_err(|e| OptimizeError::NumericalError {
@@ -226,9 +337,9 @@ where
                 })?;
         let rhs_inner =
             client
-                .sub(&rc_over_s, &z_rp_over_s)
+                .add(&rc_over_s, &z_rp_over_s)
                 .map_err(|e| OptimizeError::NumericalError {
-                    message: format!("ip_qp: rc/s - z*rp/s - {}", e),
+                    message: format!("ip_qp: rc/s + z*rp/s - {}", e),
                 })?;
         let rhs_inner_col =
             rhs_inner
@@ -258,17 +369,83 @@ where
                 message: format!("ip_qp: reshape neg_rhs - {}", e),
             })?;
 
-        // Solve for dx
-        let dx = LinearAlgebraAlgorithms::solve(client, &lhs, &neg_rhs_col)
-            .map_err(|e| OptimizeError::NumericalError {
-                message: format!("ip_qp: solve dx - {}", e),
-            })?
-            .reshape(&[n])
-            .map_err(|e| OptimizeError::NumericalError {
-                message: format!("ip_qp: reshape dx - {}", e),
-            })?;
+        // Solve for dx, and dy when equality rows are present
+        let (dx, dy) =
+            match (&eq, &r_eq) {
+                (Some((ae, _, ae_t)), Some(r_eq)) => {
+                    let top = client.cat(&[&lhs, ae_t], 1).map_err(|e| {
+                        OptimizeError::NumericalError {
+                            message: format!("ip_qp: cat kkt top - {}", e),
+                        }
+                    })?;
+                    let zeros = client.fill(&[m_eq, m_eq], 0.0, DType::F64).map_err(|e| {
+                        OptimizeError::NumericalError {
+                            message: format!("ip_qp: kkt zeros - {}", e),
+                        }
+                    })?;
+                    let bottom = client.cat(&[*ae, &zeros], 1).map_err(|e| {
+                        OptimizeError::NumericalError {
+                            message: format!("ip_qp: cat kkt bottom - {}", e),
+                        }
+                    })?;
+                    let kkt = client.cat(&[&top, &bottom], 0).map_err(|e| {
+                        OptimizeError::NumericalError {
+                            message: format!("ip_qp: cat kkt - {}", e),
+                        }
+                    })?;
+                    let neg_r_eq = client.mul_scalar(r_eq, -1.0).map_err(|e| {
+                        OptimizeError::NumericalError {
+                            message: format!("ip_qp: negate r_eq - {}", e),
+                        }
+                    })?;
+                    let rhs = client.cat(&[&neg_rhs, &neg_r_eq], 0).map_err(|e| {
+                        OptimizeError::NumericalError {
+                            message: format!("ip_qp: cat kkt rhs - {}", e),
+                        }
+                    })?;
+                    let rhs_col =
+                        rhs.reshape(&[n + m_eq, 1])
+                            .map_err(|e| OptimizeError::NumericalError {
+                                message: format!("ip_qp: reshape kkt rhs - {}", e),
+                            })?;
+                    // Dependent equality rows make the KKT matrix singular. The
+                    // system stays consistent, so the min-norm solution is exact.
+                    let sol = LinearAlgebraAlgorithms::lstsq(client, &kkt, &rhs_col)
+                        .map_err(|e| OptimizeError::NumericalError {
+                            message: format!("ip_qp: solve kkt - {}", e),
+                        })?
+                        .reshape(&[n + m_eq])
+                        .map_err(|e| OptimizeError::NumericalError {
+                            message: format!("ip_qp: reshape kkt sol - {}", e),
+                        })?;
+                    let dx = sol
+                        .narrow(0, 0, n)
+                        .and_then(|t| t.contiguous())
+                        .map_err(|e| OptimizeError::NumericalError {
+                            message: format!("ip_qp: extract dx - {}", e),
+                        })?;
+                    let dy = sol
+                        .narrow(0, n, m_eq)
+                        .and_then(|t| t.contiguous())
+                        .map_err(|e| OptimizeError::NumericalError {
+                            message: format!("ip_qp: extract dy - {}", e),
+                        })?;
+                    (dx, Some(dy))
+                }
+                _ => {
+                    let dx = LinearAlgebraAlgorithms::solve(client, &lhs, &neg_rhs_col)
+                        .map_err(|e| OptimizeError::NumericalError {
+                            message: format!("ip_qp: solve dx - {}", e),
+                        })?
+                        .reshape(&[n])
+                        .map_err(|e| OptimizeError::NumericalError {
+                            message: format!("ip_qp: reshape dx - {}", e),
+                        })?;
+                    (dx, None)
+                }
+            };
 
-        // Recover ds = A*dx - r_primal
+        // Recover ds = A*dx + r_primal
         let dx_col = dx
             .reshape(&[n, 1])
             .map_err(|e| OptimizeError::NumericalError {
@@ -284,24 +461,25 @@ where
                 message: format!("ip_qp: reshape A*dx - {}", e),
             })?;
         let ds = client
-            .sub(&a_dx, &r_primal)
+            .add(&a_dx, &r_primal)
             .map_err(|e| OptimizeError::NumericalError {
                 message: format!("ip_qp: ds - {}", e),
             })?;
 
-        // Recover dz = (r_comp - z.*ds) / s
+        // Recover dz = -(r_comp + z.*ds) / s
         let z_ds = client
             .mul(&z, &ds)
             .map_err(|e| OptimizeError::NumericalError {
                 message: format!("ip_qp: z.*ds - {}", e),
             })?;
         let dz_num = client
-            .sub(&r_comp, &z_ds)
+            .add(&r_comp, &z_ds)
             .map_err(|e| OptimizeError::NumericalError {
-                message: format!("ip_qp: r_comp - z.*ds - {}", e),
+                message: format!("ip_qp: r_comp + z.*ds - {}", e),
             })?;
         let dz = client
             .div(&dz_num, &s)
+            .and_then(|t| client.mul_scalar(&t, -1.0))
             .map_err(|e| OptimizeError::NumericalError {
                 message: format!("ip_qp: dz - {}", e),
             })?;
@@ -344,6 +522,15 @@ where
             .map_err(|e| OptimizeError::NumericalError {
                 message: format!("ip_qp: z update - {}", e),
             })?;
+        if let (Some(y_cur), Some(dy)) = (y.as_ref(), dy.as_ref()) {
+            let y_next = client
+                .mul_scalar(dy, alpha)
+                .and_then(|t| client.add(y_cur, &t))
+                .map_err(|e| OptimizeError::NumericalError {
+                    message: format!("ip_qp: y update - {}", e),
+                })?;
+            y = Some(y_next);
+        }
     }
 
     let fun = compute_objective(client, q, c_vec, &x, n)?;
@@ -352,7 +539,7 @@ where
         fun,
         iterations: options.max_iter,
         converged: false,
-        dual_eq: None,
+        dual_eq: y,
         dual_ineq: Some(z),
     })
 }
@@ -565,4 +752,81 @@ where
     }
 
     Ok(alpha.max(1e-15f64))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use numr::runtime::cpu::{CpuClient, CpuDevice, CpuRuntime};
+
+    fn t(data: &[f64], shape: &[usize], device: &CpuDevice) -> Tensor<CpuRuntime> {
+        Tensor::<CpuRuntime>::from_slice(data, shape, device).unwrap()
+    }
+
+    #[test]
+    fn test_interior_point_keeps_equality_with_inequalities() {
+        // min 0.5|x|^2 - x1 - x2  s.t.  x1 + x2 = 1,  x1 >= 0,  x2 >= 0.
+        // Without the equality the optimum is (1, 1). With it: x = (0.5, 0.5).
+        // Q x + c + A_eq' y - A' z = 0 with z = 0 gives 0.5 - 1 + y = 0, y = 0.5.
+        let device = CpuDevice::new();
+        let client = CpuClient::new(device.clone());
+        let q = t(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device);
+        let c = t(&[-1.0, -1.0], &[2], &device);
+        let a_eq = t(&[1.0, 1.0], &[1, 2], &device);
+        let b_eq = t(&[1.0], &[1], &device);
+        let a = t(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device);
+        let b = t(&[0.0, 0.0], &[2], &device);
+        let opts = QpOptions::default();
+        let r = interior_point_qp_impl(
+            &client,
+            &q,
+            &c,
+            Some(&a_eq),
+            Some(&b_eq),
+            Some(&a),
+            Some(&b),
+            &opts,
+        )
+        .unwrap();
+        assert!(r.converged, "iterations = {}", r.iterations);
+
+        let x: Vec<f64> = r.x.to_vec();
+        assert!((x[0] + x[1] - 1.0).abs() < 1e-8, "A_eq x = {}", x[0] + x[1]);
+        assert!(
+            (x[0] - 0.5).abs() < 1e-6 && (x[1] - 0.5).abs() < 1e-6,
+            "x = {:?}",
+            x
+        );
+        assert!((r.fun + 0.75).abs() < 1e-6, "fun = {}", r.fun);
+
+        let y: Vec<f64> = r.dual_eq.unwrap().to_vec();
+        assert!((y[0] - 0.5).abs() < 1e-6, "y = {:?}", y);
+        let z: Vec<f64> = r.dual_ineq.unwrap().to_vec();
+        assert!(z.iter().all(|zi| zi.abs() < 1e-6), "z = {:?}", z);
+    }
+
+    #[test]
+    fn test_interior_point_inequality_only_reaches_bound() {
+        // min 0.5(x1^2 + x2^2) + x1 - x2  s.t.  x1 >= 0.
+        // x = (0, 1). Q x + c - a z = (1 - z, 0) = 0 gives z = 1.
+        let device = CpuDevice::new();
+        let client = CpuClient::new(device.clone());
+        let q = t(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device);
+        let c = t(&[1.0, -1.0], &[2], &device);
+        let a = t(&[1.0, 0.0], &[1, 2], &device);
+        let b = t(&[0.0], &[1], &device);
+        let opts = QpOptions::default();
+        let r =
+            interior_point_qp_impl(&client, &q, &c, None, None, Some(&a), Some(&b), &opts).unwrap();
+        assert!(r.converged, "iterations = {}", r.iterations);
+        let x: Vec<f64> = r.x.to_vec();
+        assert!(
+            x[0].abs() < 1e-6 && (x[1] - 1.0).abs() < 1e-6,
+            "x = {:?}",
+            x
+        );
+        assert!(r.dual_eq.is_none());
+        let z: Vec<f64> = r.dual_ineq.unwrap().to_vec();
+        assert!((z[0] - 1.0).abs() < 1e-6, "z = {:?}", z);
+    }
 }

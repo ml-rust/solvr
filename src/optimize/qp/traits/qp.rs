@@ -53,9 +53,22 @@ pub struct QpResult<R: Runtime<DType = DType>> {
     pub iterations: usize,
     /// Whether the solver converged.
     pub converged: bool,
-    /// Dual variables for equality constraints.
+    /// Multipliers `y` `[m_eq]` of `A_eq*x = b_eq`.
+    ///
+    /// The sign follows the Lagrangian
+    /// `L = f(x) + y'(A_eq*x - b_eq) - z'(A_ineq*x - b_ineq)`, so at the optimum
+    /// `Q*x + c + A_eq'*y - A_ineq'*z = 0`. `y` has either sign.
+    /// `None` when the problem has no equality constraints. When the solver
+    /// does not converge, active set returns `None` and interior point returns
+    /// its last iterate.
     pub dual_eq: Option<Tensor<R>>,
-    /// Dual variables for inequality constraints.
+    /// Multipliers `z` `[m_ineq]` of `A_ineq*x >= b_ineq`, with the sign of
+    /// [`dual_eq`](Self::dual_eq).
+    ///
+    /// At the optimum `z >= 0`, and `z_i = 0` for every inactive row.
+    /// `None` when the problem has no inequality constraints. When the solver
+    /// does not converge, active set returns `None` and interior point returns
+    /// its last iterate.
     pub dual_ineq: Option<Tensor<R>>,
 }
 

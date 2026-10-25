@@ -105,13 +105,15 @@ where
 
             if grad_norm < options.tol {
                 let fun = compute_qp_objective(client, q, c_vec, &x, n)?;
+                // Every inequality is inactive, so every multiplier is zero.
+                let dual_ineq = scatter_ineq_duals(client, None, &[], m_ineq)?;
                 return Ok(QpResult {
                     x,
                     fun,
                     iterations: iter + 1,
                     converged: true,
                     dual_eq: None,
-                    dual_ineq: None,
+                    dual_ineq,
                 });
             }
 
@@ -254,7 +256,7 @@ where
             if d_norm < options.tol {
                 // At stationary point of subproblem. Check multipliers.
                 // With no inequality in the working set, nothing can leave it.
-                let dropped_row = if m_working > m_eq {
+                let ineq_mu = if m_working > m_eq {
                     // Extract inequality multipliers (skip equality multipliers)
                     let ineq_lambdas = lambdas
                         .narrow(0, m_eq, m_working - m_eq)
@@ -268,33 +270,38 @@ where
 
                     // The KKT rows are Q d + A' lambda = -g, so the multiplier of
                     // a'x >= b is mu = -lambda. Optimal when every mu is non-negative.
-                    let ineq_lambdas = client.mul_scalar(&ineq_lambdas, -1.0).map_err(|e| {
+                    Some(client.mul_scalar(&ineq_lambdas, -1.0).map_err(|e| {
                         OptimizeError::NumericalError {
                             message: format!("active_set: negate lambda - {}", e),
                         }
-                    })?;
-                    let min_lambda = client.min(&ineq_lambdas, &[0], false).map_err(|e| {
-                        OptimizeError::NumericalError {
-                            message: format!("active_set: min lambda - {}", e),
-                        }
-                    })?;
-                    let min_val: f64 = min_lambda.to_vec()[0];
-
-                    if min_val < -1e-10 {
-                        // Find index of most negative multiplier
-                        let idx_tensor = client.argmin(&ineq_lambdas, 0, false).map_err(|e| {
-                            OptimizeError::NumericalError {
-                                message: format!("active_set: argmin lambda - {}", e),
-                            }
-                        })?;
-                        let idx_vals: Vec<f64> = idx_tensor.to_vec();
-                        let idx_val = idx_vals[0] as i64;
-                        Some(active_rows[idx_val as usize])
-                    } else {
-                        None
-                    }
+                    })?)
                 } else {
                     None
+                };
+
+                let dropped_row = match &ineq_mu {
+                    Some(mu) => {
+                        let min_mu = client.min(mu, &[0], false).map_err(|e| {
+                            OptimizeError::NumericalError {
+                                message: format!("active_set: min lambda - {}", e),
+                            }
+                        })?;
+                        let min_val: f64 = min_mu.to_vec()[0];
+
+                        if min_val < -1e-10 {
+                            // Find index of most negative multiplier
+                            let idx_tensor = client.argmin(mu, 0, false).map_err(|e| {
+                                OptimizeError::NumericalError {
+                                    message: format!("active_set: argmin lambda - {}", e),
+                                }
+                            })?;
+                            let idx_vals: Vec<i64> = idx_tensor.to_vec();
+                            Some(active_rows[idx_vals[0] as usize])
+                        } else {
+                            None
+                        }
+                    }
+                    None => None,
                 };
 
                 if let Some(row_i) = dropped_row {
@@ -302,6 +309,8 @@ where
                 } else {
                     // All multipliers non-negative -> optimal
                     let fun = compute_qp_objective(client, q, c_vec, &x, n)?;
+                    let dual_ineq =
+                        scatter_ineq_duals(client, ineq_mu.as_ref(), &active_rows, m_ineq)?;
                     return Ok(QpResult {
                         x,
                         fun,
@@ -322,7 +331,7 @@ where
                         } else {
                             None
                         },
-                        dual_ineq: None,
+                        dual_ineq,
                     });
                 }
             } else {
@@ -390,6 +399,62 @@ where
         message: format!("qp_obj: c'x - {}", e),
     })?;
     Ok(0.5 * xtqx + ctx)
+}
+
+/// Inequality multipliers `[m_ineq]` from the multipliers of the active rows.
+///
+/// `mu[j]` belongs to row `active_rows[j]`. Every inactive row gets zero.
+/// Returns `None` when the problem has no inequality constraints.
+fn scatter_ineq_duals<R, C>(
+    client: &C,
+    mu: Option<&Tensor<R>>,
+    active_rows: &[usize],
+    m_ineq: usize,
+) -> OptimizeResult<Option<Tensor<R>>>
+where
+    R: Runtime<DType = DType>,
+    C: TensorOps<R> + ScalarOps<R> + RuntimeClient<R>,
+{
+    if m_ineq == 0 {
+        return Ok(None);
+    }
+    let Some(mu) = mu else {
+        let zeros =
+            client
+                .fill(&[m_ineq], 0.0, DType::F64)
+                .map_err(|e| OptimizeError::NumericalError {
+                    message: format!("active_set: zero dual_ineq - {}", e),
+                })?;
+        return Ok(Some(zeros));
+    };
+
+    // Selection matrix P [m_ineq, k] with P[active_rows[j], j] = 1, so P * mu
+    // places each active multiplier at its row. The row indices live on the host.
+    let k = active_rows.len();
+    let mut selection = vec![0.0f64; m_ineq * k];
+    for (j, &row) in active_rows.iter().enumerate() {
+        selection[row * k + j] = 1.0;
+    }
+    let p = Tensor::<R>::from_slice(&selection, &[m_ineq, k], client.device()).map_err(|e| {
+        OptimizeError::NumericalError {
+            message: format!("active_set: dual_ineq selection - {}", e),
+        }
+    })?;
+    let mu_col = mu
+        .reshape(&[k, 1])
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("active_set: reshape mu - {}", e),
+        })?;
+    let full = client
+        .matmul(&p, &mu_col)
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("active_set: scatter dual_ineq - {}", e),
+        })?
+        .reshape(&[m_ineq])
+        .map_err(|e| OptimizeError::NumericalError {
+            message: format!("active_set: reshape dual_ineq - {}", e),
+        })?;
+    Ok(Some(full))
 }
 
 fn compute_max_step<R, C>(
@@ -664,5 +729,62 @@ mod tests {
             assert!((xi - 1.0).abs() < 1e-8, "x = {:?}", x);
         }
         assert!((r.fun + 4.5).abs() < 1e-8, "fun = {}", r.fun);
+        let z: Vec<f64> = r.dual_ineq.unwrap().to_vec();
+        // Stationarity: x + c - a' z = 0 gives (1 - 2) + z = 0, so z = 1.
+        assert!((z[0] - 1.0).abs() < 1e-8, "z = {:?}", z);
+    }
+
+    #[test]
+    fn test_active_set_drops_only_the_negative_second_multiplier() {
+        // min 0.5|x|^2 + 2 x1 - x2  s.t.  row 0: x1 >= 0,  row 1: x1 + x2 >= 0.
+        //
+        // The origin lies on both rows, and the unconstrained step d = -c = (-2, 1)
+        // leaves both, so both enter the working set at the origin. There
+        // c = 3 a0 - 1 a1, so the multipliers are z = (3, -1). Only row 1 has a
+        // negative multiplier and must leave. Dropping row 0 instead cycles at the
+        // origin and never converges.
+        //
+        // Optimum with row 0 active: x = (0, 1), objective -0.5.
+        // KKT: x + c - A' z = (2, 0) - z0 (1, 0) - z1 (1, 1) = 0 gives z = (2, 0).
+        // Primal: x1 = 0 >= 0, x1 + x2 = 1 >= 0. Complementarity: z1 * 1 = 0.
+        let (device, client) = setup();
+        let q = t(&[1.0, 0.0, 0.0, 1.0], &[2, 2], &device);
+        let c = t(&[2.0, -1.0], &[2], &device);
+        let a = t(&[1.0, 0.0, 1.0, 1.0], &[2, 2], &device);
+        let b = t(&[0.0, 0.0], &[2], &device);
+        let opts = QpOptions {
+            method: crate::optimize::qp::traits::QpMethod::ActiveSet,
+            ..QpOptions::default()
+        };
+        let r = active_set_qp_impl(&client, &q, &c, None, None, Some(&a), Some(&b), &opts).unwrap();
+        assert!(r.converged, "iterations = {}", r.iterations);
+
+        let x: Vec<f64> = r.x.to_vec();
+        assert!(
+            x[0].abs() < 1e-8 && (x[1] - 1.0).abs() < 1e-8,
+            "x = {:?}",
+            x
+        );
+        assert!((r.fun + 0.5).abs() < 1e-8, "fun = {}", r.fun);
+
+        let z: Vec<f64> = r.dual_ineq.unwrap().to_vec();
+        assert_eq!(z.len(), 2);
+        assert!(
+            (z[0] - 2.0).abs() < 1e-8 && z[1].abs() < 1e-8,
+            "z = {:?}",
+            z
+        );
+
+        // Stationarity, dual feasibility, primal feasibility, complementarity.
+        let stat = [x[0] + 2.0 - z[0] - z[1], x[1] - 1.0 - z[1]];
+        assert!(
+            stat.iter().all(|s| s.abs() < 1e-8),
+            "stationarity = {:?}",
+            stat
+        );
+        assert!(z.iter().all(|&zi| zi >= -1e-10), "z = {:?}", z);
+        let slack = [x[0], x[0] + x[1]];
+        assert!(slack.iter().all(|&s| s >= -1e-10), "slack = {:?}", slack);
+        assert!((z[0] * slack[0]).abs() < 1e-8 && (z[1] * slack[1]).abs() < 1e-8);
     }
 }
