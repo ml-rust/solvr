@@ -1,6 +1,6 @@
 [package]
 name = "solvr"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 rust-version = "1.95"
 description = "Advanced computing library for real-world problem solving - optimization, differential equations, interpolation, statistics, and more"
@@ -13,7 +13,7 @@ keywords = ["solver", "optimization", "ode", "interpolation", "statistics"]
 categories = ["algorithms", "mathematics", "science"]
 
 [dependencies]
-numr = { version = "0.13" }
+numr = { version = "0.14" }
 
 [dev-dependencies]
 

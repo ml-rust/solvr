@@ -56,13 +56,13 @@
 //!
 //! ```toml
 //! # CPU only (default)
-//! solvr = "0.1"
+//! solvr = "0.3"
 //!
 //! # With CUDA support
-//! solvr = { version = "0.1", features = ["cuda"] }
+//! solvr = { version = "0.3", features = ["cuda"] }
 //!
 //! # With WebGPU support
-//! solvr = { version = "0.1", features = ["wgpu"] }
+//! solvr = { version = "0.3", features = ["wgpu"] }
 //! ```
 //!
 //! ## Backend Limitations
