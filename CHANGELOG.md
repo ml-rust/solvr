@@ -11,6 +11,12 @@ Tags `v0.1.0` through `v0.2.0` predate this file. Every entry is a delta against
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-06
+
+### Changed
+
+- `README`, crate description: state what the crate does.
+
 ## [0.3.0] — 2026-11-01
 
 solvr moves to numr 0.14 and MSRV 1.95. Both QP solvers return correct solutions and multipliers.
