@@ -3,13 +3,13 @@ name = "solvr"
 version = "0.3.0"
 edition = "2024"
 rust-version = "1.95"
-description = "Advanced computing library for real-world problem solving - optimization, differential equations, interpolation, statistics, and more"
+description = "Scientific computing library for Rust, in the role of SciPy: optimization, ODE and PDE solvers, interpolation, statistics, signal processing and spatial algorithms"
 license = "Apache-2.0"
 repository = "https://github.com/ml-rust/solvr"
 homepage = "https://github.com/ml-rust/solvr"
 documentation = "https://docs.rs/solvr"
 readme = "README.md"
-keywords = ["solver", "optimization", "ode", "interpolation", "statistics"]
+keywords = ["scipy", "optimization", "ode", "interpolation", "statistics"]
 categories = ["algorithms", "mathematics", "science"]
 
 [dependencies]
