@@ -47,9 +47,13 @@ algorithms, built on numr. The crate exposes 13 public modules.
 
 </div>
 
-solvr is a scientific computing crate for numerical workflows in Rust. It provides algorithms on
-[numr](https://github.com/ml-rust/numr) tensors and runtimes. The CPU backend is the default.
+solvr is a scientific computing library for Rust. It fills the role SciPy has in Python: optimization, ODE solvers, interpolation, statistics, signal processing, and spatial algorithms.
+It provides these algorithms on [numr](https://github.com/ml-rust/numr) tensors and runtimes. The CPU backend is the default.
 CUDA and WebGPU are optional features.
+
+- The algorithms are written in Rust. No Python is needed.
+- solvr builds on numr, which is the NumPy role. See [For SciPy Users](#for-scipy-users) for the module map.
+- Not supported yet: WebGPU computes in `F32` only.
 
 ## Installation
 
