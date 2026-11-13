@@ -548,9 +548,9 @@ dependencies = [
 
 [[package]]
 name = "numr"
-version = "0.14.0"
+version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "539990e81dc7946f5bcf60f13d273f180c46bce497f8f487869adc93fb1819fb"
+checksum = "834d6f6d81166a0949dc2e94e0060335afa4f3fc45a9f1c27b0e80f3a45db7b7"
 dependencies = [
  "bytemuck",
  "cudarc",
@@ -1017,7 +1017,7 @@ checksum = "67b1b7a3b5fe4f1376887184045fcf45c69e92af734b7aaddc05fb777b6fbd03"
 
 [[package]]
 name = "solvr"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "numr",
 ]
