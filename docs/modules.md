@@ -26,6 +26,8 @@ and is re-exported from the crate root.
 ## optimize
 
 - Scalar minimization and root finding, including Brent's method
+- Batched bracketed scalar roots on CPU, CUDA, and WebGPU through `BatchedBisectionAlgorithms`
+- Independent F32/F64 lanes with optional upper-bracket expansion and per-lane width convergence
 - Unconstrained minimization, including Newton methods
 - Least squares
 - Linear programming, quadratic programming, and conic programming (SDP, SOCP)

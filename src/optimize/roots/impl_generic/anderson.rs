@@ -8,7 +8,7 @@
 //!
 //! Given iterates x_0, ..., x_k and residuals f_i = g(x_i) - x_i:
 //! 1. Build matrix F = [f_{k-m+1} - f_k, ..., f_{k-1} - f_k] (columns are residual differences)
-//! 2. Solve min ||F @ theta - f_k||^2 via least squares
+//! 2. Solve min ||F @ theta + f_k||^2 via least squares
 //! 3. x_{k+1} = (1 - alpha) * sum(theta_i * x_i) + alpha * sum(theta_i * g(x_i))
 //!    where coefficients sum to 1
 use crate::DType;
@@ -23,11 +23,17 @@ use numr::tensor::Tensor;
 
 use crate::optimize::error::{OptimizeError, OptimizeResult};
 use crate::optimize::impl_generic::utils::tensor_norm;
-use crate::optimize::roots::traits::anderson::AndersonOptions;
+use crate::optimize::roots::traits::anderson::{AndersonConvergence, AndersonOptions};
 
 use super::TensorRootResult;
 
-/// Anderson mixing implementation.
+#[derive(Clone, Copy)]
+enum ConvergenceStage {
+    Iteration(usize),
+    Limit(usize),
+}
+
+/// Anderson mixing with the built-in residual norm test.
 pub fn anderson_impl<R, C, G>(
     client: &C,
     g: G,
@@ -39,10 +45,75 @@ where
     C: TensorOps<R> + ScalarOps<R> + LinearAlgebraAlgorithms<R> + RuntimeClient<R>,
     G: Fn(&Tensor<R>) -> Result<Tensor<R>>,
 {
-    let n = x0.shape()[0];
-    if n == 0 {
+    anderson_engine(client, g, x0, options, |_, _, fx, stage| {
+        let context = match stage {
+            ConvergenceStage::Iteration(_) => "norm",
+            ConvergenceStage::Limit(_) => "final norm",
+        };
+        let residual_norm = tensor_norm(client, fx).map_err(|e| OptimizeError::NumericalError {
+            message: format!("anderson: {context} - {e}"),
+        })?;
+        Ok(AndersonConvergence {
+            residual_norm,
+            converged: residual_norm < options.base.tol,
+        })
+    })
+}
+
+/// Anderson mixing with caller-defined stopping conditions.
+pub fn anderson_with_convergence_impl<R, C, G, K>(
+    client: &C,
+    g: G,
+    x0: &Tensor<R>,
+    options: &AndersonOptions,
+    convergence: K,
+) -> OptimizeResult<TensorRootResult<R>>
+where
+    R: Runtime<DType = DType>,
+    C: TensorOps<R> + ScalarOps<R> + LinearAlgebraAlgorithms<R> + RuntimeClient<R>,
+    G: Fn(&Tensor<R>) -> Result<Tensor<R>>,
+    K: Fn(&Tensor<R>, &Tensor<R>, &Tensor<R>) -> Result<AndersonConvergence>,
+{
+    anderson_engine(client, g, x0, options, |x, gx, fx, stage| {
+        let decision = convergence(x, gx, fx).map_err(|e| OptimizeError::NumericalError {
+            message: format!(
+                "anderson: {} convergence evaluation - {e}",
+                stage_description(stage)
+            ),
+        })?;
+        check_custom_convergence(decision, stage)
+    })
+}
+
+fn anderson_engine<R, C, G, K>(
+    client: &C,
+    g: G,
+    x0: &Tensor<R>,
+    options: &AndersonOptions,
+    convergence: K,
+) -> OptimizeResult<TensorRootResult<R>>
+where
+    R: Runtime<DType = DType>,
+    C: TensorOps<R> + ScalarOps<R> + LinearAlgebraAlgorithms<R> + RuntimeClient<R>,
+    G: Fn(&Tensor<R>) -> Result<Tensor<R>>,
+    K: Fn(
+        &Tensor<R>,
+        &Tensor<R>,
+        &Tensor<R>,
+        ConvergenceStage,
+    ) -> OptimizeResult<AndersonConvergence>,
+{
+    let [n] = x0.shape() else {
         return Err(OptimizeError::InvalidInput {
-            context: "anderson: empty initial guess".to_string(),
+            context: format!(
+                "anderson: initial shape={:?}. Supply a nonempty one-dimensional guess",
+                x0.shape()
+            ),
+        });
+    };
+    if *n == 0 {
+        return Err(OptimizeError::InvalidInput {
+            context: "anderson: initial shape=[0]. Supply a nonempty one-dimensional guess".into(),
         });
     }
 
@@ -56,6 +127,7 @@ where
     let mut gx = g(&x).map_err(|e| OptimizeError::NumericalError {
         message: format!("anderson: initial g eval - {}", e),
     })?;
+    check_map_shape(&gx, x0.shape())?;
 
     // Residual: f = g(x) - x
     let mut fx = client
@@ -72,24 +144,24 @@ where
     f_history.push_back(fx.clone());
 
     for iter in 0..opts.max_iter {
-        // Check convergence
-        let res_norm = tensor_norm(client, &fx).map_err(|e| OptimizeError::NumericalError {
-            message: format!("anderson: norm - {}", e),
-        })?;
+        let decision = convergence(&x, &gx, &fx, ConvergenceStage::Iteration(iter))?;
 
-        if res_norm < opts.tol {
+        if decision.converged {
             return Ok(TensorRootResult {
                 x,
                 fun: fx,
                 iterations: iter,
-                residual_norm: res_norm,
+                residual_norm: decision.residual_norm,
                 converged: true,
             });
         }
 
         let mk = f_history.len(); // Current history size
 
-        if mk < 2 {
+        if m == 0 && alpha == 1.0 {
+            // Reconstructing gx as x + (gx - x) can lose its original bits.
+            x = gx;
+        } else if mk < 2 {
             // Not enough history yet: simple fixed-point step
             // x_new = (1 - alpha) * x + alpha * g(x) = x + alpha * f
             let step =
@@ -247,6 +319,7 @@ where
         gx = g(&x).map_err(|e| OptimizeError::NumericalError {
             message: format!("anderson: g eval iter {} - {}", iter, e),
         })?;
+        check_map_shape(&gx, x0.shape())?;
         fx = client
             .sub(&gx, &x)
             .map_err(|e| OptimizeError::NumericalError {
@@ -263,150 +336,59 @@ where
         }
     }
 
-    // Did not converge
-    let final_norm = tensor_norm(client, &fx).map_err(|e| OptimizeError::NumericalError {
-        message: format!("anderson: final norm - {}", e),
-    })?;
+    let final_decision = convergence(&x, &gx, &fx, ConvergenceStage::Limit(opts.max_iter))?;
 
     Ok(TensorRootResult {
         x,
         fun: fx,
         iterations: opts.max_iter,
-        residual_norm: final_norm,
+        residual_norm: final_decision.residual_norm,
         converged: false,
     })
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use numr::runtime::cpu::{CpuClient, CpuDevice, CpuRuntime};
-
-    fn setup() -> (CpuDevice, CpuClient) {
-        let device = CpuDevice::new();
-        let client = CpuClient::new(device.clone());
-        (device, client)
-    }
-
-    #[test]
-    fn test_anderson_cosine_fixed_point() {
-        let (device, client) = setup();
-
-        // Fixed point of g(x) = cos(x): x* ≈ 0.7390851332
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[1.0f64], &[1], &device).unwrap();
-
-        let result = anderson_impl(
-            &client,
-            |x| {
-                let data: Vec<f64> = x.to_vec();
-                let result: Vec<f64> = data.iter().map(|xi| xi.cos()).collect();
-                Tensor::from_slice(&result, x.shape(), x.device())
-            },
-            &x0,
-            &AndersonOptions::default(),
-        )
-        .unwrap();
-
-        assert!(result.converged, "Anderson did not converge");
-        let sol: Vec<f64> = result.x.to_vec();
-        assert!((sol[0] - 0.7390851332).abs() < 1e-6, "sol = {}", sol[0]);
-    }
-
-    #[test]
-    fn test_anderson_linear_fixed_point() {
-        let (device, client) = setup();
-
-        // g(x) = 0.5 * x + 1, fixed point at x = 2
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.0f64], &[1], &device).unwrap();
-
-        let result = anderson_impl(
-            &client,
-            |x| {
-                let data: Vec<f64> = x.to_vec();
-                let result: Vec<f64> = data.iter().map(|xi| 0.5 * xi + 1.0).collect();
-                Tensor::from_slice(&result, x.shape(), x.device())
-            },
-            &x0,
-            &AndersonOptions::default(),
-        )
-        .unwrap();
-
-        assert!(result.converged);
-        let sol: Vec<f64> = result.x.to_vec();
-        assert!((sol[0] - 2.0).abs() < 1e-6);
-    }
-
-    #[test]
-    fn test_anderson_identical_residual_history() {
-        // g(x) = x + d has a constant residual d. Every residual difference
-        // is zero, so the history matrix has identical (all-zero) columns.
-        // The min-norm solve gives theta = 0 and each step adds alpha * d.
-        let (device, client) = setup();
-        let d = [1.0f64, -2.0, 0.5];
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.0f64; 3], &[3], &device).unwrap();
-        let mut options = AndersonOptions {
-            m: 3,
-            alpha: 0.5,
-            ..Default::default()
-        };
-        options.base.max_iter = 6;
-
-        let result = anderson_impl(
-            &client,
-            |x| {
-                let data: Vec<f64> = x.to_vec();
-                let out: Vec<f64> = data.iter().zip(d.iter()).map(|(a, b)| a + b).collect();
-                Tensor::from_slice(&out, x.shape(), x.device())
-            },
-            &x0,
-            &options,
-        )
-        .unwrap();
-
-        assert!(!result.converged);
-        let sol: Vec<f64> = result.x.to_vec();
-        for (s, di) in sol.iter().zip(d.iter()) {
-            assert!(s.is_finite());
-            assert!((s - 3.0 * di).abs() < 1e-12, "sol = {:?}", sol);
-        }
-        let norm = (1.0f64 + 4.0 + 0.25).sqrt();
-        assert!((result.residual_norm - norm).abs() < 1e-12);
-    }
-
-    #[test]
-    fn test_anderson_history_shorter_than_unknowns() {
-        // Six unknowns with history depth two: at most two difference
-        // columns, fewer than the unknown count. Fixed point of
-        // g_i(x) = a_i x_i + 1 is x_i = 1 / (1 - a_i).
-        let (device, client) = setup();
-        let a = [0.1f64, 0.2, 0.3, 0.4, 0.5, 0.6];
-        let x0 = Tensor::<CpuRuntime>::from_slice(&[0.0f64; 6], &[6], &device).unwrap();
-        let mut options = AndersonOptions {
-            m: 2,
-            ..Default::default()
-        };
-        options.base.max_iter = 500;
-
-        let result = anderson_impl(
-            &client,
-            |x| {
-                let data: Vec<f64> = x.to_vec();
-                let out: Vec<f64> = data
-                    .iter()
-                    .zip(a.iter())
-                    .map(|(v, c)| c * v + 1.0)
-                    .collect();
-                Tensor::from_slice(&out, x.shape(), x.device())
-            },
-            &x0,
-            &options,
-        )
-        .unwrap();
-
-        assert!(result.converged, "residual = {}", result.residual_norm);
-        let sol: Vec<f64> = result.x.to_vec();
-        for (s, c) in sol.iter().zip(a.iter()) {
-            assert!((s - 1.0 / (1.0 - c)).abs() < 1e-6, "sol = {:?}", sol);
-        }
+fn stage_description(stage: ConvergenceStage) -> String {
+    match stage {
+        ConvergenceStage::Iteration(iteration) => format!("iteration {iteration}"),
+        ConvergenceStage::Limit(iterations) => format!("final check after {iterations} updates"),
     }
 }
+
+fn check_custom_convergence(
+    decision: AndersonConvergence,
+    stage: ConvergenceStage,
+) -> OptimizeResult<AndersonConvergence> {
+    if decision.residual_norm.is_nan()
+        || decision.residual_norm < 0.0
+        || (decision.converged && !decision.residual_norm.is_finite())
+    {
+        return Err(OptimizeError::NumericalError {
+            message: format!(
+                "anderson: {} diagnostic residual_norm={},converged={}. Return a nonnegative metric, finite when converged",
+                stage_description(stage),
+                decision.residual_norm,
+                decision.converged
+            ),
+        });
+    }
+    Ok(decision)
+}
+
+fn check_map_shape<R: Runtime<DType = DType>>(
+    value: &Tensor<R>,
+    expected: &[usize],
+) -> OptimizeResult<()> {
+    if value.shape() != expected {
+        return Err(OptimizeError::InvalidInput {
+            context: format!(
+                "anderson: map shape={:?}, initial shape={expected:?}. Return one value per initial coordinate",
+                value.shape()
+            ),
+        });
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+#[path = "anderson_tests.rs"]
+mod tests;

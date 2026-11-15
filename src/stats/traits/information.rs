@@ -80,7 +80,7 @@ pub trait InformationTheoryAlgorithms<R: Runtime<DType = DType>>: TensorOps<R> {
 
     /// Negative log-likelihood loss.
     ///
-    /// NLL = -mean(log(p[target]))
+    /// `NLL = -mean(log(p[target]))`
     ///
     /// For each sample, selects the predicted probability at the target index,
     /// takes its logarithm, negates, and averages over all samples.
@@ -88,6 +88,6 @@ pub trait InformationTheoryAlgorithms<R: Runtime<DType = DType>>: TensorOps<R> {
     /// # Arguments
     ///
     /// * `log_probs` - Log-probabilities [N, C] (e.g., output of log_softmax)
-    /// * `targets` - Target class indices [N] (integer tensor, values in [0, C))
+    /// * `targets` - Target class indices `[N]` (integer tensor, values in `[0, C)`)
     fn nll_loss(&self, log_probs: &Tensor<R>, targets: &Tensor<R>) -> Result<Tensor<R>>;
 }

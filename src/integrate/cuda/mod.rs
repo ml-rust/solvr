@@ -23,6 +23,7 @@ use crate::integrate::{
     SymplecticResult, TanhSinhOptions,
 };
 
+mod certified_simpson;
 mod fixed_quad;
 mod quad;
 mod romberg;

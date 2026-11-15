@@ -6,14 +6,13 @@ rust-version = "1.95"
 description = "Scientific computing library for Rust, in the role of SciPy: optimization, ODE and PDE solvers, interpolation, statistics, signal processing and spatial algorithms"
 license = "Apache-2.0"
 repository = "https://github.com/ml-rust/solvr"
-homepage = "https://github.com/ml-rust/solvr"
 documentation = "https://docs.rs/solvr"
 readme = "README.md"
 keywords = ["scipy", "optimization", "ode", "interpolation", "statistics"]
 categories = ["algorithms", "mathematics", "science"]
 
 [dependencies]
-numr = { version = "0.14" }
+numr = { version = "0.15.2" }
 
 [dev-dependencies]
 

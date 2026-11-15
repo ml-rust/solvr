@@ -11,6 +11,14 @@ Tags `v0.1.0` through `v0.2.0` predate this file. Every entry is a delta against
 
 ## [Unreleased]
 
+### Breaking
+
+- `numr`: Requires numr 0.15.2. Update callers to the same tensor version.
+
+### Added
+
+- `bisect_batched`: Solves independent F32/F64 roots with retained brackets and optional upper expansion. Use `BatchedBisectionAlgorithms` on runtime clients.
+
 ## [0.3.1] - 2026-11-06
 
 ### Changed

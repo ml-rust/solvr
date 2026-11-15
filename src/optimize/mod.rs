@@ -12,7 +12,7 @@
 //!
 //! - [`scalar`] - Univariate (1D) root finding and minimization
 //! - [`minimize`] - Multivariate unconstrained minimization
-//! - [`roots`] - Multivariate root finding (systems of nonlinear equations)
+//! - [`roots`] - Independent scalar roots and systems of nonlinear equations
 //! - [`least_squares`] - Nonlinear least squares and curve fitting
 //! - [`global`] - Global optimization (escaping local minima)
 //! - [`linprog`] - Linear programming (Simplex, MILP)
@@ -77,10 +77,21 @@ pub use global::{
     SimulatedAnnealingAlgorithms, SimulatedAnnealingResult,
 };
 
-// Root finding (systems of nonlinear equations)
+// Independent scalar roots and systems of nonlinear equations
 pub use roots::{
-    AndersonAlgorithms, AndersonOptions, Broyden1Algorithms, LevenbergMarquardtAlgorithms,
-    NewtonSystemAlgorithms, PowellHybridAlgorithms, RootOptions, RootTensorResult,
+    AndersonAlgorithms, AndersonConvergence, AndersonOptions, BatchedBisectionAlgorithms,
+    BatchedBisectionOptions, BatchedBracketResult, Broyden1Algorithms,
+    CertifiedBisectionAlgorithms, CertifiedBisectionOptions, CertifiedRootQuery,
+    CertifiedRootResult, CertifiedRootStatus, CertifiedRootValues, CertifiedUpperBracketAlgorithms,
+    CertifiedUpperBracketOptions, CertifiedUpperBracketResult, CertifiedUpperBracketStatus,
+    LevenbergMarquardtAlgorithms, NewtonSystemAlgorithms, PowellHybridAlgorithms, RootOptions,
+    RootTensorResult,
+};
+
+pub use roots::{
+    CertifiedMappedBisectionAlgorithms, CertifiedMappedRootProgress, CertifiedRootAdvanceAllowance,
+    CertifiedRootContinuation, CertifiedRootDomainQuery, CertifiedRootMappedValues,
+    CertifiedRootTolerance,
 };
 
 // Least squares optimization

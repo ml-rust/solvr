@@ -1,7 +1,7 @@
 //! Utility functions for optimization algorithms using tensors.
 
 use numr::dtype::DType;
-use numr::error::Result;
+use numr::error::{Error, Result};
 use numr::ops::{ScalarOps, TensorOps};
 use numr::runtime::{Runtime, RuntimeClient};
 use numr::tensor::Tensor;
@@ -15,8 +15,23 @@ where
 {
     let x_sq = client.mul(x, x)?;
     let sum = client.sum(&x_sq, &[0], false)?;
-    let sum_val: Vec<f64> = sum.to_vec();
-    Ok(sum_val[0])
+    if sum.numel() != 1 {
+        return Err(Error::InvalidArgument {
+            arg: "x",
+            reason: format!(
+                "sum_squared: reduced shape={:?}. Supply an input whose sum along axis zero is scalar",
+                sum.shape()
+            ),
+        });
+    }
+    match sum.dtype() {
+        DType::F32 => Ok(f64::from(sum.item::<f32>()?)),
+        DType::F64 => sum.item::<f64>(),
+        dtype => Err(Error::UnsupportedDType {
+            dtype,
+            op: "sum_squared",
+        }),
+    }
 }
 
 /// Compute the L2 norm of a 1D tensor: ||x|| = sqrt(sum(x_i^2)).

@@ -27,6 +27,15 @@ impl Default for AndersonOptions {
     }
 }
 
+/// Caller-reported stopping decision for an evaluated Anderson iterate.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct AndersonConvergence {
+    /// Nonnegative metric reported in the result. It must be finite when converged.
+    pub residual_norm: f64,
+    /// Whether the caller's stopping conditions pass at this evaluated iterate.
+    pub converged: bool,
+}
+
 /// Anderson mixing for accelerating fixed-point iterations.
 ///
 /// Given g(x) such that the fixed point x* = g(x*), Anderson mixing
@@ -47,4 +56,26 @@ pub trait AndersonAlgorithms<R: Runtime<DType = DType>> {
     ) -> Result<RootTensorResult<R>>
     where
         G: Fn(&Tensor<R>) -> Result<Tensor<R>>;
+
+    /// Solve with caller-defined stopping conditions on the original tensor values.
+    ///
+    /// Calls `convergence(x, gx, fx)`, where `gx = g(x)` and `fx = gx - x`.
+    /// Its decision replaces the built-in norm test. `options.base.tol` does not override it.
+    /// Returns the checked `x`, not `gx`, when the callback accepts an iterate.
+    /// The callback also runs after exhaustion, which always returns `converged = false`.
+    /// A zero iteration budget still evaluates the map and final diagnostic once.
+    ///
+    /// # Errors
+    /// Returns map, runtime, or convergence-callback errors with evaluation context.
+    /// Rejects NaN or negative metrics and infinite metrics marked converged.
+    fn anderson_with_convergence<G, K>(
+        &self,
+        g: G,
+        x0: &Tensor<R>,
+        options: &AndersonOptions,
+        convergence: K,
+    ) -> Result<RootTensorResult<R>>
+    where
+        G: Fn(&Tensor<R>) -> Result<Tensor<R>>,
+        K: Fn(&Tensor<R>, &Tensor<R>, &Tensor<R>) -> Result<AndersonConvergence>;
 }

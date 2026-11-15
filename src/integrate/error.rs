@@ -1,5 +1,6 @@
 //! Error types for numerical integration operations.
 
+use crate::DType;
 use std::fmt;
 
 /// Result type for integration operations.
@@ -23,6 +24,17 @@ pub enum IntegrateError {
 
     /// Numerical computation failed (e.g., division by zero, NaN).
     NumericalError { message: String },
+
+    /// Certified integration lacks the required arithmetic contract or execution mode.
+    UnsupportedArithmetic {
+        /// Selected floating-point input dtype.
+        dtype: DType,
+        /// Missing provider contract or execution-mode probe categories.
+        failed_probes: Vec<&'static str>,
+    },
+
+    /// Certified integration cannot represent finite bounds at this calculation stage.
+    ArithmeticRange { stage: &'static str },
 
     /// Invalid input array size or dimensions.
     InvalidInput { context: String },
@@ -99,6 +111,22 @@ impl fmt::Display for IntegrateError {
             }
             Self::NumericalError { message } => {
                 write!(f, "Numerical error: {}", message)
+            }
+            Self::UnsupportedArithmetic {
+                dtype,
+                failed_probes,
+            } => {
+                write!(
+                    f,
+                    "Certified Simpson arithmetic rejected dtype={dtype:?}, failed_probes={}. Select an IEEE-basic runtime and nearest-even arithmetic with gradual underflow and Numr TwoSum witnesses",
+                    failed_probes.join(", ")
+                )
+            }
+            Self::ArithmeticRange { stage } => {
+                write!(
+                    f,
+                    "Certified Simpson cannot represent finite bounds at stage={stage}. Rescale the inputs or split the interval"
+                )
             }
             Self::InvalidInput { context } => {
                 write!(f, "Invalid input: {}", context)
@@ -201,5 +229,28 @@ mod tests {
             context: "RK45".to_string(),
         };
         assert!(err.to_string().contains("too small"));
+    }
+
+    #[test]
+    fn unsupported_arithmetic_names_dtype_probes_and_next_action() {
+        let error = IntegrateError::UnsupportedArithmetic {
+            dtype: DType::F64,
+            failed_probes: vec!["provider_contract", "gradual_subnormal_inputs"],
+        };
+        assert_eq!(
+            error.to_string(),
+            "Certified Simpson arithmetic rejected dtype=F64, failed_probes=provider_contract, gradual_subnormal_inputs. Select an IEEE-basic runtime and nearest-even arithmetic with gradual underflow and Numr TwoSum witnesses"
+        );
+    }
+
+    #[test]
+    fn arithmetic_range_names_stage_and_next_action() {
+        let error = IntegrateError::ArithmeticRange {
+            stage: "panel remainder",
+        };
+        assert_eq!(
+            error.to_string(),
+            "Certified Simpson cannot represent finite bounds at stage=panel remainder. Rescale the inputs or split the interval"
+        );
     }
 }

@@ -10,6 +10,9 @@ use numr::ops::{CompareOps, ScalarOps, TensorOps};
 use numr::runtime::{Runtime, RuntimeClient};
 use numr::tensor::Tensor;
 
+pub(super) mod linear;
+pub(super) mod validation;
+
 /// Evaluate 1D interpolation at new x coordinates.
 ///
 /// Uses tensor operations for GPU-accelerated batch evaluation.
@@ -24,9 +27,13 @@ where
     R: Runtime<DType = DType>,
     C: TensorOps<R> + ScalarOps<R> + CompareOps<R> + RuntimeClient<R>,
 {
+    validation::check_inputs(client, x, y, x_new)?;
+    if x_new.numel() == 0 {
+        return Ok(Tensor::empty(x_new.shape(), x.dtype(), client.device())?);
+    }
     match method {
         InterpMethod::Nearest => evaluate_nearest(client, x, y, x_new),
-        InterpMethod::Linear => evaluate_linear(client, x, y, x_new),
+        InterpMethod::Linear => linear::evaluate(client, x, y, x_new),
         InterpMethod::Cubic => evaluate_cubic(client, x, y, x_new),
     }
 }
@@ -84,56 +91,6 @@ where
     let term0 = client.mul(&y0, &indicator)?;
     let term1 = client.mul(&y1, &one_minus_ind)?;
     let result = client.add(&term0, &term1)?;
-
-    Ok(result)
-}
-
-/// Linear interpolation using tensor ops.
-fn evaluate_linear<R, C>(
-    client: &C,
-    x: &Tensor<R>,
-    y: &Tensor<R>,
-    x_new: &Tensor<R>,
-) -> InterpolateResult<Tensor<R>>
-where
-    R: Runtime<DType = DType>,
-    C: TensorOps<R> + ScalarOps<R> + RuntimeClient<R>,
-{
-    let m = x_new.shape()[0];
-    let n = x.shape()[0];
-    let device = client.device();
-
-    // Find interval indices using searchsorted
-    let indices = client.searchsorted(x, x_new, false)?;
-
-    // Create constant tensors for clamping
-    let ones = Tensor::<R>::from_slice(&vec![1i64; m], &[m], device)?;
-    let n_minus_1 = Tensor::<R>::from_slice(&vec![(n - 1) as i64; m], &[m], device)?;
-
-    // Clamp indices to valid range [1, n-1], then get interval [0, n-2]
-    let indices_clamped = client.maximum(&client.minimum(&indices, &n_minus_1)?, &ones)?;
-    let idx = client.sub(&indices_clamped, &ones)?;
-    let idx_plus_1 = client.add(&idx, &ones)?;
-
-    // Gather values at interval endpoints
-    let x0 = client.index_select(x, 0, &idx)?;
-    let x1 = client.index_select(x, 0, &idx_plus_1)?;
-    let y0 = client.index_select(y, 0, &idx)?;
-    let y1 = client.index_select(y, 0, &idx_plus_1)?;
-
-    // Linear interpolation: y = y0 + (y1 - y0) * (x - x0) / (x1 - x0)
-    let dx = client.sub(&x1, &x0)?;
-    let dy = client.sub(&y1, &y0)?;
-    let x_offset = client.sub(x_new, &x0)?;
-
-    // t = (x - x0) / (x1 - x0)
-    let epsilon = Tensor::<R>::from_slice(&vec![1e-14; m], &[m], device)?;
-    let dx_safe = client.add(&dx, &epsilon)?;
-    let t = client.div(&x_offset, &dx_safe)?;
-
-    // result = y0 + dy * t
-    let scaled_dy = client.mul(&dy, &t)?;
-    let result = client.add(&y0, &scaled_dy)?;
 
     Ok(result)
 }

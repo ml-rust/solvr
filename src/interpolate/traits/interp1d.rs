@@ -31,7 +31,28 @@ pub trait Interp1dAlgorithms<R: Runtime<DType = DType>> {
     ///
     /// # Returns
     ///
-    /// 1D tensor of interpolated y values.
+    /// 1D tensor of interpolated y values, retaining the input dtype.
+    ///
+    /// Inputs require matching backend-supported F32/F64 dtypes and the configured client's device.
+    /// Grid tensors require rank1, matching lengths, and at least two finite points.
+    /// Coordinates require strictly positive finite represented adjacent widths.
+    /// Query tensors require rank1 and finite coordinates. Empty queries return an empty tensor after grid checks.
+    ///
+    /// Linear interpolation uses the unperturbed adjacent width and preserves stored values at exact knots.
+    /// Constant intervals return the stored ordinate without coordinate arithmetic.
+    /// Outside the grid, Linear extrapolates using the first or last interval.
+    /// Nonfinite or underflowed active linear intermediates return an error. Rescale inputs before retrying.
+    /// Results otherwise retain ordinary backend rounding, including absorbed increments.
+    /// The exact arithmetic envelope requires nearest-even rounding and gradual underflow.
+    ///
+    /// Nearest and Cubic retain their existing approximate `1e-14` denominator perturbations.
+    /// Their method-specific F64 constants and I64 indices remain unchanged.
+    /// They do not inherit Linear's exact-knot or portable F32/index guarantees.
+    ///
+    /// # Errors
+    ///
+    /// Rejects malformed metadata, nonfinite inputs, and invalid adjacent widths before indexing.
+    /// Returns underlying backend errors for unsupported operations or devices.
     fn interp1d(
         &self,
         x: &Tensor<R>,

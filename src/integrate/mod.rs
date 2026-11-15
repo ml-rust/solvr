@@ -7,13 +7,14 @@
 //!
 //! # Architecture
 //!
-//! All algorithms implement the [`IntegrationAlgorithms`] trait and use
-//! `Tensor<R>` for data, enabling GPU acceleration and batch operations.
+//! Choose an integration trait, then call its methods on your configured Numr client.
+//! Tensor inputs retain the caller's backend.
 //!
 //! # Quadrature Methods
 //!
 //! - [`IntegrationAlgorithms::trapezoid`] - Trapezoidal rule with tensor support
 //! - [`IntegrationAlgorithms::simpson`] - Simpson's rule with tensor support
+//! - [`CertifiedSimpsonAlgorithms::certified_simpson`] - Fixed Simpson integration with supplied mathematical bounds
 //! - [`IntegrationAlgorithms::fixed_quad`] - Gaussian quadrature with tensor functions
 //! - [`IntegrationAlgorithms::quad`] - Adaptive Gauss-Kronrod quadrature
 //! - [`IntegrationAlgorithms::romberg`] - Romberg integration via Richardson extrapolation
@@ -87,9 +88,10 @@ pub use impl_generic::ode::{ODEResultTensor, rk45_with_events_impl, solve_ivp_im
 
 // Re-export the main trait and types
 pub use traits::{
-    BVPResult, IntegrationAlgorithms, MonteCarloMethod, MonteCarloOptions, MonteCarloResult,
-    NQuadOptions, QMCOptions, QMCSequence, QuadOptions, QuadResult, RombergOptions,
-    SymplecticResult, TanhSinhOptions,
+    BVPResult, CertifiedSimpsonAlgorithms, CertifiedSimpsonOptions, CertifiedSimpsonPanel,
+    CertifiedSimpsonQuery, CertifiedSimpsonResult, CertifiedSimpsonValues, IntegrationAlgorithms,
+    MonteCarloMethod, MonteCarloOptions, MonteCarloResult, NQuadOptions, QMCOptions, QMCSequence,
+    QuadOptions, QuadResult, RombergOptions, SymplecticResult, TanhSinhOptions,
     events::{EventFn, EventFunction, EventSet},
 };
 

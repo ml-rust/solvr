@@ -115,8 +115,10 @@ pub use graph::{
     ShortestPathAlgorithms, ShortestPathResult,
 };
 pub use integrate::{
-    IntegrateError, IntegrateResult, IntegrationAlgorithms, ODEMethod, ODEOptions, ODEResultTensor,
-    QuadOptions, QuadResult, RombergOptions, solve_ivp_impl,
+    CertifiedSimpsonAlgorithms, CertifiedSimpsonOptions, CertifiedSimpsonPanel,
+    CertifiedSimpsonQuery, CertifiedSimpsonResult, CertifiedSimpsonValues, IntegrateError,
+    IntegrateResult, IntegrationAlgorithms, ODEMethod, ODEOptions, ODEResultTensor, QuadOptions,
+    QuadResult, RombergOptions, solve_ivp_impl,
 };
 pub use interpolate::{
     AkimaAlgorithms, BSplineCurve, BSplineCurveAlgorithms, BSplineSurface,

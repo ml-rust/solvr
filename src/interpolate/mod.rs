@@ -1,29 +1,4 @@
-//! Interpolation methods for solvr
-//!
-//! This module provides trait-based interpolation algorithms that work across all numr backends
-//! (CPU, CUDA, WebGPU). All methods use numr's `RuntimeClient` trait for backend-agnostic
-//! implementation.
-//!
-//! # Module Organization
-//!
-//! - `traits/` - Algorithm trait definitions (one file per algorithm)
-//! - `impl_generic/` - Generic algorithm implementations (one file per algorithm)
-//! - `cpu/`, `cuda/`, `wgpu/` - Backend trait implementations (one file per algorithm)
-//! - `error.rs` - Error types
-//! - `hermite_core.rs` - Shared Hermite interpolation utilities
-//!
-//! # Algorithms
-//!
-//! ## 1D Interpolation
-//!
-//! - `Interp1dAlgorithms` - 1D interpolation (linear, nearest, cubic)
-//! - `CubicSplineAlgorithms` - Cubic spline interpolation with boundary conditions
-//! - `PchipAlgorithms` - Monotonicity-preserving PCHIP interpolation
-//! - `AkimaAlgorithms` - Outlier-robust Akima spline interpolation
-//!
-//! ## N-D Interpolation
-//!
-//! - `InterpNdAlgorithms` - N-dimensional interpolation on rectilinear grids
+//! Tensor interpolation across Numr CPU, CUDA, and WebGPU backends.
 //!
 //! # Using the Traits
 //!
@@ -56,25 +31,15 @@ mod wgpu;
 pub mod impl_generic;
 pub mod traits;
 
-// Public API: traits and types
 pub use error::{InterpolateError, InterpolateResult};
-pub use traits::bezier_curve::{BezierCurve, BezierCurveAlgorithms};
-pub use traits::bezier_surface::{BezierSurface, BezierSurfaceAlgorithms};
-pub use traits::bspline::{BSpline, BSplineBoundary};
-pub use traits::bspline_curve::{BSplineCurve, BSplineCurveAlgorithms};
-pub use traits::bspline_surface::{BSplineSurface, BSplineSurfaceAlgorithms};
-pub use traits::clough_tocher::CloughTocher2D;
-pub use traits::cubic_spline::SplineBoundary;
-pub use traits::geometric::{GeometricTransformAlgorithms, InterpolationOrder};
-pub use traits::interp1d::InterpMethod;
-pub use traits::interpnd::{ExtrapolateMode, InterpNdMethod};
-pub use traits::nurbs_curve::{NurbsCurve, NurbsCurveAlgorithms};
-pub use traits::nurbs_surface::{NurbsSurface, NurbsSurfaceAlgorithms};
-pub use traits::rbf::{RbfKernel, RbfModel};
-pub use traits::rect_bivariate_spline::BivariateSpline;
-pub use traits::scattered::ScatteredMethod;
 pub use traits::{
-    AkimaAlgorithms, BSplineAlgorithms, CloughTocher2DAlgorithms, CubicSplineAlgorithms,
-    Interp1dAlgorithms, InterpNdAlgorithms, PchipAlgorithms, RbfAlgorithms,
-    RectBivariateSplineAlgorithms, ScatteredInterpAlgorithms, SmoothBivariateSplineAlgorithms,
+    AkimaAlgorithms, BSpline, BSplineAlgorithms, BSplineBoundary, BSplineCurve,
+    BSplineCurveAlgorithms, BSplineSurface, BSplineSurfaceAlgorithms, BezierCurve,
+    BezierCurveAlgorithms, BezierSurface, BezierSurfaceAlgorithms, BivariateSpline, CloughTocher2D,
+    CloughTocher2DAlgorithms, CubicSplineAlgorithms, ExtrapolateMode, GeometricTransformAlgorithms,
+    Interp1dAlgorithms, InterpMethod, InterpNdAlgorithms, InterpNdMethod, InterpolationOrder,
+    LinearInterp1dDiagnostics, LinearInterp1dReceipt, NurbsCurve, NurbsCurveAlgorithms,
+    NurbsSurface, NurbsSurfaceAlgorithms, PchipAlgorithms, RbfAlgorithms, RbfKernel, RbfModel,
+    RectBivariateSplineAlgorithms, ScatteredInterpAlgorithms, ScatteredMethod,
+    SmoothBivariateSplineAlgorithms, SplineBoundary,
 };

@@ -1,5 +1,6 @@
 //! Error types for interpolation operations.
 
+use crate::DType;
 use std::fmt;
 
 /// Result type for interpolation operations.
@@ -51,6 +52,14 @@ pub enum InterpolateError {
 
     /// Numerical computation failed (e.g., singular matrix).
     NumericalError { message: String },
+
+    /// Diagnostic interpolation lacks a declared provider contract or detects unsupported execution-mode arithmetic.
+    UnsupportedArithmetic {
+        /// Selected input floating dtype.
+        dtype: DType,
+        /// Static `provider_contract` rejection or detected execution-mode probe categories.
+        failed_probes: Vec<&'static str>,
+    },
 
     /// Invalid parameter value.
     InvalidParameter { parameter: String, message: String },
@@ -129,6 +138,16 @@ impl fmt::Display for InterpolateError {
             }
             Self::NumericalError { message } => {
                 write!(f, "Numerical error: {}", message)
+            }
+            Self::UnsupportedArithmetic {
+                dtype,
+                failed_probes,
+            } => {
+                write!(
+                    f,
+                    "Unsupported Linear receipt arithmetic: dtype={dtype:?}, failed_probes={}. Select an IEEE-basic provider and an arithmetic mode supporting nearest-even rounding, gradual underflow, and Numr TwoSum witnesses",
+                    failed_probes.join(", ")
+                )
             }
             Self::InvalidParameter { parameter, message } => {
                 write!(f, "Invalid parameter '{}': {}", parameter, message)

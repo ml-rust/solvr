@@ -9,6 +9,7 @@ pub mod cubic_spline;
 pub mod geometric;
 pub mod interp1d;
 pub mod interpnd;
+pub mod linear_diagnostics;
 pub mod nurbs_curve;
 pub mod nurbs_surface;
 pub mod pchip;

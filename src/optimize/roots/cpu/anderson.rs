@@ -1,8 +1,10 @@
 //! CPU implementation of Anderson mixing.
 
 use crate::optimize::roots::RootTensorResult;
-use crate::optimize::roots::impl_generic::anderson_impl;
-use crate::optimize::roots::traits::anderson::{AndersonAlgorithms, AndersonOptions};
+use crate::optimize::roots::impl_generic::{anderson_impl, anderson_with_convergence_impl};
+use crate::optimize::roots::traits::anderson::{
+    AndersonAlgorithms, AndersonConvergence, AndersonOptions,
+};
 use numr::error::Result;
 use numr::runtime::cpu::{CpuClient, CpuRuntime};
 use numr::tensor::Tensor;
@@ -21,6 +23,30 @@ impl AndersonAlgorithms<CpuRuntime> for CpuClient {
             numr::error::Error::backend_limitation("cpu", "anderson", e.to_string())
         })?;
         Ok(result)
+    }
+
+    fn anderson_with_convergence<G, K>(
+        &self,
+        g: G,
+        x0: &Tensor<CpuRuntime>,
+        options: &AndersonOptions,
+        convergence: K,
+    ) -> Result<RootTensorResult<CpuRuntime>>
+    where
+        G: Fn(&Tensor<CpuRuntime>) -> Result<Tensor<CpuRuntime>>,
+        K: Fn(
+            &Tensor<CpuRuntime>,
+            &Tensor<CpuRuntime>,
+            &Tensor<CpuRuntime>,
+        ) -> Result<AndersonConvergence>,
+    {
+        anderson_with_convergence_impl(self, g, x0, options, convergence).map_err(|e| {
+            numr::error::Error::backend_limitation(
+                "cpu",
+                "anderson_with_convergence",
+                e.to_string(),
+            )
+        })
     }
 }
 

@@ -3,6 +3,7 @@
 //! This module provides numerical integration algorithms using tensor operations.
 //! All implementations are generic over `R: Runtime<DType = DType>` for multi-backend support.
 
+mod certified_simpson;
 mod fixed_quad;
 mod monte_carlo;
 mod nquad;
@@ -13,6 +14,7 @@ mod simpson;
 mod tanh_sinh;
 mod trapezoid;
 
+pub use certified_simpson::certified_simpson_impl;
 pub use fixed_quad::fixed_quad_impl;
 pub use monte_carlo::monte_carlo_impl;
 pub use nquad::{dblquad_impl, nquad_impl, tplquad_impl};
