@@ -330,11 +330,119 @@ where
         };
         let run = solve_shapes(client, dtype, rows, &limited)?;
         assert!(run.evaluated <= max_points);
-        assert_eq!(run.status.contains(&4), max_points < full.evaluated);
-        assert_eq!(run.queries[..], full.queries[..run.queries.len()]);
+        assert!(run.status.iter().all(|&code| code == 0 || code == 4));
         contains(&run, rows, dtype);
     }
     Ok(())
+}
+
+/// Second points never cost a probe round that midpoint probes could afford.
+fn point_budget_rounds<R, C>(client: &C, dtype: DType) -> Result
+where
+    R: Runtime<DType = DType>,
+    C: Client<R> + CertifiedBisectionAlgorithms<R>,
+{
+    let rows = &known_rows()[..7];
+    let count = rows.len();
+    let (mut paired, mut compared) = (false, 0);
+    for max_iterations in [1, 2, 400] {
+        for max_points in 2 * count..2 * count + count * 8 {
+            let limited = |probe| CertifiedBisectionOptions {
+                max_iterations,
+                max_points,
+                ..options(0.0, probe)
+            };
+            let slack = solve_shapes(client, dtype, rows, &limited(SLACK))?;
+            let midpoint = solve_shapes(client, dtype, rows, &limited(MIDPOINT))?;
+            assert!(slack.evaluated <= max_points);
+            contains(&slack, rows, dtype);
+            paired |= slack.evaluated > 2 * count + count * slack.iterations;
+            // The reserve pays midpoint rounds for every row still pending. A midpoint run
+            // whose rows all stayed pending therefore never runs more rounds.
+            if midpoint.evaluated == 2 * count + count * midpoint.iterations {
+                compared += 1;
+                assert!(
+                    slack.iterations >= midpoint.iterations,
+                    "{dtype:?} max_iterations {max_iterations} max_points {max_points}: {} slack rounds against {} midpoint rounds",
+                    slack.iterations,
+                    midpoint.iterations
+                );
+            }
+        }
+    }
+    assert!(paired, "{dtype:?}: no budget admitted a second point");
+    assert!(
+        compared > count * 4,
+        "{dtype:?}: {compared} comparable budgets"
+    );
+    // One round per call, as callers that split a session budget across calls run it.
+    let first = |probe| CertifiedBisectionOptions {
+        max_iterations: 1,
+        max_points: 2 * rows.len() + rows.len(),
+        ..options(0.0, probe)
+    };
+    let slack = solve_shapes(client, dtype, rows, &first(SLACK))?;
+    assert_eq!(slack.iterations, 1);
+    assert_eq!(slack.evaluated, 3 * rows.len());
+    Ok(())
+}
+
+/// Exact roots on simple floats reach an exact zero after secant steps leave the grid.
+fn dyadic_roots<R, C>(client: &C, dtype: DType) -> Result<Run>
+where
+    R: Runtime<DType = DType>,
+    C: Client<R> + CertifiedBisectionAlgorithms<R>,
+{
+    let roots = [0.125, 0.375, -0.25, 0.5];
+    // The radius covers the rounding of the cubic. The band of uncertain signs is wider.
+    let (band, radius) = if dtype == DType::F32 {
+        (1e-5, 1e-6)
+    } else {
+        (1e-12, 1e-15)
+    };
+    let root = fixture::tensor::<R>(&roots, &[4], dtype, client.device())?;
+    // The cubic keeps secant points off the root. Off-grid domains keep midpoints off it.
+    let run = solve(
+        client,
+        dtype,
+        [
+            &[0.01, 0.3, -0.61, 0.07],
+            &[0.9, 0.47, 0.2, 0.93],
+            &[0.5, 1.0, 0.25, 0.75],
+        ],
+        &options(0.0, SLACK),
+        |query| {
+            let r = client.index_select(&root, 0, &query.owner)?;
+            // Sterbenz makes the difference exact near the root, so only the root gives zero.
+            let t = client.sub(&query.point, &r)?;
+            let value = client.add(&client.mul(&client.mul(&t, &t)?, &t)?, &t)?;
+            let zero = fixture::constant(client, &t, 0.0)?;
+            let one = fixture::constant(client, &t, 1.0)?;
+            let near = client.lt(&client.abs(&t)?, &fixture::constant(client, &t, band)?)?;
+            let exact = client.eq(&t, &zero)?;
+            let radius = fixture::constant(client, &t, radius)?;
+            let lower = client.where_cond(
+                &near,
+                &client.neg(&one)?,
+                &client.next_down(&client.sub(&value, &radius)?)?,
+            )?;
+            let upper =
+                client.where_cond(&near, &one, &client.next_up(&client.add(&value, &radius)?)?)?;
+            Ok(CertifiedRootValues {
+                lower: client.where_cond(&exact, &zero, &lower)?,
+                upper: client.where_cond(&exact, &zero, &upper)?,
+            })
+        },
+    )?;
+    assert_eq!(run.status, [0, 0, 0, 0], "{dtype:?} {run:?}");
+    for (index, &r) in roots.iter().enumerate() {
+        assert_eq!(
+            (run.lower[index], run.upper[index]),
+            (r, r),
+            "{dtype:?} row {index}"
+        );
+    }
+    Ok(run)
 }
 
 /// Random increasing residuals never need more rounds than bisection's schedule.
@@ -394,6 +502,7 @@ where
             &options(atol(dtype), SLACK),
         )?);
         runs.push(uncertain_band(client, dtype)?);
+        runs.push(dyadic_roots(client, dtype)?);
         let mut random = Lcg(0x0b17 + dtype.size_in_bytes() as u64);
         let rows: Vec<_> = (0..64).map(|_| random.row(dtype)).collect();
         runs.push(solve_shapes(
@@ -417,6 +526,8 @@ where
         uncertain_band(client, dtype)?;
         exact_zero(client, dtype)?;
         limits(client, dtype)?;
+        point_budget_rounds(client, dtype)?;
+        dyadic_roots(client, dtype)?;
         rounds_bound(client, dtype)?;
         let rows = known_rows();
         // Repeated runs match bit for bit, including every probe point.

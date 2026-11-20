@@ -4,6 +4,7 @@ use super::super::certified::{
     metadata,
     native::{self, RootClient},
 };
+use super::super::certified_bisection::probe;
 use crate::DType;
 use crate::optimize::roots::traits::CertifiedRootContinuation;
 use crate::optimize::{OptimizeError, OptimizeResult};
@@ -68,8 +69,9 @@ where
 
 /// Discard precision-policy history only for demanded nonsingleton compact roots.
 ///
-/// Probe state stays. Its samples only steer probes, and each old nominal value stays
-/// within its old enclosure width of the same residual.
+/// Probe samples stay. They only steer probes, and each old nominal value stays within
+/// its old enclosure width of the same residual. The noise flag clears with the floor,
+/// because both record uncertain signs at the old precision.
 pub(super) fn refresh<R, C>(
     client: &C,
     continuation: &mut CertifiedRootContinuation<R>,
@@ -89,5 +91,8 @@ where
     continuation.floor = native::replace(client, &continuation.floor, &roots, &zero)?;
     state.sampled = native::replace(client, &state.sampled, &roots, &zero)?;
     state.previous_point = native::replace(client, &state.previous_point, &roots, &zero)?;
+    if let Some(rows) = state.probe_state.as_ref() {
+        state.probe_state = Some(probe::forget(client, rows, &roots)?);
+    }
     Ok(())
 }

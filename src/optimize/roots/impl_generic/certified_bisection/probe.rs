@@ -1,6 +1,6 @@
 //! Slack-gated secant probes inside certified root brackets.
 //!
-//! Each root row packs its probe state in one row of seven columns. Samples only steer
+//! Each root row packs its probe state in one row of eight columns. Samples only steer
 //! where the next probe lands. Certified signs, exact zeros, and the slope correction
 //! remain the only operations that move a bracket endpoint.
 //!
@@ -11,15 +11,21 @@
 //! A row without that slack probes its midpoint. When its samples give a usable secant,
 //! the same callback also evaluates the secant point. Both corrected brackets enclose the
 //! root, so the row keeps their intersection, which is never wider than the midpoint's.
+//!
+//! A row that has seen an uncertain sign is in its noise band. It always probes its
+//! midpoint, and pairs it with the float of fewest significant bits inside the bracket.
+//! An exact root can only be certified by evaluating that exact float. Midpoint probes
+//! reach such floats from dyadic brackets, but secant steps move brackets off that grid.
 
 use super::native::{self, RootClient};
+use super::simplest::simplest;
 use crate::DType;
 use crate::optimize::OptimizeResult;
 use numr::runtime::Runtime;
 use numr::tensor::Tensor;
 
 /// Columns of one packed probe row.
-pub(crate) const COLUMNS: usize = 7;
+pub(crate) const COLUMNS: usize = 8;
 /// Bisection's width bound after the executed rounds, rounded up.
 const SCHEDULE: usize = 0;
 /// ITP truncation factor for exponent two, fixed per row from the admitted width.
@@ -30,6 +36,8 @@ const X_LAST: usize = 4;
 const F_LAST: usize = 5;
 /// Count of usable certified samples: zero, one, or two.
 const SAMPLES: usize = 6;
+/// One after any probe of the row had an uncertain sign.
+const NOISE: usize = 7;
 
 /// ITP truncation numerator for exponent two.
 const TRUNCATION_SCALE: f64 = 0.2;
@@ -39,10 +47,14 @@ pub(crate) struct Probe<R: Runtime<DType = DType>> {
     pub rows: Tensor<R>,
     /// One for a midpoint probe, zero for an interpolated probe.
     pub midpoint: Tensor<R>,
-    /// One where a midpoint row also evaluates its secant point in the same callback.
+    /// One where a midpoint row also evaluates a second point in the same callback.
     pub paired: Tensor<R>,
-    /// Secant point of each paired row. Other rows hold their midpoint.
+    /// Second point of each paired row: its simplest float or its secant point.
+    /// Other rows hold their midpoint.
     pub second: Tensor<R>,
+    /// One where a row outside its noise band has a simplest float to try.
+    /// A midpoint stall then keeps the row active for one paired round.
+    pub retry: Tensor<R>,
 }
 
 pub(crate) struct Selection<R: Runtime<DType = DType>> {
@@ -65,6 +77,7 @@ impl<R: Runtime<DType = DType>> Probe<R> {
             midpoint: client.index_select(&self.midpoint, 0, kept)?,
             paired: client.index_select(&self.paired, 0, kept)?,
             second: client.index_select(&self.second, 0, kept)?,
+            retry: client.index_select(&self.retry, 0, kept)?,
         })
     }
 }
@@ -145,8 +158,30 @@ where
             &x_last,
             &f_last,
             &samples,
+            &zero,
         ],
     )
+}
+
+/// Clear the noise flag of the given rows.
+///
+/// A residual precision change makes the old uncertain signs stale.
+pub(crate) fn forget<R, C>(
+    client: &C,
+    all: &Tensor<R>,
+    roots: &Tensor<R>,
+) -> OptimizeResult<Tensor<R>>
+where
+    R: Runtime<DType = DType>,
+    C: RootClient<R>,
+{
+    let rows = client.index_select(all, 0, roots)?;
+    let column = columns(&rows)?;
+    let zero = Tensor::zeros(roots.shape(), rows.dtype(), client.device())?;
+    let mut fields: Vec<&Tensor<R>> = column.iter().collect();
+    fields[NOISE] = &zero;
+    let rows = client.stack(&fields, 1)?;
+    Ok(client.index_put(all, 0, roots, &rows)?)
 }
 
 /// Select one probe per pending root.
@@ -174,13 +209,19 @@ where
     let one = Tensor::ones(lower.shape(), lower.dtype(), client.device())?;
     let two = Tensor::full_scalar(lower.shape(), lower.dtype(), 2.0, client.device())?;
     let schedule = &column[SCHEDULE];
+    let noise = &column[NOISE];
+    let quiet = client.sub(&one, noise)?;
     let width = client.next_up(&client.sub(upper, lower)?)?;
-    // The gate requires a full round of slack against a finite schedule.
+    let (simple, candidate) = simplest(client, [lower, upper], &width, &midpoint)?;
+    // The gate requires a full round of slack against a finite schedule, outside the noise band.
     let gate = client.mul(
         &client.eq(&column[SAMPLES], &two)?,
         &client.le(&client.mul_scalar(&width, 2.0)?, schedule)?,
     )?;
-    let gate = client.mul(&gate, &finite(client, schedule, &zero)?)?;
+    let gate = client.mul(
+        &client.mul(&gate, &finite(client, schedule, &zero)?)?,
+        &quiet,
+    )?;
     let dx = client.sub(&column[X_LAST], &column[X_PREVIOUS])?;
     let df = client.sub(&column[F_LAST], &column[F_PREVIOUS])?;
     let moved = client.ne(&dx, &zero)?;
@@ -217,10 +258,18 @@ where
     // A row without slack probes its midpoint, so the schedule holds for any outcome.
     // Its untruncated secant point joins the same callback as a second sample.
     let closed = client.sub(&one, &gate)?;
-    let second = client.minimum(&client.maximum(&raw, &inner_lower)?, &inner_upper)?;
-    let paired = client.mul(&client.mul(&closed, &steer)?, &interior)?;
-    let paired = client.mul(&paired, &client.ne(&second, &midpoint)?)?;
-    let second = client.where_cond(&paired, &second, &midpoint)?;
+    let secant = client.minimum(&client.maximum(&raw, &inner_lower)?, &inner_upper)?;
+    let steered = client.mul(&client.mul(&closed, &steer)?, &interior)?;
+    let steered = client.mul(&steered, &client.ne(&secant, &midpoint)?)?;
+    // A row in its noise band pairs its midpoint with the simplest float when one exists.
+    let dyadic = client.mul(noise, &candidate)?;
+    let steered = client.mul(&steered, &client.sub(&one, &dyadic)?)?;
+    let paired = client.maximum(&dyadic, &steered)?;
+    let second = client.where_cond(
+        &dyadic,
+        &simple,
+        &client.where_cond(&steered, &secant, &midpoint)?,
+    )?;
     Ok(Selection {
         point,
         probe: Some(Probe {
@@ -228,11 +277,12 @@ where
             midpoint: client.sub(&one, &usable)?,
             paired,
             second,
+            retry: client.mul(&quiet, &candidate)?,
         }),
     })
 }
 
-/// The secant point of each paired row and its residual enclosure.
+/// The second point of each paired row and its residual enclosure.
 pub(crate) struct Second<'a, R: Runtime<DType = DType>> {
     /// One for a paired row. Other lanes hold harmless values.
     pub paired: &'a Tensor<R>,
@@ -244,7 +294,8 @@ pub(crate) struct Second<'a, R: Runtime<DType = DType>> {
 ///
 /// A certified sign stores the probe and its nominal residual. Any other outcome clears
 /// both samples, so the next probes are midpoints until two certified samples exist.
-/// A paired row then records its secant point the same way, after its midpoint.
+/// A paired row then records its second point the same way, after its midpoint.
+/// An uncertain sign at either point also sets the noise flag, which never clears here.
 pub(crate) fn record<R, C>(
     client: &C,
     rows: &Tensor<R>,
@@ -272,6 +323,15 @@ where
     let mut f_last = client.where_cond(&certified, &nominal, &column[F_LAST])?;
     let counted = client.minimum(&client.add(&column[SAMPLES], &one)?, &two)?;
     let mut samples = client.where_cond(&certified, &counted, &zero)?;
+    // An enclosure that is neither signed nor exactly zero marks the noise band.
+    let unresolved = |residual: [&Tensor<R>; 2], signed: &Tensor<R>| -> OptimizeResult<Tensor<R>> {
+        let exact = client.mul(
+            &client.eq(residual[0], &zero)?,
+            &client.eq(residual[1], &zero)?,
+        )?;
+        Ok(client.mul(&client.sub(&one, signed)?, &client.sub(&one, &exact)?)?)
+    };
+    let mut noise = client.maximum(&column[NOISE], &unresolved(residual, &certified)?)?;
     if let Some(second) = second {
         let signed = client.maximum(
             &client.gt(second.residual[0], &zero)?,
@@ -279,6 +339,10 @@ where
         )?;
         let certified = client.mul(second.paired, &signed)?;
         let uncertain = client.mul(second.paired, &client.sub(&one, &signed)?)?;
+        noise = client.maximum(
+            &noise,
+            &client.mul(second.paired, &unresolved(second.residual, &signed)?)?,
+        )?;
         let nominal = client.midpoint(second.residual[0], second.residual[1])?;
         x_previous = client.where_cond(&certified, &x_last, &x_previous)?;
         f_previous = client.where_cond(&certified, &f_last, &f_previous)?;
@@ -303,6 +367,7 @@ where
             &x_last,
             &f_last,
             &samples,
+            &noise,
         ],
     )
 }
@@ -373,35 +438,54 @@ mod tests {
         let client = client();
         let adjacent = 1.0f64.next_up();
         // Affine samples of x - 0.375 at 0.25 and 0.75 give the exact secant root.
-        let lanes: [(f64, f64, [f64; 7]); 7] = [
-            (0.0, 1.0, [4.0, 0.0, 0.25, -0.125, 0.75, 0.375, 2.0]),
-            (0.0, 1.0, [4.0, 0.0, 0.25, -0.125, 0.75, 0.375, 1.0]),
-            (0.0, 1.0, [1.5, 0.0, 0.25, -0.125, 0.75, 0.375, 2.0]),
-            (0.0, 1.0, [4.0, 0.0, 0.25, 0.375, 0.75, -0.125, 2.0]),
-            (0.0, 1.0, [4.0, 0.0625, 0.25, -0.125, 0.75, 0.375, 2.0]),
-            (0.0, 1.0, [4.0, 0.0, 0.25, 0.5, 0.75, 0.625, 2.0]),
-            (1.0, adjacent, [4.0, 0.0, 0.25, -0.125, 0.75, 0.375, 2.0]),
+        let lanes: [(f64, f64, [f64; COLUMNS]); 9] = [
+            (0.0, 1.0, [4.0, 0.0, 0.25, -0.125, 0.75, 0.375, 2.0, 0.0]),
+            (0.0, 1.0, [4.0, 0.0, 0.25, -0.125, 0.75, 0.375, 1.0, 0.0]),
+            (0.0, 1.0, [1.5, 0.0, 0.25, -0.125, 0.75, 0.375, 2.0, 0.0]),
+            (0.0, 1.0, [4.0, 0.0, 0.25, 0.375, 0.75, -0.125, 2.0, 0.0]),
+            (0.0, 1.0, [4.0, 0.0625, 0.25, -0.125, 0.75, 0.375, 2.0, 0.0]),
+            (0.0, 1.0, [4.0, 0.0, 0.25, 0.5, 0.75, 0.625, 2.0, 0.0]),
+            (
+                1.0,
+                adjacent,
+                [4.0, 0.0, 0.25, -0.125, 0.75, 0.375, 2.0, 0.0],
+            ),
+            // A noise row with slack and a secant still probes its midpoint, paired with 0.5.
+            (0.3, 0.9, [4.0, 0.0, 0.25, -0.125, 0.75, 0.375, 2.0, 1.0]),
+            // A quiet row without a secant probes its midpoint and may retry 0.5 after a stall.
+            (0.3, 0.9, [4.0, 0.0, 0.25, -0.125, 0.75, 0.375, 1.0, 0.0]),
         ];
+        let count = lanes.len();
         let lower: Vec<_> = lanes.iter().map(|lane| lane.0).collect();
         let upper: Vec<_> = lanes.iter().map(|lane| lane.1).collect();
         let packed: Vec<_> = lanes.iter().flat_map(|lane| lane.2).collect();
-        let lower = tensor(&client, &lower, &[7], DType::F64)?;
-        let upper = tensor(&client, &upper, &[7], DType::F64)?;
-        let rows = tensor(&client, &packed, &[7, COLUMNS], DType::F64)?;
+        let lower = tensor(&client, &lower, &[count], DType::F64)?;
+        let upper = tensor(&client, &upper, &[count], DType::F64)?;
+        let rows = tensor(&client, &packed, &[count, COLUMNS], DType::F64)?;
         let selection = select(&client, Some(rows), &lower, &upper)?;
         let point = read(&selection.point)?;
         let probe = selection.probe.ok_or("probe")?;
         let midpoint = read(&probe.midpoint)?;
-        // Only the steerable row without slack pairs its midpoint with the raw secant.
-        assert_eq!(read(&probe.paired)?, [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]);
+        // The steerable row without slack pairs its midpoint with the raw secant.
+        // The noise row pairs its midpoint with the simplest float.
+        assert_eq!(
+            read(&probe.paired)?,
+            [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0]
+        );
         assert_eq!(read(&probe.second)?[2], 0.375);
+        assert_eq!(read(&probe.second)?[7], 0.5);
         assert_eq!(point[0], 0.375);
         assert_eq!(&point[1..4], [0.5, 0.5, 0.5]);
         // Truncation moves the secant root toward the midpoint by one sixteenth.
         assert!((0.4375..0.4375 + 1e-15).contains(&point[4]), "{}", point[4]);
         assert_eq!(point[5], f64::from_bits(1));
         assert!(point[6] == 1.0 || point[6] == adjacent);
-        assert_eq!(midpoint, [0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0]);
+        assert_eq!(point[7], 0.6);
+        assert_eq!(midpoint, [0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0]);
+        assert_eq!(
+            read(&probe.retry)?,
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+        );
         Ok(())
     }
 
@@ -409,9 +493,9 @@ mod tests {
     fn record_shifts_certified_samples_and_halves_the_schedule() -> Result {
         let client = client();
         let packed = [
-            [1.0, 0.2, 0.1, -0.5, 0.9, 0.5, 2.0],
-            [1.0, 0.2, 0.1, -0.5, 0.9, 0.5, 2.0],
-            [f64::INFINITY, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            [1.0, 0.2, 0.1, -0.5, 0.9, 0.5, 2.0, 0.0],
+            [1.0, 0.2, 0.1, -0.5, 0.9, 0.5, 2.0, 0.0],
+            [f64::INFINITY, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         ];
         let rows = tensor(&client, packed.as_flattened(), &[3, COLUMNS], DType::F64)?;
         let point = tensor(&client, &[0.5, 0.5, 0.5], &[3], DType::F64)?;
@@ -436,13 +520,15 @@ mod tests {
         assert_eq!(column[X_LAST], [0.5, 0.9, 0.5]);
         assert_eq!(column[F_LAST], [0.5, 0.5, 0.5]);
         assert_eq!(column[SAMPLES], [2.0, 0.0, 1.0]);
+        // Only the uncertain midpoint marks the noise band.
+        assert_eq!(column[NOISE], [0.0, 1.0, 0.0]);
         Ok(())
     }
 
     #[test]
     fn record_stores_a_paired_secant_point_after_its_midpoint() -> Result {
         let client = client();
-        let row = [1.0, 0.2, 0.1, -0.5, 0.9, 0.5, 2.0];
+        let row = [1.0, 0.2, 0.1, -0.5, 0.9, 0.5, 2.0, 0.0];
         let packed = [row, row, row];
         let rows = tensor(&client, packed.as_flattened(), &[3, COLUMNS], DType::F64)?;
         let point = tensor(&client, &[0.5, 0.5, 0.5], &[3], DType::F64)?;
@@ -474,6 +560,7 @@ mod tests {
         assert_eq!(column[X_LAST], [0.3, 0.5, 0.5]);
         assert_eq!(column[F_LAST], [-0.1875, 0.5, 0.5]);
         assert_eq!(column[SAMPLES], [2.0, 0.0, 2.0]);
+        assert_eq!(column[NOISE], [0.0, 1.0, 0.0]);
         assert_eq!(column[SCHEDULE], [0.5, 0.5, 0.5]);
         Ok(())
     }
@@ -723,7 +810,9 @@ mod tests {
                     &state.lower,
                     &state.upper,
                 )?;
-                let midpoint = read(&selection.probe.ok_or("probe")?.midpoint)?;
+                let probe = selection.probe.ok_or("probe")?;
+                let midpoint = read(&probe.midpoint)?;
+                let retry = read(&probe.retry)?;
                 continuation = step(&client, &residual, continuation, 0.0, 1)?;
                 let state = &continuation.state;
                 let after = (read(&state.lower)?, read(&state.upper)?);
@@ -739,6 +828,9 @@ mod tests {
                     let code = status[owner[row] as usize];
                     if midpoint[row] == 0.0 {
                         interpolated_stalls += 1;
+                        assert_eq!((code, floor[row], still[row]), (4, 0.0, 1.0));
+                    } else if retry[row] == 1.0 {
+                        // A first midpoint stall tries the simplest float next round.
                         assert_eq!((code, floor[row], still[row]), (4, 0.0, 1.0));
                     } else {
                         midpoint_stalls += 1;
@@ -811,7 +903,20 @@ mod tests {
                 )?
                 .into_parts()
                 .1;
-            assert_eq!(probe_rows(&refreshed)?, original);
+            // The refresh clears only the noise flag, which records the old precision.
+            let kept = probe_rows(&refreshed)?;
+            let mut noisy = 0;
+            for (index, (&kept, &old)) in kept.iter().zip(&original).enumerate() {
+                if index % COLUMNS == NOISE {
+                    assert_eq!(kept, 0, "{dtype:?} lane {index}");
+                    noisy += usize::from(old != 0);
+                } else {
+                    assert_eq!(kept, old, "{dtype:?} lane {index}");
+                }
+            }
+            // Secant points on the affine rows land inside the enclosure radius of the root.
+            assert!(noisy > 0, "{dtype:?}: no row reached its noise band");
+            let original = kept;
             assert!(read(&refreshed.state.sampled)?.iter().all(|&s| s == 0.0));
 
             // A selected resume to a finer width advances only demanded probe rows.

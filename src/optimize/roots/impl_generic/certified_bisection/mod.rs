@@ -9,6 +9,7 @@ pub(crate) mod iteration;
 pub(crate) mod probe;
 use super::certified::{evaluate, native};
 mod scalar_tolerance;
+mod simplest;
 pub(crate) mod stopping;
 
 #[cfg(test)]

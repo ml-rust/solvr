@@ -136,7 +136,8 @@ where
             break;
         }
         // Admission covers the full pending batch before point or gather allocation.
-        if pending.numel() > options.max_points.saturating_sub(state.evaluated) {
+        let remaining = options.max_points.saturating_sub(state.evaluated);
+        if pending.numel() > remaining {
             break;
         }
         let lower = client.index_select(&state.lower, 0, &pending)?;
@@ -147,13 +148,13 @@ where
             .map(|rows| client.index_select(rows, 0, &pending))
             .transpose()?;
         let probe::Selection { point, probe } = probe::select(client, rows, &lower, &upper)?;
-        // Admission also covers the secant points that paired rows add to the callback.
-        if let Some(probe) = probe.as_ref() {
-            let paired = native::indices(client, &probe.paired)?.numel();
-            if pending.numel() + paired > options.max_points.saturating_sub(state.evaluated) {
-                break;
-            }
-        }
+        // Second points spend only points that no later midpoint round needs. The pending
+        // count never grows, so the reserve pays every midpoint round the limits permit.
+        let reserve = (options.max_iterations - rounds).min(remaining / pending.numel());
+        let surplus = remaining - pending.numel() * reserve;
+        let probe = probe
+            .map(|probe| limit(client, probe, surplus))
+            .transpose()?;
         rounds += 1;
         let outside = client.maximum(&client.lt(&point, &lower)?, &client.gt(&point, &upper)?)?;
         if native::any(
@@ -168,9 +169,16 @@ where
         let previous = client.index_select(&state.previous_point, 0, &pending)?;
         let sampled = client.index_select(&state.sampled, 0, &pending)?;
         let repeated = client.mul(&sampled, &client.eq(&point, &previous)?)?;
-        // Only a repeated midpoint probe shows that no further contraction exists.
+        // Only a repeated unpaired midpoint probe shows that no further contraction exists.
+        // A paired row still evaluates a new second point.
         let repeated = match probe.as_ref() {
-            Some(probe) => client.mul(&repeated, &probe.midpoint)?,
+            Some(probe) => client.mul(
+                &client.mul(&repeated, &probe.midpoint)?,
+                &client.sub(
+                    &Tensor::ones(probe.paired.shape(), probe.paired.dtype(), client.device())?,
+                    &probe.paired,
+                )?,
+            )?,
             None => repeated,
         };
         let zero = Tensor::zeros(interior.shape(), interior.dtype(), client.device())?;
@@ -203,6 +211,27 @@ where
         )?;
     }
     Ok(rounds)
+}
+
+/// Keep at most `count` paired rows, the first in row order.
+fn limit<R, C>(client: &C, probe: Probe<R>, count: usize) -> OptimizeResult<Probe<R>>
+where
+    R: Runtime<DType = DType>,
+    C: RootClient<R>,
+{
+    // A row pairs at most once, so a count at the row count keeps every pair.
+    if count >= probe.paired.numel() {
+        return Ok(probe);
+    }
+    let rank = client.cumsum(&probe.paired, 0)?;
+    let kept = client.le(
+        &rank,
+        &Tensor::full_scalar(rank.shape(), rank.dtype(), count as f64, client.device())?,
+    )?;
+    Ok(Probe {
+        paired: client.mul(&probe.paired, &kept)?,
+        ..probe
+    })
 }
 
 /// Evaluated roots of one round, their probes, and their probe rows.
@@ -299,8 +328,16 @@ where
         &client.eq(&upper, &new_upper)?,
     )?;
     // A stalled interpolated probe keeps its row active. The gate keeps the schedule intact.
+    // A first midpoint stall with an untried simplest float also keeps its row active.
+    // The next round evaluates that float, and a second stall sets the floor.
     let unchanged = match probe {
-        Some(probe) => client.mul(&unchanged, &probe.midpoint)?,
+        Some(probe) => client.mul(
+            &client.mul(&unchanged, &probe.midpoint)?,
+            &client.sub(
+                &Tensor::ones(point.shape(), point.dtype(), client.device())?,
+                &probe.retry,
+            )?,
+        )?,
         None => unchanged,
     };
     let unchanged = if policy.parameter_singleton_floor() {
