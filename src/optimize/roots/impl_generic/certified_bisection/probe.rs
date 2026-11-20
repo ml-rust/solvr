@@ -7,6 +7,10 @@
 //! A row interpolates only when its bracket width is at most half of bisection's width
 //! schedule. Any interior probe then keeps the width within the next schedule entry, so
 //! the worst-case round count to a width criterion equals bisection's.
+//!
+//! A row without that slack probes its midpoint. When its samples give a usable secant,
+//! the same callback also evaluates the secant point. Both corrected brackets enclose the
+//! root, so the row keeps their intersection, which is never wider than the midpoint's.
 
 use super::native::{self, RootClient};
 use crate::DType;
@@ -35,6 +39,10 @@ pub(crate) struct Probe<R: Runtime<DType = DType>> {
     pub rows: Tensor<R>,
     /// One for a midpoint probe, zero for an interpolated probe.
     pub midpoint: Tensor<R>,
+    /// One where a midpoint row also evaluates its secant point in the same callback.
+    pub paired: Tensor<R>,
+    /// Secant point of each paired row. Other rows hold their midpoint.
+    pub second: Tensor<R>,
 }
 
 pub(crate) struct Selection<R: Runtime<DType = DType>> {
@@ -55,6 +63,8 @@ impl<R: Runtime<DType = DType>> Probe<R> {
         Ok(Self {
             rows: client.index_select(&self.rows, 0, kept)?,
             midpoint: client.index_select(&self.midpoint, 0, kept)?,
+            paired: client.index_select(&self.paired, 0, kept)?,
+            second: client.index_select(&self.second, 0, kept)?,
         })
     }
 }
@@ -176,14 +186,17 @@ where
     let moved = client.ne(&dx, &zero)?;
     // Invalid lanes take harmless operands before each division.
     let slope = client.div(&df, &client.where_cond(&moved, &dx, &one)?)?;
-    let usable = client.mul(
-        &client.mul(&gate, &moved)?,
+    // A steerable row has two samples and a finite positive secant slope.
+    let steer = client.mul(
+        &client.mul(&client.eq(&column[SAMPLES], &two)?, &moved)?,
         &client.mul(&client.gt(&slope, &zero)?, &finite(client, &slope, &zero)?)?,
     )?;
-    let step = client.div(&column[F_LAST], &client.where_cond(&usable, &slope, &one)?)?;
-    let secant = client.sub(&column[X_LAST], &step)?;
-    let usable = client.mul(&usable, &finite(client, &secant, &zero)?)?;
-    let secant = client.where_cond(&usable, &secant, &midpoint)?;
+    let step = client.div(&column[F_LAST], &client.where_cond(&steer, &slope, &one)?)?;
+    let raw = client.sub(&column[X_LAST], &step)?;
+    let steer = client.mul(&steer, &finite(client, &raw, &zero)?)?;
+    let raw = client.where_cond(&steer, &raw, &midpoint)?;
+    let usable = client.mul(&gate, &steer)?;
+    let secant = client.where_cond(&usable, &raw, &midpoint)?;
     let width = client.where_cond(&usable, &width, &zero)?;
     // The factor and width are finite here, and their product stays below one width.
     let delta = client.mul(&client.mul(&column[TRUNCATION], &width)?, &width)?;
@@ -197,28 +210,48 @@ where
     let inner_lower = client.next_up(lower)?;
     let inner_upper = client.next_down(upper)?;
     // An empty interior leaves adjacent endpoints to the midpoint floor rule.
-    let usable = client.mul(&usable, &client.le(&inner_lower, &inner_upper)?)?;
+    let interior = client.le(&inner_lower, &inner_upper)?;
+    let usable = client.mul(&usable, &interior)?;
     let clamped = client.minimum(&client.maximum(&truncated, &inner_lower)?, &inner_upper)?;
     let point = client.where_cond(&usable, &clamped, &midpoint)?;
+    // A row without slack probes its midpoint, so the schedule holds for any outcome.
+    // Its untruncated secant point joins the same callback as a second sample.
+    let closed = client.sub(&one, &gate)?;
+    let second = client.minimum(&client.maximum(&raw, &inner_lower)?, &inner_upper)?;
+    let paired = client.mul(&client.mul(&closed, &steer)?, &interior)?;
+    let paired = client.mul(&paired, &client.ne(&second, &midpoint)?)?;
+    let second = client.where_cond(&paired, &second, &midpoint)?;
     Ok(Selection {
         point,
         probe: Some(Probe {
             rows,
             midpoint: client.sub(&one, &usable)?,
+            paired,
+            second,
         }),
     })
+}
+
+/// The secant point of each paired row and its residual enclosure.
+pub(crate) struct Second<'a, R: Runtime<DType = DType>> {
+    /// One for a paired row. Other lanes hold harmless values.
+    pub paired: &'a Tensor<R>,
+    pub point: &'a Tensor<R>,
+    pub residual: [&'a Tensor<R>; 2],
 }
 
 /// Record one evaluated probe and advance the width schedule.
 ///
 /// A certified sign stores the probe and its nominal residual. Any other outcome clears
 /// both samples, so the next probes are midpoints until two certified samples exist.
+/// A paired row then records its secant point the same way, after its midpoint.
 pub(crate) fn record<R, C>(
     client: &C,
     rows: &Tensor<R>,
     point: &Tensor<R>,
     residual: [&Tensor<R>; 2],
     bracket: [&Tensor<R>; 2],
+    second: Option<Second<'_, R>>,
 ) -> OptimizeResult<Tensor<R>>
 where
     R: Runtime<DType = DType>,
@@ -233,12 +266,28 @@ where
         &client.lt(residual[1], &zero)?,
     )?;
     let nominal = client.midpoint(residual[0], residual[1])?;
-    let x_previous = client.where_cond(&certified, &column[X_LAST], &column[X_PREVIOUS])?;
-    let f_previous = client.where_cond(&certified, &column[F_LAST], &column[F_PREVIOUS])?;
-    let x_last = client.where_cond(&certified, point, &column[X_LAST])?;
-    let f_last = client.where_cond(&certified, &nominal, &column[F_LAST])?;
+    let mut x_previous = client.where_cond(&certified, &column[X_LAST], &column[X_PREVIOUS])?;
+    let mut f_previous = client.where_cond(&certified, &column[F_LAST], &column[F_PREVIOUS])?;
+    let mut x_last = client.where_cond(&certified, point, &column[X_LAST])?;
+    let mut f_last = client.where_cond(&certified, &nominal, &column[F_LAST])?;
     let counted = client.minimum(&client.add(&column[SAMPLES], &one)?, &two)?;
-    let samples = client.where_cond(&certified, &counted, &zero)?;
+    let mut samples = client.where_cond(&certified, &counted, &zero)?;
+    if let Some(second) = second {
+        let signed = client.maximum(
+            &client.gt(second.residual[0], &zero)?,
+            &client.lt(second.residual[1], &zero)?,
+        )?;
+        let certified = client.mul(second.paired, &signed)?;
+        let uncertain = client.mul(second.paired, &client.sub(&one, &signed)?)?;
+        let nominal = client.midpoint(second.residual[0], second.residual[1])?;
+        x_previous = client.where_cond(&certified, &x_last, &x_previous)?;
+        f_previous = client.where_cond(&certified, &f_last, &f_previous)?;
+        x_last = client.where_cond(&certified, second.point, &x_last)?;
+        f_last = client.where_cond(&certified, &nominal, &f_last)?;
+        let counted = client.minimum(&client.add(&samples, &one)?, &two)?;
+        samples = client.where_cond(&certified, &counted, &samples)?;
+        samples = client.where_cond(&uncertain, &zero, &samples)?;
+    }
     let width = client.next_up(&client.sub(bracket[1], bracket[0])?)?;
     let schedule = &column[SCHEDULE];
     let halved = client.maximum(&client.mul_scalar(schedule, 0.5)?, &width)?;
@@ -341,7 +390,11 @@ mod tests {
         let rows = tensor(&client, &packed, &[7, COLUMNS], DType::F64)?;
         let selection = select(&client, Some(rows), &lower, &upper)?;
         let point = read(&selection.point)?;
-        let midpoint = read(&selection.probe.ok_or("probe")?.midpoint)?;
+        let probe = selection.probe.ok_or("probe")?;
+        let midpoint = read(&probe.midpoint)?;
+        // Only the steerable row without slack pairs its midpoint with the raw secant.
+        assert_eq!(read(&probe.paired)?, [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]);
+        assert_eq!(read(&probe.second)?[2], 0.375);
         assert_eq!(point[0], 0.375);
         assert_eq!(&point[1..4], [0.5, 0.5, 0.5]);
         // Truncation moves the secant root toward the midpoint by one sixteenth.
@@ -372,6 +425,7 @@ mod tests {
             &point,
             [&residual_lower, &residual_upper],
             [&lower, &upper],
+            None,
         )?;
         let column = host(&recorded)?;
         let narrow = (0.2f64 - 0.1).next_up();
@@ -382,6 +436,45 @@ mod tests {
         assert_eq!(column[X_LAST], [0.5, 0.9, 0.5]);
         assert_eq!(column[F_LAST], [0.5, 0.5, 0.5]);
         assert_eq!(column[SAMPLES], [2.0, 0.0, 1.0]);
+        Ok(())
+    }
+
+    #[test]
+    fn record_stores_a_paired_secant_point_after_its_midpoint() -> Result {
+        let client = client();
+        let row = [1.0, 0.2, 0.1, -0.5, 0.9, 0.5, 2.0];
+        let packed = [row, row, row];
+        let rows = tensor(&client, packed.as_flattened(), &[3, COLUMNS], DType::F64)?;
+        let point = tensor(&client, &[0.5, 0.5, 0.5], &[3], DType::F64)?;
+        let residual_lower = tensor(&client, &[0.25, 0.25, 0.25], &[3], DType::F64)?;
+        let residual_upper = tensor(&client, &[0.75, 0.75, 0.75], &[3], DType::F64)?;
+        let lower = tensor(&client, &[0.1, 0.1, 0.1], &[3], DType::F64)?;
+        let upper = tensor(&client, &[0.2, 0.2, 0.2], &[3], DType::F64)?;
+        let paired = tensor(&client, &[1.0, 1.0, 0.0], &[3], DType::F64)?;
+        let second = tensor(&client, &[0.3, 0.3, 0.3], &[3], DType::F64)?;
+        let second_lower = tensor(&client, &[-0.25, -0.25, -0.25], &[3], DType::F64)?;
+        let second_upper = tensor(&client, &[-0.125, 0.25, -0.125], &[3], DType::F64)?;
+        let recorded = record(
+            &client,
+            &rows,
+            &point,
+            [&residual_lower, &residual_upper],
+            [&lower, &upper],
+            Some(Second {
+                paired: &paired,
+                point: &second,
+                residual: [&second_lower, &second_upper],
+            }),
+        )?;
+        let column = host(&recorded)?;
+        // A certified pair keeps the midpoint as the older sample and the secant point as the newer.
+        // An uncertain secant point clears both samples. An unpaired lane ignores its secant lane.
+        assert_eq!(column[X_PREVIOUS], [0.5, 0.9, 0.9]);
+        assert_eq!(column[F_PREVIOUS], [0.5, 0.5, 0.5]);
+        assert_eq!(column[X_LAST], [0.3, 0.5, 0.5]);
+        assert_eq!(column[F_LAST], [-0.1875, 0.5, 0.5]);
+        assert_eq!(column[SAMPLES], [2.0, 0.0, 2.0]);
+        assert_eq!(column[SCHEDULE], [0.5, 0.5, 0.5]);
         Ok(())
     }
 
@@ -688,7 +781,8 @@ mod tests {
                 CertifiedRootProbe::SlackSecant,
             )?;
             let fine = if dtype == DType::F32 { 1e-3 } else { 1e-9 };
-            let continuation = step(&client, &residual, continuation, fine, 3)?;
+            // One round leaves every row active, so the selected resume below moves each demanded row.
+            let continuation = step(&client, &residual, continuation, fine, 1)?;
             let probe_rows = |c: &CertifiedRootContinuation<CpuRuntime>| -> Result<Vec<u64>> {
                 bits(c.state.probe_state.as_ref().ok_or("probe state")?)
             };
@@ -720,7 +814,13 @@ mod tests {
             assert_eq!(probe_rows(&refreshed)?, original);
             assert!(read(&refreshed.state.sampled)?.iter().all(|&s| s == 0.0));
 
-            // A selected resume advances only demanded probe rows.
+            // A selected resume to a finer width advances only demanded probe rows.
+            let finer = fine * 1e-3;
+            let pending: Vec<_> = read(&refreshed.state.upper)?
+                .into_iter()
+                .zip(read(&refreshed.state.lower)?)
+                .map(|(upper, lower)| upper - lower > finer)
+                .collect();
             let demanded = T::from_slice(&[1i64, 4, 6], &[3], client.device())?;
             let resumed = client
                 .resume_certified_mapped_selected(
@@ -729,7 +829,7 @@ mod tests {
                     refreshed,
                     &demanded,
                     &CertifiedRootTolerance {
-                        atol: fine,
+                        atol: finer,
                         rtol: 0.0,
                     },
                     &CertifiedRootAdvanceAllowance {
@@ -741,14 +841,17 @@ mod tests {
                 .1;
             let after = probe_rows(&resumed)?;
             let owner = resumed.state.owner.try_to_vec::<i64>()?;
+            let mut advanced = 0;
             for (row, &owner) in owner.iter().enumerate() {
                 let span = row * COLUMNS..(row + 1) * COLUMNS;
-                if [1, 4, 6].contains(&owner) {
+                if [1, 4, 6].contains(&owner) && pending[row] {
                     assert_ne!(after[span.clone()], original[span], "owner {owner}");
+                    advanced += 1;
                 } else {
                     assert_eq!(after[span.clone()], original[span], "owner {owner}");
                 }
             }
+            assert!(advanced > 0, "{dtype:?}: no demanded row was pending");
         }
         Ok(())
     }

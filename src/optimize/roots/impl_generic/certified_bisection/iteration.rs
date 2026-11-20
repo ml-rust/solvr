@@ -8,7 +8,7 @@ use super::{
     stopping::{Identity, Stopping},
 };
 use crate::DType;
-use crate::common::arithmetic::IntervalContext;
+use crate::common::arithmetic::{Interval, IntervalContext};
 use crate::optimize::roots::traits::{
     CertifiedBisectionOptions, CertifiedRootQuery, CertifiedRootValues,
 };
@@ -147,6 +147,13 @@ where
             .map(|rows| client.index_select(rows, 0, &pending))
             .transpose()?;
         let probe::Selection { point, probe } = probe::select(client, rows, &lower, &upper)?;
+        // Admission also covers the secant points that paired rows add to the callback.
+        if let Some(probe) = probe.as_ref() {
+            let paired = native::indices(client, &probe.paired)?.numel();
+            if pending.numel() + paired > options.max_points.saturating_sub(state.evaluated) {
+                break;
+            }
+        }
         rounds += 1;
         let outside = client.maximum(&client.lt(&point, &lower)?, &client.gt(&point, &upper)?)?;
         if native::any(
@@ -229,35 +236,67 @@ where
     let upper = client.index_select(&state.upper, 0, roots)?;
     let owners = client.index_select(&state.owner, 0, roots)?;
     let derivative = client.index_select(&state.derivative, 0, roots)?;
-    let residual = evaluate::callback(client, f, &owners, point)?;
-    state.evaluated += roots.numel();
+    let pairs = match probe {
+        Some(probe) => Some(native::indices(client, &probe.paired)?).filter(|p| p.numel() > 0),
+        None => None,
+    };
+    let (residual, paired) = match (probe, pairs.as_ref()) {
+        (Some(probe), Some(pairs)) => {
+            // One callback serves the midpoint of every row and the secant point of each pair.
+            let count = roots.numel();
+            let second = client.index_select(&probe.second, 0, pairs)?;
+            let all = evaluate::callback(
+                client,
+                f,
+                &client.cat(&[&owners, &client.index_select(&owners, 0, pairs)?], 0)?,
+                &client.cat(&[point, &second], 0)?,
+            )?;
+            let part = |value: &Tensor<R>, start: usize, length: usize| {
+                native::owned(client, &value.narrow(0, start, length)?)
+            };
+            let residual = CertifiedRootValues {
+                lower: part(&all.lower, 0, count)?,
+                upper: part(&all.upper, 0, count)?,
+            };
+            let paired = CertifiedRootValues {
+                lower: part(&all.lower, count, pairs.numel())?,
+                upper: part(&all.upper, count, pairs.numel())?,
+            };
+            (residual, Some((pairs, second, paired)))
+        }
+        _ => (evaluate::callback(client, f, &owners, point)?, None),
+    };
+    state.evaluated += roots.numel() + pairs.as_ref().map_or(0, Tensor::numel);
     let zero = Tensor::zeros(point.shape(), point.dtype(), client.device())?;
-    let negative = client.lt(&residual.upper, &zero)?;
-    let positive = client.gt(&residual.lower, &zero)?;
-    let exact = client.mul(
-        &client.eq(&residual.lower, &zero)?,
-        &client.eq(&residual.upper, &zero)?,
-    )?;
-    let cut_lower = client.where_cond(&client.maximum(&negative, &exact)?, point, &lower)?;
-    let cut_upper = client.where_cond(&client.maximum(&positive, &exact)?, point, &upper)?;
-    let active = Tensor::ones(point.shape(), point.dtype(), client.device())?;
-    let corrected = extended::intersect(
-        ctx,
-        extended::CorrectionInputs {
-            lower: &cut_lower,
-            upper: &cut_upper,
-            point,
-            residual_lower: &residual.lower,
-            residual_upper: &residual.upper,
-            derivative_lower: &derivative,
-            active: &active,
-        },
-    )
-    .map_err(native::arithmetic)?;
-    let accepted = policy.satisfied(ctx, &owners, corrected.lower(), corrected.upper(), options)?;
+    let corrected = correct(ctx, [&lower, &upper], point, &residual, &derivative)?;
+    let (mut new_lower, mut new_upper) = (corrected.lower().clone(), corrected.upper().clone());
+    let mut second = None;
+    if let (Some(probe), Some((pairs, points, residual))) = (probe, paired.as_ref()) {
+        let gather = |value: &Tensor<R>| client.index_select(value, 0, pairs);
+        let other = correct(
+            ctx,
+            [&gather(&lower)?, &gather(&upper)?],
+            points,
+            residual,
+            &gather(&derivative)?,
+        )?;
+        // Both corrected brackets enclose the same root, so their intersection does too.
+        let joined_lower = client.maximum(&gather(&new_lower)?, other.lower())?;
+        let joined_upper = client.minimum(&gather(&new_upper)?, other.upper())?;
+        if native::any(client, &client.gt(&joined_lower, &joined_upper)?)? {
+            return Err(OptimizeError::NumericalError {
+                message: "Certified root residuals at a midpoint and a secant point contradict increasing order. Correct the callback or derivative assertion.".into(),
+            });
+        }
+        new_lower = native::replace(client, &new_lower, pairs, &joined_lower)?;
+        new_upper = native::replace(client, &new_upper, pairs, &joined_upper)?;
+        let spread = |value: &Tensor<R>| native::replace(client, &zero, pairs, value);
+        second = Some((probe, spread(&residual.lower)?, spread(&residual.upper)?));
+    }
+    let accepted = policy.satisfied(ctx, &owners, &new_lower, &new_upper, options)?;
     let unchanged = client.mul(
-        &client.eq(&lower, corrected.lower())?,
-        &client.eq(&upper, corrected.upper())?,
+        &client.eq(&lower, &new_lower)?,
+        &client.eq(&upper, &new_upper)?,
     )?;
     // A stalled interpolated probe keeps its row active. The gate keeps the schedule intact.
     let unchanged = match probe {
@@ -265,10 +304,7 @@ where
         None => unchanged,
     };
     let unchanged = if policy.parameter_singleton_floor() {
-        client.maximum(
-            &unchanged,
-            &client.eq(corrected.lower(), corrected.upper())?,
-        )?
+        client.maximum(&unchanged, &client.eq(&new_lower, &new_upper)?)?
     } else {
         unchanged
     };
@@ -277,8 +313,9 @@ where
     let floors = client.index_select(roots, 0, &native::indices(client, &stalled)?)?;
     status(client, state, &converged, 0.0)?;
     status(client, state, &floors, 3.0)?;
-    state.lower = native::replace(client, &state.lower, roots, corrected.lower())?;
-    state.upper = native::replace(client, &state.upper, roots, corrected.upper())?;
+    state.lower = native::replace(client, &state.lower, roots, &new_lower)?;
+    state.upper = native::replace(client, &state.upper, roots, &new_upper)?;
+    let active = Tensor::ones(point.shape(), point.dtype(), client.device())?;
     let remaining = client.sub(&active, &client.maximum(&accepted, &stalled)?)?;
     state.active = native::replace(client, &state.active, roots, &remaining)?;
     state.previous_point = native::replace(client, &state.previous_point, roots, point)?;
@@ -289,9 +326,53 @@ where
             &probe.rows,
             point,
             [&residual.lower, &residual.upper],
-            [corrected.lower(), corrected.upper()],
+            [&new_lower, &new_upper],
+            second.as_ref().map(|(probe, lower, upper)| probe::Second {
+                paired: &probe.paired,
+                point: &probe.second,
+                residual: [lower, upper],
+            }),
         )?;
         state.probe_state = Some(client.index_put(all, 0, roots, &rows)?);
     }
     Ok(())
+}
+
+/// Cut a bracket at one evaluated point per row, then apply the slope correction.
+fn correct<R, C>(
+    ctx: &mut IntervalContext<'_, R, C>,
+    bracket: [&Tensor<R>; 2],
+    point: &Tensor<R>,
+    residual: &CertifiedRootValues<R>,
+    derivative: &Tensor<R>,
+) -> OptimizeResult<Interval<R>>
+where
+    R: Runtime<DType = DType>,
+    C: RootClient<R>,
+{
+    let client = ctx.client();
+    let [lower, upper] = bracket;
+    let zero = Tensor::zeros(point.shape(), point.dtype(), client.device())?;
+    let negative = client.lt(&residual.upper, &zero)?;
+    let positive = client.gt(&residual.lower, &zero)?;
+    let exact = client.mul(
+        &client.eq(&residual.lower, &zero)?,
+        &client.eq(&residual.upper, &zero)?,
+    )?;
+    let cut_lower = client.where_cond(&client.maximum(&negative, &exact)?, point, lower)?;
+    let cut_upper = client.where_cond(&client.maximum(&positive, &exact)?, point, upper)?;
+    let active = Tensor::ones(point.shape(), point.dtype(), client.device())?;
+    extended::intersect(
+        ctx,
+        extended::CorrectionInputs {
+            lower: &cut_lower,
+            upper: &cut_upper,
+            point,
+            residual_lower: &residual.lower,
+            residual_upper: &residual.upper,
+            derivative_lower: derivative,
+            active: &active,
+        },
+    )
+    .map_err(native::arithmetic)
 }
