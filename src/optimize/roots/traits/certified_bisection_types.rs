@@ -11,6 +11,12 @@ pub enum CertifiedRootProbe {
     #[default]
     Midpoint,
     /// Secant probes gated on a full round of slack against bisection's width schedule.
+    ///
+    /// A round runs when its midpoints fit the remaining points. Paired second points
+    /// join in row order while they fit after those midpoints. The rest are dropped for that round.
+    /// A run whose unbounded point count fits `max_points` matches the unbounded run bit
+    /// for bit. A binding limit can run fewer rounds than `Midpoint`. Its rows still
+    /// report `WorkLimit`, and their brackets stay certified.
     SlackSecant,
 }
 

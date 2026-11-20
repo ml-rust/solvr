@@ -336,45 +336,64 @@ where
     Ok(())
 }
 
-/// Second points never cost a probe round that midpoint probes could afford.
-fn point_budget_rounds<R, C>(client: &C, dtype: DType) -> Result
+/// True when some probe round evaluated a second point for one of its rows.
+fn paired(run: &Run) -> bool {
+    run.queries.iter().skip(2).any(|(owners, _)| {
+        let mut sorted = owners.clone();
+        sorted.sort_unstable();
+        sorted.windows(2).any(|pair| pair[0] == pair[1])
+    })
+}
+
+/// A limit that never binds keeps the unbounded path. A binding limit stays certified.
+fn point_budget<R, C>(client: &C, dtype: DType) -> Result
 where
     R: Runtime<DType = DType>,
     C: Client<R> + CertifiedBisectionAlgorithms<R>,
 {
     let rows = &known_rows()[..7];
     let count = rows.len();
-    let (mut paired, mut compared) = (false, 0);
+    let mut binding_pairs = false;
     for max_iterations in [1, 2, 400] {
-        for max_points in 2 * count..2 * count + count * 8 {
-            let limited = |probe| CertifiedBisectionOptions {
-                max_iterations,
-                max_points,
-                ..options(0.0, probe)
-            };
-            let slack = solve_shapes(client, dtype, rows, &limited(SLACK))?;
-            let midpoint = solve_shapes(client, dtype, rows, &limited(MIDPOINT))?;
-            assert!(slack.evaluated <= max_points);
-            contains(&slack, rows, dtype);
-            paired |= slack.evaluated > 2 * count + count * slack.iterations;
-            // The reserve pays midpoint rounds for every row still pending. A midpoint run
-            // whose rows all stayed pending therefore never runs more rounds.
-            if midpoint.evaluated == 2 * count + count * midpoint.iterations {
-                compared += 1;
-                assert!(
-                    slack.iterations >= midpoint.iterations,
-                    "{dtype:?} max_iterations {max_iterations} max_points {max_points}: {} slack rounds against {} midpoint rounds",
-                    slack.iterations,
-                    midpoint.iterations
-                );
+        let limited = |max_points| CertifiedBisectionOptions {
+            max_iterations,
+            max_points,
+            ..options(atol(dtype), SLACK)
+        };
+        let unbounded = solve_shapes(client, dtype, rows, &limited(1 << 20))?;
+        assert!(paired(&unbounded), "{dtype:?} {max_iterations}: no pair");
+        // Limits at or above the unbounded count match the unbounded run bit for bit.
+        for max_points in unbounded.evaluated..=unbounded.evaluated + count {
+            let run = solve_shapes(client, dtype, rows, &limited(max_points))?;
+            assert_eq!(
+                run, unbounded,
+                "{dtype:?} max_iterations {max_iterations} max_points {max_points}"
+            );
+        }
+        // Smaller limits: the low end binds on midpoints, the high end binds on pairs.
+        let low = 2 * count..(2 * count + count * 8).min(unbounded.evaluated);
+        let high = unbounded.evaluated.saturating_sub(count * 2).max(low.end)..unbounded.evaluated;
+        for max_points in low.chain(high) {
+            let run = solve_shapes(client, dtype, rows, &limited(max_points))?;
+            let context =
+                format!("{dtype:?} max_iterations {max_iterations} max_points {max_points}");
+            assert!(run.evaluated <= max_points, "{context}");
+            assert!(
+                run.status.iter().all(|&code| code == 0 || code == 4),
+                "{context}: {:?}",
+                run.status
+            );
+            contains(&run, rows, dtype);
+            binding_pairs |= paired(&run);
+            // A run that stops before its round limit with pending rows could not fit
+            // their midpoints. A round runs whenever its midpoints fit.
+            let pending = run.status.iter().filter(|&&code| code == 4).count();
+            if pending > 0 && run.iterations < max_iterations {
+                assert!(max_points - run.evaluated < pending, "{context}");
             }
         }
     }
-    assert!(paired, "{dtype:?}: no budget admitted a second point");
-    assert!(
-        compared > count * 4,
-        "{dtype:?}: {compared} comparable budgets"
-    );
+    assert!(binding_pairs, "{dtype:?}: no binding limit admitted a pair");
     // One round per call, as callers that split a session budget across calls run it.
     let first = |probe| CertifiedBisectionOptions {
         max_iterations: 1,
@@ -526,7 +545,7 @@ where
         uncertain_band(client, dtype)?;
         exact_zero(client, dtype)?;
         limits(client, dtype)?;
-        point_budget_rounds(client, dtype)?;
+        point_budget(client, dtype)?;
         dyadic_roots(client, dtype)?;
         rounds_bound(client, dtype)?;
         let rows = known_rows();

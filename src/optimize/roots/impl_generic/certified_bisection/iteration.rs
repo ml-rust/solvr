@@ -148,12 +148,12 @@ where
             .map(|rows| client.index_select(rows, 0, &pending))
             .transpose()?;
         let probe::Selection { point, probe } = probe::select(client, rows, &lower, &upper)?;
-        // Second points spend only points that no later midpoint round needs. The pending
-        // count never grows, so the reserve pays every midpoint round the limits permit.
-        let reserve = (options.max_iterations - rounds).min(remaining / pending.numel());
-        let surplus = remaining - pending.numel() * reserve;
+        // Second points fit in row order into the points left after this round's midpoints.
+        // Nothing is held back for later rounds, so a limit that never binds keeps the
+        // unbounded run's path bit for bit. A binding limit can run fewer rounds than
+        // midpoint probes. Its rows still report `WorkLimit` with certified brackets.
         let probe = probe
-            .map(|probe| limit(client, probe, surplus))
+            .map(|probe| limit(client, probe, remaining - pending.numel()))
             .transpose()?;
         rounds += 1;
         let outside = client.maximum(&client.lt(&point, &lower)?, &client.gt(&point, &upper)?)?;
