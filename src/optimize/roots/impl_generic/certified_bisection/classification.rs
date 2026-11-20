@@ -1,9 +1,9 @@
 //! Establish physical root existence before creating compact root state.
 
 use super::native::RootClient;
-use super::{evaluate, native};
+use super::{evaluate, native, probe};
 use crate::DType;
-use crate::optimize::roots::traits::{CertifiedRootQuery, CertifiedRootValues};
+use crate::optimize::roots::traits::{CertifiedRootProbe, CertifiedRootQuery, CertifiedRootValues};
 use crate::optimize::{OptimizeError, OptimizeResult};
 use numr::runtime::Runtime;
 use numr::tensor::Tensor;
@@ -18,6 +18,7 @@ pub(crate) struct State<R: Runtime<DType = DType>> {
     pub evaluated: usize,
     pub previous_point: Tensor<R>,
     pub sampled: Tensor<R>,
+    pub probe_state: Option<Tensor<R>>,
 }
 
 pub(crate) fn endpoints<R, C, F>(
@@ -26,6 +27,7 @@ pub(crate) fn endpoints<R, C, F>(
     lower: &Tensor<R>,
     upper: &Tensor<R>,
     derivative: &Tensor<R>,
+    probe: CertifiedRootProbe,
 ) -> OptimizeResult<State<R>>
 where
     R: Runtime<DType = DType>,
@@ -99,6 +101,19 @@ where
     let active = Tensor::ones(&[root_indices.numel()], dtype, client.device())?;
     let previous_point = Tensor::zeros(&[root_indices.numel()], dtype, client.device())?;
     let sampled = Tensor::zeros(&[root_indices.numel()], dtype, client.device())?;
+    let probe_state = match probe {
+        CertifiedRootProbe::Midpoint => None,
+        CertifiedRootProbe::SlackSecant => {
+            let gather = |value: &Tensor<R>| client.index_select(value, 0, &root_indices);
+            Some(probe::seed(
+                client,
+                &lower,
+                &upper,
+                [&gather(&left.lower)?, &gather(&left.upper)?],
+                [&gather(&right_lower)?, &gather(&right_upper)?],
+            )?)
+        }
+    };
     Ok(State {
         status,
         owner,
@@ -109,5 +124,6 @@ where
         evaluated: len + queried.numel(),
         previous_point,
         sampled,
+        probe_state,
     })
 }

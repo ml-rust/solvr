@@ -1,7 +1,7 @@
 //! Increasing roots from physical residual bounds.
 
 use super::certified_bisection_types::{
-    CertifiedRootQuery, CertifiedRootResult, CertifiedRootValues,
+    CertifiedRootProbe, CertifiedRootQuery, CertifiedRootResult, CertifiedRootValues,
 };
 use crate::DType;
 use crate::optimize::OptimizeResult;
@@ -15,10 +15,12 @@ pub struct CertifiedBisectionOptions {
     pub atol: f64,
     /// Finite nonnegative relative allowance times the largest absolute endpoint.
     pub rtol: f64,
-    /// Maximum midpoint rounds. Zero permits endpoint classification only.
+    /// Maximum probe rounds. Zero permits endpoint classification only.
     pub max_iterations: usize,
     /// Maximum callback points, including the initial `2*N` admission budget.
     pub max_points: usize,
+    /// Probe placement. Default: `Midpoint`.
+    pub probe: CertifiedRootProbe,
 }
 
 impl Default for CertifiedBisectionOptions {
@@ -28,6 +30,7 @@ impl Default for CertifiedBisectionOptions {
             rtol: 1e-12,
             max_iterations: 256,
             max_points: 1 << 20,
+            probe: CertifiedRootProbe::Midpoint,
         }
     }
 }

@@ -114,6 +114,7 @@ where
                 rtol: tolerance.rtol,
                 max_iterations: 0,
                 max_points: 10,
+                probe: Default::default(),
             },
         )?;
         assert_eq!(

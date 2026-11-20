@@ -6,6 +6,7 @@ mod controller;
 pub(crate) mod convergence;
 mod extended;
 pub(crate) mod iteration;
+pub(crate) mod probe;
 use super::certified::{evaluate, native};
 mod scalar_tolerance;
 pub(crate) mod stopping;

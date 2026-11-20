@@ -32,7 +32,8 @@ mod certified_upper_bracket;
 mod certified_upper_bracket_types;
 pub use certified_bisection::{CertifiedBisectionAlgorithms, CertifiedBisectionOptions};
 pub use certified_bisection_types::{
-    CertifiedRootQuery, CertifiedRootResult, CertifiedRootStatus, CertifiedRootValues,
+    CertifiedRootProbe, CertifiedRootQuery, CertifiedRootResult, CertifiedRootStatus,
+    CertifiedRootValues,
 };
 pub use certified_mapped_bisection::CertifiedMappedBisectionAlgorithms;
 pub use certified_mapped_progress::{CertifiedMappedRootProgress, CertifiedRootContinuation};

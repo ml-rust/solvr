@@ -58,6 +58,7 @@ where
             rtol: 0.0,
             max_iterations: 64,
             max_points: 128,
+            probe: Default::default(),
         },
     )?;
     assert_eq!(progress.result().iterations(), 0);
@@ -175,6 +176,7 @@ where
             rtol: -0.0,
             max_iterations: 1,
             max_points: 13,
+            probe: Default::default(),
         },
     )?;
     assert_eq!(

@@ -52,6 +52,7 @@ where
             rtol: 0.0,
             max_iterations,
             max_points,
+            probe: Default::default(),
         },
     )?;
     Ok(progress.into_parts().1)

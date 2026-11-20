@@ -39,6 +39,7 @@ impl Case {
             rtol: f64::from_bits(self.rtol),
             max_iterations: self.max_iterations,
             max_points: self.max_points,
+            probe: Default::default(),
         }
     }
 }

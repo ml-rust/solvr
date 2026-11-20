@@ -79,10 +79,10 @@ where
     let upper = native::owned(client, upper)?;
     let derivative = native::owned(client, derivative)?;
     let state = if lower.numel() == 0 {
-        state::empty(client, lower, upper, derivative)?
+        state::empty(client, lower, upper, derivative, options.probe)?
     } else {
         admission::values(client, &lower, &upper, &derivative)?;
-        classification::endpoints(client, residual, &lower, &upper, &derivative)?
+        classification::endpoints(client, residual, &lower, &upper, &derivative, options.probe)?
     };
     let floor = Tensor::zeros(state.owner.shape(), state.lower.dtype(), client.device())?;
     let continuation = CertifiedRootContinuation {
@@ -92,6 +92,7 @@ where
         max_points: options.max_points,
         iterations: 0,
         mapped_points: 0,
+        probe: options.probe,
     };
     state::advance(
         ctx,

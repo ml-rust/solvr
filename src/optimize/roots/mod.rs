@@ -22,9 +22,10 @@ pub use traits::{
 // Re-export result type from impl_generic
 pub use impl_generic::TensorRootResult;
 pub use traits::{
-    CertifiedBisectionAlgorithms, CertifiedBisectionOptions, CertifiedRootQuery,
-    CertifiedRootResult, CertifiedRootStatus, CertifiedRootValues, CertifiedUpperBracketAlgorithms,
-    CertifiedUpperBracketOptions, CertifiedUpperBracketResult, CertifiedUpperBracketStatus,
+    CertifiedBisectionAlgorithms, CertifiedBisectionOptions, CertifiedRootProbe,
+    CertifiedRootQuery, CertifiedRootResult, CertifiedRootStatus, CertifiedRootValues,
+    CertifiedUpperBracketAlgorithms, CertifiedUpperBracketOptions, CertifiedUpperBracketResult,
+    CertifiedUpperBracketStatus,
 };
 pub use traits::{
     CertifiedMappedBisectionAlgorithms, CertifiedMappedRootProgress, CertifiedRootAdvanceAllowance,

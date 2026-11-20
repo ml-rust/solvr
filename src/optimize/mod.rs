@@ -81,11 +81,11 @@ pub use global::{
 pub use roots::{
     AndersonAlgorithms, AndersonConvergence, AndersonOptions, BatchedBisectionAlgorithms,
     BatchedBisectionOptions, BatchedBracketResult, Broyden1Algorithms,
-    CertifiedBisectionAlgorithms, CertifiedBisectionOptions, CertifiedRootQuery,
-    CertifiedRootResult, CertifiedRootStatus, CertifiedRootValues, CertifiedUpperBracketAlgorithms,
-    CertifiedUpperBracketOptions, CertifiedUpperBracketResult, CertifiedUpperBracketStatus,
-    LevenbergMarquardtAlgorithms, NewtonSystemAlgorithms, PowellHybridAlgorithms, RootOptions,
-    RootTensorResult,
+    CertifiedBisectionAlgorithms, CertifiedBisectionOptions, CertifiedRootProbe,
+    CertifiedRootQuery, CertifiedRootResult, CertifiedRootStatus, CertifiedRootValues,
+    CertifiedUpperBracketAlgorithms, CertifiedUpperBracketOptions, CertifiedUpperBracketResult,
+    CertifiedUpperBracketStatus, LevenbergMarquardtAlgorithms, NewtonSystemAlgorithms,
+    PowellHybridAlgorithms, RootOptions, RootTensorResult,
 };
 
 pub use roots::{

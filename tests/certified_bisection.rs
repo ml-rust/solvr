@@ -18,5 +18,9 @@ mod f64_values;
 mod fixture;
 #[path = "certified_bisection/ownership.rs"]
 mod ownership;
+#[path = "certified_bisection/shapes.rs"]
+mod shapes;
+#[path = "certified_bisection/slack_secant.rs"]
+mod slack_secant;
 #[path = "certified_bisection/suite.rs"]
 mod suite;

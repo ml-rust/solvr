@@ -60,6 +60,29 @@ fn actual_cuda_mapped_roots_preserve_continuation_and_certificates() -> Result {
     Ok(())
 }
 
+#[test]
+fn configured_cpu_slack_secant_continuations_keep_probe_state() -> Result {
+    use numr::runtime::cpu::ParallelismConfig;
+    let device = CpuDevice::new();
+    let client = CpuRuntime::default_client(&device)
+        .with_parallelism(ParallelismConfig::new(Some(2), Some(257)));
+    super::slack_secant::run::<CpuRuntime, _>(&client)
+}
+
+#[cfg(feature = "cuda")]
+#[test]
+fn actual_cuda_slack_secant_continuations_match_cpu_bits() -> Result {
+    let cpu = CpuRuntime::default_client(&CpuDevice::new());
+    let cuda = CudaClient::new(CudaDevice::new(0))?;
+    super::slack_secant::run::<CudaRuntime, _>(&cuda)?;
+    for dtype in [DType::F32, DType::F64] {
+        let expected = super::slack_secant::trace::<CpuRuntime, _>(&cpu, dtype)?;
+        let actual = super::slack_secant::trace::<CudaRuntime, _>(&cuda, dtype)?;
+        assert_eq!(expected, actual, "{dtype:?}");
+    }
+    Ok(())
+}
+
 #[cfg(feature = "wgpu")]
 #[test]
 fn actual_wgpu_mapped_roots_retain_arithmetic_qualification() -> Result {

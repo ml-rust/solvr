@@ -4,6 +4,16 @@ use crate::DType;
 use numr::runtime::Runtime;
 use numr::tensor::Tensor;
 
+/// Probe placement inside a certified root bracket. Probes never certify signs.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum CertifiedRootProbe {
+    /// Bisection midpoint probes.
+    #[default]
+    Midpoint,
+    /// Secant probes gated on a full round of slack against bisection's width schedule.
+    SlackSecant,
+}
+
 /// Native callback points whose tensors and retained storage aliases stay immutable until the solver returns.
 #[derive(Debug)]
 pub struct CertifiedRootQuery<R: Runtime<DType = DType>> {

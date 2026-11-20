@@ -1,15 +1,15 @@
 //! Preserve numerical state and isolate externally visible snapshots.
 
 use super::super::certified::native::{self, RootClient};
-use super::super::certified_bisection::{classification::State, iteration};
+use super::super::certified_bisection::{classification::State, iteration, probe};
 use super::policy::Mapped;
 use crate::DType;
 use crate::common::arithmetic::IntervalContext;
 use crate::optimize::roots::traits::{
     CertifiedBisectionOptions, CertifiedMappedRootProgress, CertifiedRootAdvanceAllowance,
     CertifiedRootContinuation, CertifiedRootDomainQuery, CertifiedRootMappedValues,
-    CertifiedRootQuery, CertifiedRootResult, CertifiedRootStatus, CertifiedRootTolerance,
-    CertifiedRootValues,
+    CertifiedRootProbe, CertifiedRootQuery, CertifiedRootResult, CertifiedRootStatus,
+    CertifiedRootTolerance, CertifiedRootValues,
 };
 use crate::optimize::{OptimizeError, OptimizeResult};
 use numr::runtime::Runtime;
@@ -20,12 +20,19 @@ pub(super) fn empty<R, C>(
     lower: Tensor<R>,
     upper: Tensor<R>,
     derivative: Tensor<R>,
+    probe: CertifiedRootProbe,
 ) -> OptimizeResult<State<R>>
 where
     R: Runtime<DType = DType>,
     C: RootClient<R>,
 {
     let dtype = lower.dtype();
+    let probe_state = match probe {
+        CertifiedRootProbe::Midpoint => None,
+        CertifiedRootProbe::SlackSecant => {
+            Some(Tensor::empty(&[0, probe::COLUMNS], dtype, client.device())?)
+        }
+    };
     Ok(State {
         status: Tensor::empty(&[0], DType::I64, client.device())?,
         owner: Tensor::empty(&[0], DType::I64, client.device())?,
@@ -36,6 +43,7 @@ where
         evaluated: 0,
         previous_point: Tensor::empty(&[0], dtype, client.device())?,
         sampled: Tensor::empty(&[0], dtype, client.device())?,
+        probe_state,
     })
 }
 
@@ -72,6 +80,7 @@ where
         rtol: tolerance.rtol,
         max_iterations: remaining_rounds.min(allowance.max_iterations),
         max_points: point_limit,
+        probe: continuation.probe,
     };
     let mut policy = Mapped {
         callback: mapping,

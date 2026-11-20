@@ -1,6 +1,6 @@
 //! Owned root continuation and isolated progress snapshots.
 
-use super::certified_bisection_types::CertifiedRootResult;
+use super::certified_bisection_types::{CertifiedRootProbe, CertifiedRootResult};
 use crate::DType;
 use crate::optimize::roots::impl_generic::certified_bisection::classification::State;
 use numr::runtime::Runtime;
@@ -16,6 +16,7 @@ pub struct CertifiedRootContinuation<R: Runtime<DType = DType>> {
     pub(crate) max_points: usize,
     pub(crate) iterations: usize,
     pub(crate) mapped_points: usize,
+    pub(crate) probe: CertifiedRootProbe,
 }
 
 /// Isolated result snapshot and the owned state required for further refinement.

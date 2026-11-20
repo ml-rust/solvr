@@ -37,6 +37,7 @@ where
             rtol: 0.0,
             max_iterations: 8,
             max_points: 32,
+            probe: Default::default(),
         },
     )?;
     assert_eq!(progress.result().status().try_to_vec::<i64>()?, [0]);
@@ -57,6 +58,7 @@ where
             rtol: 0.0,
             max_iterations: 8,
             max_points: 32,
+            probe: Default::default(),
         },
     )?;
     assert_eq!(restarted.status().try_to_vec::<i64>()?, [2]);
@@ -124,6 +126,7 @@ where
             rtol: 0.0,
             max_iterations: 2,
             max_points: 4,
+            probe: Default::default(),
         },
     )?;
     assert_eq!(progress.result().iterations(), 0);

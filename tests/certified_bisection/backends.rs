@@ -37,6 +37,22 @@ fn actual_cuda_roots_contain_all_independent_references() -> Result {
     Ok(())
 }
 
+#[cfg(feature = "cuda")]
+#[test]
+fn actual_cuda_slack_secant_matches_cpu_bits() -> Result {
+    let cpu = CpuRuntime::default_client(&CpuDevice::new());
+    let cuda = CudaClient::new(CudaDevice::new(0))?;
+    super::slack_secant::run::<CudaRuntime, _>(&cuda)?;
+    let expected = super::slack_secant::trace::<CpuRuntime, _>(&cpu)?;
+    let actual = super::slack_secant::trace::<CudaRuntime, _>(&cuda)?;
+    assert_eq!(expected.len(), actual.len());
+    for (index, (expected, actual)) in expected.iter().zip(&actual).enumerate() {
+        assert_eq!(expected.bits, actual.bits, "trace {index} bits");
+        assert_eq!(expected, actual, "trace {index}");
+    }
+    Ok(())
+}
+
 #[cfg(feature = "wgpu")]
 #[test]
 fn actual_wgpu_rejects_undeclared_arithmetic_before_callback_work() -> Result {

@@ -48,6 +48,7 @@ where
                 rtol: if relative { tolerance } else { 0.0 },
                 max_iterations: 4,
                 max_points: 8,
+                probe: Default::default(),
             },
         )?;
         assert_eq!(progress.result().status().try_to_vec::<i64>()?, [3]);
@@ -68,6 +69,7 @@ where
         rtol: 0.0,
         max_iterations: 64,
         max_points: 256,
+        probe: Default::default(),
     };
     let legacy_queries = RefCell::new(Vec::new());
     let legacy = client.bisect_certified(
@@ -141,6 +143,7 @@ where
             rtol: 0.0,
             max_iterations: 64,
             max_points: 128,
+            probe: Default::default(),
         },
     )?;
     assert_eq!(progress.result().status().try_to_vec::<i64>()?, [0]);
@@ -215,6 +218,7 @@ where
             rtol: 0.0,
             max_iterations: 64,
             max_points: 128,
+            probe: Default::default(),
         },
     )?;
     assert_eq!(progress.result().status().try_to_vec::<i64>()?, [3]);
@@ -250,6 +254,7 @@ where
             rtol: 0.0,
             max_iterations: 8,
             max_points: 16,
+            probe: Default::default(),
         },
     )?;
     assert_eq!(progress.result().status().try_to_vec::<i64>()?, [3]);
@@ -306,6 +311,7 @@ where
             rtol: 0.0,
             max_iterations: 1,
             max_points: 3,
+            probe: Default::default(),
         },
     )?;
     assert_eq!(last_round.result().status().try_to_vec::<i64>()?, [3]);

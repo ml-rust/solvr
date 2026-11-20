@@ -67,6 +67,7 @@ pub(super) fn options(iterations: usize, points: usize) -> CertifiedBisectionOpt
         rtol: 0.0,
         max_iterations: iterations,
         max_points: points,
+        probe: Default::default(),
     }
 }
 pub(super) fn tolerance() -> CertifiedRootTolerance {

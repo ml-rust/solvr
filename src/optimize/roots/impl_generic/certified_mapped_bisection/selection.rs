@@ -67,6 +67,9 @@ where
 }
 
 /// Discard precision-policy history only for demanded nonsingleton compact roots.
+///
+/// Probe state stays. Its samples only steer probes, and each old nominal value stays
+/// within its old enclosure width of the same residual.
 pub(super) fn refresh<R, C>(
     client: &C,
     continuation: &mut CertifiedRootContinuation<R>,

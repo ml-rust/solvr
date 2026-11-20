@@ -18,3 +18,11 @@ fn configured_cpu_roots_contain_all_independent_references() -> Result {
     assert_eq!(original.parallelism(), original_config);
     Ok(())
 }
+
+#[test]
+fn configured_cpu_slack_secant_keeps_certified_contracts() -> Result {
+    let device = CpuDevice::new();
+    let client = CpuRuntime::default_client(&device)
+        .with_parallelism(ParallelismConfig::new(Some(2), Some(257)));
+    super::slack_secant::run::<CpuRuntime, _>(&client)
+}

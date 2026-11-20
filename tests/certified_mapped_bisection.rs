@@ -12,5 +12,10 @@ mod fixture;
 mod ownership;
 #[path = "certified_mapped_bisection/resume.rs"]
 mod resume;
+#[path = "certified_bisection/shapes.rs"]
+#[allow(dead_code)]
+mod shapes;
+#[path = "certified_mapped_bisection/slack_secant.rs"]
+mod slack_secant;
 #[path = "certified_mapped_bisection/tolerance.rs"]
 mod tolerance;

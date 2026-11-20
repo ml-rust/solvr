@@ -1,9 +1,10 @@
-//! Compact midpoint rounds and freeze completed root enclosures.
+//! Compact probe rounds and freeze completed root enclosures.
 
 use super::classification::State;
 use super::native::{self, RootClient};
 use super::{
     evaluate, extended,
+    probe::{self, Probe},
     stopping::{Identity, Stopping},
 };
 use crate::DType;
@@ -140,7 +141,12 @@ where
         }
         let lower = client.index_select(&state.lower, 0, &pending)?;
         let upper = client.index_select(&state.upper, 0, &pending)?;
-        let point = client.midpoint(&lower, &upper)?;
+        let rows = state
+            .probe_state
+            .as_ref()
+            .map(|rows| client.index_select(rows, 0, &pending))
+            .transpose()?;
+        let probe::Selection { point, probe } = probe::select(client, rows, &lower, &upper)?;
         rounds += 1;
         let outside = client.maximum(&client.lt(&point, &lower)?, &client.gt(&point, &upper)?)?;
         if native::any(
@@ -148,13 +154,18 @@ where
             &client.maximum(&outside, &native::nonfinite(client, &point)?)?,
         )? {
             return Err(OptimizeError::NumericalError {
-                message: "Certified root midpoint is nonfinite or outside its bracket. Check the runtime midpoint implementation.".into(),
+                message: "Certified root probe is nonfinite or outside its bracket. Check the runtime midpoint and rounding implementations.".into(),
             });
         }
         let interior = client.mul(&client.gt(&point, &lower)?, &client.lt(&point, &upper)?)?;
         let previous = client.index_select(&state.previous_point, 0, &pending)?;
         let sampled = client.index_select(&state.sampled, 0, &pending)?;
         let repeated = client.mul(&sampled, &client.eq(&point, &previous)?)?;
+        // Only a repeated midpoint probe shows that no further contraction exists.
+        let repeated = match probe.as_ref() {
+            Some(probe) => client.mul(&repeated, &probe.midpoint)?,
+            None => repeated,
+        };
         let zero = Tensor::zeros(interior.shape(), interior.dtype(), client.device())?;
         let interior = client.mul(&interior, &client.eq(&repeated, &zero)?)?;
         let floors = native::indices(client, &client.eq(&interior, &zero)?)?;
@@ -168,17 +179,37 @@ where
         }
         let roots = client.index_select(&pending, 0, &interior)?;
         let point = client.index_select(&point, 0, &interior)?;
-        contract(ctx, f, state, &roots, &point, options, policy)?;
+        let probe = probe
+            .map(|probe| probe.compact(client, &interior))
+            .transpose()?;
+        contract(
+            ctx,
+            f,
+            state,
+            Round {
+                roots: &roots,
+                point: &point,
+                probe: probe.as_ref(),
+            },
+            options,
+            policy,
+        )?;
     }
     Ok(rounds)
+}
+
+/// Evaluated roots of one round, their probes, and their probe rows.
+struct Round<'a, R: Runtime<DType = DType>> {
+    roots: &'a Tensor<R>,
+    point: &'a Tensor<R>,
+    probe: Option<&'a Probe<R>>,
 }
 
 fn contract<R, C, F, P>(
     ctx: &mut IntervalContext<'_, R, C>,
     f: &F,
     state: &mut State<R>,
-    roots: &Tensor<R>,
-    point: &Tensor<R>,
+    round: Round<'_, R>,
     options: &CertifiedBisectionOptions,
     policy: &mut P,
 ) -> OptimizeResult<()>
@@ -188,6 +219,11 @@ where
     F: Fn(&CertifiedRootQuery<R>) -> numr::error::Result<CertifiedRootValues<R>>,
     P: Stopping<R, C>,
 {
+    let Round {
+        roots,
+        point,
+        probe,
+    } = round;
     let client = ctx.client();
     let lower = client.index_select(&state.lower, 0, roots)?;
     let upper = client.index_select(&state.upper, 0, roots)?;
@@ -223,6 +259,11 @@ where
         &client.eq(&lower, corrected.lower())?,
         &client.eq(&upper, corrected.upper())?,
     )?;
+    // A stalled interpolated probe keeps its row active. The gate keeps the schedule intact.
+    let unchanged = match probe {
+        Some(probe) => client.mul(&unchanged, &probe.midpoint)?,
+        None => unchanged,
+    };
     let unchanged = if policy.parameter_singleton_floor() {
         client.maximum(
             &unchanged,
@@ -242,5 +283,15 @@ where
     state.active = native::replace(client, &state.active, roots, &remaining)?;
     state.previous_point = native::replace(client, &state.previous_point, roots, point)?;
     state.sampled = native::replace(client, &state.sampled, roots, &active)?;
+    if let (Some(probe), Some(all)) = (probe, state.probe_state.as_ref()) {
+        let rows = probe::record(
+            client,
+            &probe.rows,
+            point,
+            [&residual.lower, &residual.upper],
+            [corrected.lower(), corrected.upper()],
+        )?;
+        state.probe_state = Some(client.index_put(all, 0, roots, &rows)?);
+    }
     Ok(())
 }

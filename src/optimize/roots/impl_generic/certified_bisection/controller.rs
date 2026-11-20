@@ -67,7 +67,8 @@ where
         });
     }
     admission::values(client, &lower, &upper, &derivative)?;
-    let mut state = classification::endpoints(client, f, &lower, &upper, &derivative)?;
+    let mut state =
+        classification::endpoints(client, f, &lower, &upper, &derivative, options.probe)?;
     let iterations = iteration::run(ctx, f, &mut state, options)?;
     Ok(CertifiedRootResult {
         status: native::owned(client, &state.status)?,
