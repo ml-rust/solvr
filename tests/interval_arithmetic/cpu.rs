@@ -20,6 +20,21 @@ fn configured_cpu_interval_operations_enclose_exact_references() -> Result {
 }
 
 #[test]
+fn cpu_interval_acos_and_log_enclose_references_and_reject_domain() -> Result {
+    let device = CpuDevice::new();
+    let client = CpuRuntime::default_client(&device);
+    super::elementary::acos::<CpuRuntime, _>(&client)?;
+    super::elementary::log::<CpuRuntime, _>(&client)?;
+    super::elementary::domain::<CpuRuntime, _>(&client)?;
+    let threaded = client.with_parallelism(ParallelismConfig::new(Some(2), Some(7)));
+    assert_eq!(
+        super::elementary::bits::<CpuRuntime, _>(&threaded)?,
+        super::elementary::bits::<CpuRuntime, _>(&client)?
+    );
+    Ok(())
+}
+
+#[test]
 fn cpu_interval_completion_rejects_invalid_arithmetic_and_metadata() -> Result {
     let device = CpuDevice::new();
     let client = CpuRuntime::default_client(&device);

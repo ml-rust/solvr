@@ -24,6 +24,21 @@ fn actual_cuda_interval_operations_match_exact_references_and_provider_limits() 
     Ok(())
 }
 
+#[cfg(feature = "cuda")]
+#[test]
+fn actual_cuda_interval_acos_and_log_match_references_and_cpu_bits() -> Result {
+    let client = CudaClient::new(CudaDevice::new(0))?;
+    super::elementary::acos::<CudaRuntime, _>(&client)?;
+    super::elementary::log::<CudaRuntime, _>(&client)?;
+    super::elementary::domain::<CudaRuntime, _>(&client)?;
+    let cpu = CpuRuntime::default_client(&CpuDevice::new());
+    assert_eq!(
+        super::elementary::bits::<CudaRuntime, _>(&client)?,
+        super::elementary::bits::<CpuRuntime, _>(&cpu)?
+    );
+    Ok(())
+}
+
 #[cfg(feature = "wgpu")]
 #[test]
 fn actual_wgpu_interval_provider_rejects_before_the_closure() -> Result {

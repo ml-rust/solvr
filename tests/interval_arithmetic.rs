@@ -11,6 +11,10 @@ mod backends;
 mod cpu;
 #[path = "interval_arithmetic/division_identity.rs"]
 mod division_identity;
+#[path = "interval_arithmetic/elementary.rs"]
+mod elementary;
+#[path = "interval_arithmetic/elementary_references.rs"]
+mod elementary_references;
 #[path = "interval_arithmetic/exactness.rs"]
 mod exactness;
 #[path = "interval_arithmetic/ownership.rs"]

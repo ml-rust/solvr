@@ -17,6 +17,7 @@ Tags `v0.1.0` through `v0.2.0` predate this file. Every entry is a delta against
 
 ### Added
 
+- `IntervalContext::acos`, `IntervalContext::log_positive`: Enclose F64 arc cosine and logarithm. Use a client with numr's `CorrectlyRoundedOps`.
 - `bisect_batched`: Solves independent F32/F64 roots with retained brackets and optional upper expansion. Use `BatchedBisectionAlgorithms` on runtime clients.
 
 ## [0.3.1] - 2026-11-06

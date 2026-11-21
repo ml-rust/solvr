@@ -158,6 +158,8 @@ where
     }
 }
 
+#[path = "context/elementary.rs"]
+mod elementary;
 #[path = "context/expansion_add.rs"]
 mod expansion_add;
 #[path = "context/expansion_division.rs"]
