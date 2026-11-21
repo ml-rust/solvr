@@ -26,5 +26,7 @@ mod fixture;
 mod modes;
 #[path = "certified_simpson/ownership.rs"]
 mod ownership;
+#[path = "certified_simpson/panel_layout.rs"]
+mod panel_layout;
 #[path = "certified_simpson/suite.rs"]
 mod suite;

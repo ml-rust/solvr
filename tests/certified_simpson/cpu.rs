@@ -29,3 +29,8 @@ fn cpu_derivative_callback_cannot_modify_returned_function_values() -> Result {
     let device = CpuDevice::new();
     super::ownership::run::<CpuRuntime, _>(&CpuRuntime::default_client(&device))
 }
+#[test]
+fn cpu_panels_span_value_node_bounds() -> Result {
+    let device = CpuDevice::new();
+    super::panel_layout::run::<CpuRuntime, _>(&CpuRuntime::default_client(&device))
+}

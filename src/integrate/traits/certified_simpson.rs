@@ -36,6 +36,9 @@ pub trait CertifiedSimpsonAlgorithms<R: Runtime<DType = DType>> {
     ///
     /// For `N` panels, exact real nodes satisfy `x_i = left + (right-left)*i/(2*N)`.
     /// Coordinate enclosures contain these nodes, even when represented query points repeat.
+    /// Value queries list each active lane's `2*N+1` nodes in order, lanes in ascending owner order.
+    /// Derivative queries list each lane's `N` panels in the same lane order.
+    /// Panel `j` spans the lower bound of value node `2*j` to the upper bound of value node `2*j+2`.
     /// `width = (right-left)/N` is the exact mathematical panel width.
     /// Each panel's quadrature error is bounded by `width^5 * fourth_bound / 2880`.
     ///
