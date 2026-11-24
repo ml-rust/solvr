@@ -11,14 +11,17 @@ Tags `v0.1.0` through `v0.2.0` predate this file. Every entry is a delta against
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-24
+
 ### Breaking
 
-- `numr`: Requires numr 0.15.2. Update callers to the same tensor version.
+- `numr`: Requires numr 0.16.0. Update callers to the same tensor version.
 
 ### Added
 
 - `IntervalContext::acos`, `IntervalContext::log_positive`: Enclose F64 arc cosine and logarithm. Use a client with numr's `CorrectlyRoundedOps`.
 - `bisect_batched`: Solves independent F32/F64 roots with retained brackets and optional upper expansion. Use `BatchedBisectionAlgorithms` on runtime clients.
+- `bisect_certified`, `CertifiedSimpsonAlgorithms`, `Interp1dAlgorithms`: Adds certified root-finding with budgeted secant probes, certified Simpson quadrature, and linear interpolation diagnostics. Use them through runtime clients.
 
 ## [0.3.1] - 2026-11-06
 
