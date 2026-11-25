@@ -11,6 +11,12 @@ Tags `v0.1.0` through `v0.2.0` predate this file. Every entry is a delta against
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-25
+
+### Breaking
+
+- `numr`: Requires numr 0.17.0. Update callers to the same tensor version.
+
 ## [0.4.0] - 2026-11-24
 
 ### Breaking

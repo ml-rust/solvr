@@ -1,6 +1,6 @@
 [package]
 name = "solvr"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2024"
 rust-version = "1.95"
 description = "Scientific computing library for Rust, in the role of SciPy: optimization, ODE and PDE solvers, interpolation, statistics, signal processing and spatial algorithms"
@@ -12,7 +12,7 @@ keywords = ["scipy", "optimization", "ode", "interpolation", "statistics"]
 categories = ["algorithms", "mathematics", "science"]
 
 [dependencies]
-numr = { version = "0.16.0" }
+numr = { version = "0.17.0" }
 
 [dev-dependencies]
 
